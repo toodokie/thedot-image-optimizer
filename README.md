@@ -133,4 +133,4 @@ Original theme integration extracted and converted to standalone plugin
 ## Support
 
 For issues, feature requests, or contributions, please visit:
-https://github.com/toodokie/msh-image-optimizer
+https://github.com/toodokie/thedot-image-optimizer

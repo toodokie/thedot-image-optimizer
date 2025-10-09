@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: MSH Image Optimizer
- * Plugin URI: https://github.com/toodokie/msh-image-optimizer
+ * Plugin URI: https://github.com/toodokie/thedot-image-optimizer
  * Description: Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking.
  * Version: 1.0.0
  * Author: Main Street Health
