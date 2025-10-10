@@ -1,0 +1,657 @@
+/* Match optimizer page background */
+#wpcontent,
+#wpbody,
+#wpbody-content {
+    background-color: #FAF9F6;
+}
+
+/* Override ALL WordPress core blue colors */
+.msh-settings-wrap input[type="radio"]:checked::before {
+    content: "";
+    border-radius: 50%;
+    width: 0.5rem;
+    height: 0.5rem;
+    margin: 0.1875rem;
+    background-color: #daff00 !important;
+    line-height: 1.14285714;
+}
+
+.msh-settings-wrap input[type="checkbox"] {
+    width: 22px !important;
+    height: 22px !important;
+    border: 1px solid #ccc !important;
+    border-radius: 4px !important;
+    background-color: #fff !important;
+    appearance: none !important;
+    -webkit-appearance: none !important;
+    -moz-appearance: none !important;
+    cursor: pointer !important;
+    position: relative !important;
+    transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.msh-settings-wrap input[type="checkbox"]::before {
+    content: none !important;
+}
+
+.msh-settings-wrap input[type="checkbox"]::after {
+    content: "";
+    position: absolute;
+    width: 6px;
+    height: 12px;
+    border: 2px solid #35332f;
+    border-top: none;
+    border-left: none;
+    transform: rotate(45deg);
+    top: 2px;
+    left: 7px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+}
+
+.msh-settings-wrap input[type="checkbox"]:hover {
+    border-color: #8b8883 !important;
+    background-color: #faf9f6 !important;
+}
+
+.msh-settings-wrap input[type="checkbox"]:checked {
+    background-color: #daff00 !important;
+    border-color: #35332f !important;
+}
+
+.msh-settings-wrap input[type="checkbox"]:checked::after {
+    opacity: 1;
+}
+
+.msh-settings-wrap input[type="checkbox"]:focus {
+    outline: none !important;
+    border-color: #35332f !important;
+    box-shadow: 0 0 0 3px rgba(53, 51, 47, 0.1) !important;
+}
+
+.msh-settings-wrap {
+    font-family: 'futura-pt', sans-serif;
+    color: #35332f;
+}
+
+/* Match optimizer page header styling */
+.msh-settings-wrap .msh-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2.5rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #35332F;
+}
+
+.msh-settings-wrap .msh-logo-container {
+    flex: 0 0 auto;
+}
+
+.msh-settings-wrap .msh-logo {
+    height: clamp(28px, 3vw, 37px);
+    width: auto;
+    display: block;
+}
+
+.msh-settings-wrap .msh-header-links {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.msh-settings-wrap .msh-support-link,
+.msh-settings-wrap .msh-website-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #35332F;
+    font-family: 'ff-real-text-pro', sans-serif;
+    font-weight: 400;
+    font-size: 12px;
+    line-height: 24px;
+    transition: color 0.2s ease;
+}
+
+.msh-settings-wrap .msh-support-link:hover,
+.msh-settings-wrap .msh-website-link:hover {
+    color: #8B8883;
+}
+
+.msh-settings-wrap .msh-support-link:hover .msh-mail-icon path,
+.msh-settings-wrap .msh-website-link:hover .msh-website-icon path {
+    fill: #8B8883;
+}
+
+/* Fallback for plain h1 if header structure not used */
+.msh-settings-wrap h1 {
+    margin-bottom: 24px;
+    font-size: 2rem;
+}
+
+.msh-settings-card {
+    background: #faf9f6;
+    border: 1px solid #ddd;          /* The Dot grey, not blue-grey */
+    border-radius: 12px;             /* The Dot standard for containers */
+    padding: 32px 36px;
+    margin-bottom: 32px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    overflow: hidden;                /* Prevent child overflow */
+    box-sizing: border-box;
+}
+
+.msh-settings-card header h2 {
+    margin: 0 0 8px;
+    font-family: 'futura-pt', sans-serif;
+    font-size: 1.8rem;                   /* The Dot section title standard */
+    font-weight: 400;                    /* Regular weight per brand */
+    line-height: 1.3;
+    color: #35332f;
+}
+
+.msh-settings-card header p {
+    margin: 0 0 20px;
+    font-family: 'futura-pt', sans-serif;
+    color: #4a4945;
+    font-size: 1rem;                     /* 16px */
+    font-weight: 300;
+    line-height: 1.6;
+}
+
+.msh-settings-grid {
+    display: flex;
+    flex-direction: column;          /* The Dot standard: vertical stacking */
+    gap: 18px;
+    max-width: 800px;                /* The Dot form standard */
+}
+
+.msh-settings-field {
+    display: flex;
+    flex-direction: column;          /* Labels on top, not beside */
+    margin-bottom: 8px;
+    max-width: 100%;
+}
+
+.msh-settings-field label {
+    display: flex;
+    flex-direction: column;          /* Stack label text and input */
+    gap: 10px;                       /* Vertical space between label and field */
+}
+
+.msh-settings-field label > span {
+    display: block;                  /* Ensure vertical stacking */
+    font-family: 'ff-real-text-pro', sans-serif;  /* The Dot label standard */
+    font-size: 1rem;                 /* 16px - The Dot label standard */
+    font-weight: 500;                /* Medium weight per brand */
+    color: #35332f;
+    margin-top: 24px;
+    margin-bottom: 12px;
+    padding-left: 0;
+    padding-right: 0;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    text-align: left;
+}
+
+
+.msh-settings-field input[type="text"],
+.msh-settings-field input[type="email"],
+.msh-settings-field input[type="url"],
+.msh-settings-field textarea {
+    width: 100%;
+    height: 45px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 10px 15px;
+    font-family: 'futura-pt', sans-serif;
+    font-size: 1rem;                 /* 16px for desktop */
+    font-weight: 300;
+    color: #35332f;
+    background-color: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.msh-settings-field select {
+    width: 100%;
+    height: 52px;                    /* Taller for dropdowns to prevent text cutoff */
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 14px 15px;              /* More vertical padding for proper text display */
+    font-family: 'futura-pt', sans-serif;
+    font-size: 1rem;                 /* 16px for desktop */
+    font-weight: 300;
+    line-height: 1.5;
+    color: #35332f;
+    background-color: #fff;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+    cursor: pointer;
+}
+
+.msh-settings-field textarea {
+    min-height: 120px;
+    height: auto;
+    resize: vertical;
+}
+
+.msh-settings-field input[type="text"]:hover,
+.msh-settings-field input[type="email"]:hover,
+.msh-settings-field input[type="url"]:hover,
+.msh-settings-field textarea:hover {
+    border-color: #daff00;
+    box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
+    background-color: #fff;
+}
+
+.msh-settings-field select:hover {
+    border-color: #daff00 !important;
+    box-shadow: 0 0 8px rgba(218, 255, 0, 0.3) !important;
+    background-color: #fff !important;
+    outline: none !important;
+}
+
+.msh-settings-field input[type="text"]:focus,
+.msh-settings-field input[type="email"]:focus,
+.msh:settings-field input[type="url"]:focus,
+.msh-settings-field textarea:focus {
+    outline: none !important;
+    border-color: #35332f !important;
+    box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
+    background-color: #fff !important;
+}
+
+.msh-settings-field select:focus {
+    outline: none !important;
+    border-color: #35332f !important;
+    box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
+    background-color: #fff !important;
+}
+
+/* Fix blue color on dropdown options and selected values - NUCLEAR OPTION */
+.msh-settings-wrap select,
+.msh-settings-wrap select option,
+.msh-settings-field select,
+.msh-settings-field select option,
+select[name*="msh"],
+select[name*="profiles"],
+select[name*="context"] {
+    background-color: #fff !important;
+    color: #35332f !important;
+}
+
+.msh-settings-wrap select:hover,
+.msh-settings-wrap select option:hover,
+.msh-settings-wrap select option:focus,
+.msh-settings-wrap select option:checked,
+.msh-settings-wrap select option:active,
+.msh-settings-field select option:hover,
+.msh-settings-field select option:focus,
+.msh-settings-field select option:checked,
+.msh-settings-field select option:active,
+.msh-settings-field select option[selected],
+select[name*="msh"] option:hover,
+select[name*="msh"] option:checked,
+select[name*="profiles"] option:hover,
+select[name*="profiles"] option:checked,
+select[name*="context"] option:hover,
+select[name*="context"] option:checked {
+    background-color: #faf9f6 !important;
+    color: #35332f !important;
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.msh-settings-checkbox label {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 12px;
+    font-size: 1.125rem;
+    font-family: 'futura-pt', sans-serif;
+    font-weight: 300;
+    color: #35332f;
+}
+
+.msh-settings-checkbox span {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+    color: inherit;
+    display: inline-block;
+}
+
+/* Checkbox styling is handled globally in .msh-settings-wrap input[type="checkbox"] above */
+
+.msh-settings-radio legend {
+    font-family: 'ff-real-text-pro', sans-serif;  /* The Dot label standard */
+    font-size: 1rem;                              /* 16px - The Dot label standard */
+    font-weight: 500;                             /* Medium weight per brand */
+    color: #35332f;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    padding-left: 0;
+    padding-right: 0;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    text-align: left;
+}
+
+
+.msh-radio-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.msh-radio-grid label {
+    display: flex;
+    flex-direction: row !important;  /* Override column direction - radio should be inline */
+    align-items: center;
+    gap: 12px;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    padding: 16px 18px;
+    background: #ffffff;
+    cursor: pointer;
+    font-family: 'futura-pt', sans-serif;
+    font-size: 1.125rem;
+    font-weight: 300;
+    color: #35332f;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.msh-radio-grid label span {
+    margin-top: 8px;
+    margin-bottom: 8px;
+}
+
+.msh-radio-grid label:hover,
+.msh-radio-grid label:focus-within {
+    border-color: #daff00;
+    box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
+    background-color: #ffffff;
+}
+
+.msh-radio-grid input[type="radio"] {
+    accent-color: #35332f !important;
+    outline: none !important;
+}
+
+.msh-radio-grid input[type="radio"]:focus {
+    outline: none !important;
+    box-shadow: none !important;
+}
+
+.msh-radio-grid input[type="radio"]:checked {
+    accent-color: #35332f !important;
+    background-color: #35332f !important;
+    border-color: #35332f !important;
+}
+
+.required {
+    color: #d64545;
+    margin-left: 4px;
+    display: inline;              /* Make it inline with label, not below */
+}
+
+.msh-settings-card--profiles .msh-profile {
+    border: 1px solid rgba(53, 51, 47, 0.18);
+    border-radius: 12px;
+    margin-bottom: 28px;
+    padding: 28px 32px;
+    background: #fff;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    border-left: 4px solid #35332f;
+}
+
+.msh-profile-header {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+    padding-top: 0;
+    margin-top: 0;
+}
+
+.msh-profile-header .msh-settings-field label {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;                          /* Vertical space between label and field */
+}
+
+.msh-profile-details summary {
+    cursor: pointer;
+    font-family: 'futura-pt', sans-serif;   /* The Dot standard */
+    font-weight: 300;                       /* Light weight per brand */
+    color: #35332f;
+    margin-bottom: 12px;
+}
+
+.msh-profile-details[open] summary {
+    color: #35332f;
+}
+
+.msh-profile-details {
+    background: #faf9f6;
+    border: 1px solid #ece8e2;
+    padding: 20px 24px;
+}
+
+.msh-profile-details .msh-settings-grid {
+    gap: 20px;                          /* Consistent spacing inside profile details */
+}
+
+.msh-profile-details .msh-settings-field label {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;                          /* Vertical space between label and field */
+}
+
+/* Fix radio buttons in profiles to be row layout */
+.msh-profile .msh-radio-grid label,
+.msh-profile-details .msh-radio-grid label {
+    display: flex !important;
+    flex-direction: row !important;
+    align-items: center;
+    justify-content: flex-start;
+}
+
+.msh-profile .msh-radio-grid,
+.msh-profile-details .msh-radio-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+/* Fix radio button legends in profiles */
+.msh-profile .msh-settings-radio legend,
+.msh-profile-details .msh-settings-radio legend {
+    font-family: 'ff-real-text-pro', sans-serif;
+    font-size: 1rem;
+    font-weight: 500;
+    color: #35332f;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    padding: 0;
+    line-height: 1.4;
+    letter-spacing: 0.5px;
+    text-align: left;
+}
+
+.link-delete,
+.msh-remove-profile {
+    color: #35332f !important;
+    border: 1px solid transparent;
+    background: none;
+    padding: 6px 0;
+    cursor: pointer;
+    text-decoration: none;
+    font-family: 'futura-pt', sans-serif;
+    font-size: 0.95rem;
+    font-weight: 500;
+}
+
+.link-delete:hover,
+.link-delete:focus,
+.msh-remove-profile:hover,
+.msh-remove-profile:focus {
+    color: #8b8883 !important;
+    text-decoration: underline;
+}
+
+.msh-settings-actions {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    flex-wrap: wrap;
+    position: sticky;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    background: rgba(250, 249, 246, 0.96);
+    padding: 24px 20px;
+    margin: 40px 0 0 0;
+    border-top: 1px solid #ddd;
+    z-index: 10;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.button-dot-primary,
+.button-dot-secondary,
+.button-dot-solid,
+.wp-core-ui .button-dot-primary,
+.wp-core-ui .button-dot-secondary,
+.wp-core-ui .button-dot-solid,
+.wp-core-ui .button.button-dot-primary,
+.wp-core-ui .button.button-dot-secondary,
+.wp-core-ui .button.button-dot-solid,
+.wp-core-ui .button-primary.button-dot-primary,
+.wp-core-ui .button-secondary.button-dot-secondary {
+    font-family: 'futura-pt', sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 2px;
+    font-weight: 500;
+    padding: 14px 32px;
+    border-radius: 6px;
+    transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+    box-shadow: none !important;
+}
+
+.button-dot-primary,
+.wp-core-ui .button-dot-primary,
+.wp-core-ui .button.button-dot-primary,
+.wp-core-ui .button-primary.button-dot-primary {
+    background-color: #35332f !important;
+    color: #faf9f6 !important;
+    border: 1px solid #35332f !important;
+}
+
+.button-dot-secondary,
+.wp-core-ui .button-dot-secondary,
+.wp-core-ui .button.button-dot-secondary,
+.wp-core-ui .button-secondary.button-dot-secondary {
+    background-color: #faf9f6 !important;
+    color: #35332f !important;
+    border: 1px solid #cccccc !important;
+}
+
+.button-dot-solid,
+.wp-core-ui .button-dot-solid,
+.wp-core-ui .button.button-dot-solid {
+    background-color: #daff00 !important;
+    color: #35332f !important;
+    border: 1px solid #35332f !important;
+}
+
+.button-dot-primary:hover,
+.button-dot-primary:focus,
+.button-dot-primary:active,
+.wp-core-ui .button-dot-primary:hover,
+.wp-core-ui .button-dot-primary:focus,
+.wp-core-ui .button-dot-primary:active {
+    background-color: #daff00 !important;
+    border-color: #35332f !important;
+    color: #35332f !important;
+}
+
+.button-dot-secondary:hover,
+.button-dot-secondary:focus,
+.button-dot-secondary:active,
+.wp-core-ui .button-dot-secondary:hover,
+.wp-core-ui .button-dot-secondary:focus,
+.wp-core-ui .button-dot-secondary:active {
+    background-color: #faf9f6 !important;
+    border-color: #35332f !important;
+    color: #35332f !important;
+}
+
+.button-dot-solid:hover,
+.button-dot-solid:focus,
+.button-dot-solid:active,
+.wp-core-ui .button-dot-solid:hover,
+.wp-core-ui .button-dot-solid:focus,
+.wp-core-ui .button-dot-solid:active {
+    background-color: #cce800 !important;
+    border-color: #35332f !important;
+}
+
+.button-dot-primary:focus-visible,
+.button-dot-secondary:focus-visible,
+.button-dot-solid:focus-visible,
+.wp-core-ui .button-dot-primary:focus-visible,
+.wp-core-ui .button-dot-secondary:focus-visible,
+.wp-core-ui .button-dot-solid:focus-visible {
+    outline: 2px solid rgba(53, 51, 47, 0.28);
+    outline-offset: 3px;
+}
+
+.msh-profile .msh-remove-profile {
+    position: absolute;
+    top: 24px;
+    right: 32px;
+    color: #d63638;
+    font-family: 'futura-pt', sans-serif;   /* The Dot standard */
+    font-size: 0.8rem;
+    font-weight: 300;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    background: none;
+    border: none;
+}
+
+.msh-profile-collection {
+    display: flex;
+    flex-direction: column;
+}
+
+.msh-settings-note {
+    font-family: 'futura-pt', sans-serif;   /* The Dot standard */
+    font-size: 0.95rem;
+    font-weight: 300;
+    color: rgba(53, 51, 47, 0.75);
+    margin-top: 16px;
+}
+
+
+@media (max-width: 768px) {
+    /* The Dot standard mobile breakpoint */
+    .msh-settings-card {
+        padding: 30px 20px;
+    }
+
+    .msh-settings-actions {
+        padding: 24px 20px;
+        margin: 40px -20px -30px;
+    }
+
+    .msh-settings-card--profiles .msh-profile {
+        padding: 24px 20px;
+    }
+}
