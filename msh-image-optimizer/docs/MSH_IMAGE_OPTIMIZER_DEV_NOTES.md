@@ -42,16 +42,30 @@ The MSH Image Optimizer is a comprehensive WordPress plugin designed specificall
 
 - ✅ **Image optimization pipeline** – WebP conversion, healthcare metadata, and priority scoring are live and mirrored in production. Batch controls (High/Medium/All) and per-image overrides are stable.  
 - ✅ **Usage-aware duplicate cleanup** – Visual scan auto-runs builder usage checks; per-group **Deep scan** handles serialized content. Row badges, usage summaries, and timestamps now reflect the latest refresh.  
-- ✅ **Usage index availability** – Optimized rebuild (`build_optimized_complete_index`) is active and verified. Index rebuilds can be run on demand from the admin with batch progress logging.  
+- ✅ **Usage index availability** – Optimized rebuild (`build_optimized_complete_index`) is active and verified. The new cron-backed queue (`msh_process_usage_index_queue`) rebuilds in the background when media changes and the admin shows live status.  
 - ✅ **Safe rename workflow** – Regression tests (Oct 2025) confirmed filename updates propagate correctly with rollbacks, logging, and 404 safeguards. Rename suggestions remain optional for this client but can be toggled on.  
 - ✅ **Client safeguards** – All destructive actions (delete, rename) perform real-time usage re-checks. Cleanup batches stop automatically when new usage appears.  
 - ✅ **Documentation sync** – User instructions match the current UI (Review + Deep scan buttons, usage refresh chip, auto builder crawl).
+- ⚠️ **Known issue** – Legacy “Deep library scan” endpoint still returns `Bad Request: 0` on completion; keep the Quick Scan + per-group verification workflow active until the legacy handler is replaced.
 
 ### Client-Specific Operating Notes
 - **Environment**: Runs inside the Medicross child theme for Main Street Health; no WP Cron dependencies required in this context.  
 - **Default settings**: Rename suggestions OFF, duplicate cleanup gated behind manual review, auto metadata enabled.  
 - **Index hygiene**: Quick scans trigger background usage refresh; full rebuild is available via “Force rebuild” when large batches of content change.  
 - **Support workflow**: Analyzer → Optimize → Duplicate cleanup is the recommended order; deep scan reserved for verification before delete/rename actions.
+
+### QA & Observability Backlog
+- 🧪 **Regression automation** – Extend the new `wp msh qa` flow with duplicate-report assertions once the standalone build exposes the quick scan report helper.
+- 📊 **Diagnostics widget** – Diagnostics card ships in this build; next iteration should surface index health counters and optional live log streaming.
+- 🕒 **Background job telemetry** – Add CLI/status endpoints for the usage-index queue (processed totals, retry counts) and stream warnings into the diagnostics log download.
+- ⏱️ **Cron watchdog** – Consider adding a fallback health check or Action Scheduler migration for hosts where native WP-Cron is unreliable.
+
+### Regression Toolkit (October 2025)
+- `wp msh rename-regression --ids=1,2` now delegates to the shared helper used by `wp msh qa`.
+- `wp msh qa --rename=1,2 --optimize=1,2 --duplicate` runs the rename simulation, optimization batch test, and quick duplicate scan summary in one pass.
+- Admin UI ships a diagnostics card with the latest analyzer/optimization/duplicate timestamps and a downloadable log snapshot for support tickets.
+- Duplicate CLI now enforces minimum coverage (`--duplicate-min-coverage`) and can hard-fail when no groups are returned (`--duplicate-require-groups`) to catch regressions early.
+- Usage-index rebuild buttons now queue the cron worker; progress auto-refreshes in the diagnostics panel, queue telemetry (mode, pending, processed, timestamps) is displayed inline, Smart Build lists the attachment IDs it re-indexed for user verification, and the modal can be dismissed while work continues in the background.
 
 ## Migration Backlog (Standalone Edition)
 

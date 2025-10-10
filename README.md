@@ -26,6 +26,45 @@ A standalone WordPress plugin for comprehensive image optimization, duplicate de
 3. Activate the plugin through the WordPress admin panel
 4. Navigate to **Tools > MSH Image Optimizer** to access the dashboard
 
+## Development & Testing
+
+### ⭐ Symlink Setup (Automatic Sync)
+
+The plugin uses a **symlink** for instant synchronization between the standalone repository and Local test site:
+
+```
+Standalone Repository ←→ SYMLINK ←→ Local WordPress Test Site
+```
+
+**What this means:**
+- ✅ Edit files in standalone repository
+- ✅ Changes **instantly** appear on Local test site
+- ✅ No manual copying or sync scripts needed
+
+**Documentation:**
+- [SYMLINK_SETUP.md](SYMLINK_SETUP.md) - Complete symlink configuration and workflow
+
+**Legacy Sync Documentation** (if symlink not used):
+- [SYNC_GUIDE.md](SYNC_GUIDE.md) - Manual sync commands
+- [PREVENTING_SYNC_ISSUES.md](PREVENTING_SYNC_ISSUES.md) - Sync automation options
+
+### WP-CLI Testing
+
+The plugin includes comprehensive WP-CLI commands for automated testing:
+
+```bash
+# Rename regression test
+wp msh rename-regression --ids=123,456
+
+# Full QA suite (rename, optimize, duplicate detection)
+wp msh qa --rename=123,456 --optimize=789 --duplicate --duplicate-min-coverage=5
+
+# Duplicate scan only
+wp msh qa --duplicate --duplicate-require-groups
+```
+
+See [WP_CLI_TEST_RESULTS.md](WP_CLI_TEST_RESULTS.md) for detailed test results and examples.
+
 ## Usage
 
 ### Step 1: Optimize Published Images

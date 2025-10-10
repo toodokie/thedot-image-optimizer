@@ -1477,7 +1477,8 @@ class MSH_Contextual_Meta_Generator {
 }
 
 class MSH_Image_Optimizer {
-    
+    private static $instance = null;
+
     private $batch_size = 10;
     private $processed_count = 0;
     private $current_attachment_id = null;
@@ -1491,7 +1492,21 @@ class MSH_Image_Optimizer {
         'facility' => ['max_width' => 800, 'max_height' => 600, 'quality' => 80]
     ];
 
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
+
     public function __construct() {
+        if (null !== self::$instance) {
+            return;
+        }
+
+        self::$instance = $this;
+
         add_action('wp_ajax_msh_analyze_images', array($this, 'ajax_analyze_images'));
         add_action('wp_ajax_msh_optimize_batch', array($this, 'ajax_optimize_batch'));
         add_action('wp_ajax_msh_get_progress', array($this, 'ajax_get_progress'));
@@ -3004,6 +3019,8 @@ class MSH_Image_Optimizer {
 
         error_log("MSH: Analysis complete in {$duration_ms}ms, cached for 30 minutes");
 
+        update_option('msh_last_analyzer_run', current_time('mysql'));
+
         wp_send_json_success($response_data);
     }
 
@@ -3027,7 +3044,11 @@ class MSH_Image_Optimizer {
                 'result' => $result
             ];
         }
-        
+
+        if (!empty($image_ids)) {
+            update_option('msh_last_optimization_run', current_time('mysql'));
+        }
+
         wp_send_json_success($results);
     }
 
@@ -3061,6 +3082,10 @@ class MSH_Image_Optimizer {
         // Clear analysis cache after optimization
         $cache_key = 'msh_analysis_cache_' . md5('latest_analysis');
         delete_transient($cache_key);
+
+        if (!empty($image_ids)) {
+            update_option('msh_last_optimization_run', current_time('mysql'));
+        }
 
         wp_send_json_success([
             'results' => $results,
@@ -3100,6 +3125,10 @@ class MSH_Image_Optimizer {
         $cache_key = 'msh_analysis_cache_' . md5('latest_analysis');
         delete_transient($cache_key);
 
+        if (!empty($image_ids)) {
+            update_option('msh_last_optimization_run', current_time('mysql'));
+        }
+
         wp_send_json_success([
             'results' => $results,
             'total_processed' => count($image_ids),
@@ -3138,6 +3167,10 @@ class MSH_Image_Optimizer {
         // Clear analysis cache after optimization
         $cache_key = 'msh_analysis_cache_' . md5('latest_analysis');
         delete_transient($cache_key);
+
+        if (!empty($image_ids)) {
+            update_option('msh_last_optimization_run', current_time('mysql'));
+        }
 
         wp_send_json_success([
             'results' => $results,
@@ -4608,7 +4641,75 @@ class MSH_Image_Optimizer {
 
         return $results;
     }
+
+    public function optimize_attachments_cli(array $attachment_ids, array $args = []) {
+        $summary = [
+            'processed' => 0,
+            'optimized' => [],
+            'errors' => [],
+            'skipped' => []
+        ];
+
+        foreach ($attachment_ids as $attachment_id) {
+            $attachment_id = intval($attachment_id);
+            if ($attachment_id <= 0) {
+                $summary['errors'][] = [
+                    'id' => $attachment_id,
+                    'message' => __('Invalid attachment ID.', 'msh-image-optimizer')
+                ];
+                continue;
+            }
+
+            $result = $this->optimize_single_image($attachment_id);
+
+            if ($result['status'] === 'error') {
+                $summary['errors'][] = [
+                    'id' => $attachment_id,
+                    'message' => implode('; ', $result['actions'])
+                ];
+                continue;
+            }
+
+            $webp_path = $this->get_webp_path_for_attachment($attachment_id);
+            $webp_exists = $webp_path ? file_exists($webp_path) : false;
+
+            if (!empty($result['meta_applied']) || $webp_exists) {
+                $summary['optimized'][] = [
+                    'id' => $attachment_id,
+                    'status' => $result['status'],
+                    'meta_updated' => array_keys($result['meta_applied']),
+                    'webp_generated' => $webp_exists
+                ];
+            } else {
+                $summary['skipped'][] = [
+                    'id' => $attachment_id,
+                    'message' => implode('; ', $result['actions'])
+                ];
+            }
+
+            $summary['processed']++;
+        }
+
+        if ($summary['processed'] > 0) {
+            update_option('msh_last_cli_optimization', current_time('mysql'));
+        }
+
+        return $summary;
+    }
+
+    private function get_webp_path_for_attachment($attachment_id) {
+        $file_path = get_attached_file($attachment_id);
+        if (!$file_path) {
+            return '';
+        }
+
+        if (!preg_match('/\.(jpg|jpeg|png)$/i', $file_path)) {
+            return '';
+        }
+
+        return preg_replace('/\.(jpg|jpeg|png)$/i', '.webp', $file_path);
+    }
 }
 
 // Initialize the optimizer
-new MSH_Image_Optimizer();
+MSH_Image_Optimizer::get_instance();

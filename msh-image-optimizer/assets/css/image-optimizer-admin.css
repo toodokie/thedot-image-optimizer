@@ -442,6 +442,70 @@
     font-size: 14px;
 }
 
+.diagnostics-list {
+    list-style: none;
+    margin: 8px 0 0;
+    padding: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.diagnostics-list li {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+    color: #35332f;
+}
+
+.diagnostics-list strong {
+    font-family: 'futura-pt', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    font-size: 13px;
+}
+
+.diagnostics-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.diagnostics-badge--healthy {
+    background: rgba(218, 255, 0, 0.35);
+    border-color: rgba(47, 84, 0, 0.25);
+    color: #2f5400;
+}
+
+.diagnostics-badge--attention {
+    background: rgba(255, 128, 0, 0.18);
+    border-color: rgba(138, 61, 0, 0.25);
+    color: #8a3d00;
+}
+
+.diagnostics-badge--queued {
+    background: rgba(0, 80, 255, 0.12);
+    border-color: rgba(24, 55, 120, 0.25);
+    color: #183778;
+}
+
+.diagnostics-badge--unknown {
+    background: rgba(53, 51, 47, 0.12);
+    border-color: rgba(53, 51, 47, 0.18);
+    color: #35332f;
+}
+
+.diagnostics-index-row strong {
+    margin-right: 4px;
+}
+
 .index-status-summary-line {
     display: flex;
     flex-direction: column;
@@ -508,6 +572,38 @@
     margin-top: 12px;
     font-size: 12px;
     color: #35332f;
+}
+
+.index-scheduler-details {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 6px 12px;
+    margin-top: 12px;
+    font-size: 12px;
+    color: #35332f;
+}
+
+.index-scheduler-details strong {
+    font-family: 'futura-pt', sans-serif;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+}
+
+.scheduler-attachments {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    border-top: 1px solid rgba(53, 51, 47, 0.1);
+    padding-top: 8px;
+}
+
+#scheduler-processed-list {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    list-style: disc;
+}
+
+#modal-status {
+    white-space: pre-line;
 }
 
 .index-mix-bar {

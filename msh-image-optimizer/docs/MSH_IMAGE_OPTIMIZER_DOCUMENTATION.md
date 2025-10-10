@@ -4,6 +4,14 @@ This handbook covers the production build of the Image Optimizer that ships with
 
 ---
 
+## ⚡ Quick Start Workflow
+
+1. **Run Analyzer** – refresh the table so priorities, statuses, and usage badges reflect the latest library changes.
+2. **Optimize** – work through high-priority images first, then medium, then the remaining queue using the batch actions.
+3. **Review Duplicates** – run Quick Scan, rely on the automatic builder usage check, and use Deep scan only when you need a serialized/meta double-check before cleanup.
+
+---
+
 ## 1. What the Optimizer Does
 
 | Feature | What you see in the dashboard | Why it matters |
@@ -78,7 +86,8 @@ Once you are confident your published images are optimized, move to the **Duplic
 ## 4. Built-in Safeguards
 
 - **Usage verification on every destructive action** – Renames and deletions double-check references the moment the action fires.  
-- **Indexer health** – The “Force rebuild” button calls the optimized usage-index rebuild (`build_optimized_complete_index`). Logs confirm progress and the last run timestamp shows on the dashboard.  
+- **Indexer health** – Usage indexing runs in the background whenever media changes. “Smart Build” performs a quick catch-up, and “Force Rebuild” performs a full background refresh for troubleshooting. The log and diagnostics badge track queued/running/completed status.  
+- **Background queue** – Index rebuilds run as a background job. The diagnostics badge shows queued/running/completed states and you can continue working while it processes.  
 - **WebP fallback logic** – Originals are kept alongside WebP versions; browsers without WebP support automatically receive the original file.  
 - **Logging** – Actions and errors are streamed to the on-page log and the WordPress debug log (`MSH OPTIMIZER`, `MSH Usage Index`, `MSH DUPLICATE`).  
 - **Permissions** – Only administrators can run optimization or cleanup tasks. Editors can view results but cannot delete files.
@@ -102,6 +111,8 @@ Once you are confident your published images are optimized, move to the **Duplic
 - **Local issues (metadata, duplicates, UI questions)** – Reach out to the Main Street Health site maintainer (internal team).  
 - **Plugin defects or enhancements** – Log a ticket referencing this guide and the commit hash of the current theme version.  
 - **Standalone migration** – When you are ready to deploy the optimizer as a separate plugin, follow `MSH_STANDALONE_MIGRATION_PLAN.md`.
+- **Known issue** – The legacy **Deep library scan** button currently returns `Bad Request: 0` after finishing. Use the Quick scan plus automatic per-group verification as the primary workflow and trigger Deep scan only when you need a manual serialized/meta sweep.
+- **Diagnostics widget** – Use the “Diagnostics Snapshot” card to confirm the timestamp of the last Analyzer, optimization batch, and duplicate scans. The usage index badge shows whether rename safeguards are ready (green), queued, or need attention with orphan counts. The “Queue Status” rows (mode, pending jobs, processed, timestamps) mirror the background worker so you can confirm progress at a glance. When Smart Build runs it also lists the attachment IDs that were re-indexed so you can double-check any recent uploads. The modal that appears when you trigger **Smart Build** or **Force Rebuild** can be dismissed immediately—background processing will continue and the diagnostics card will keep updating. The “Download Recent Log” button streams the latest debug entries for support tickets. If your host disables WP-Cron, schedule a real cron job to run `wp cron event run --due-now` every few minutes so background indexing keeps up.
 
 ---
 
@@ -109,4 +120,5 @@ Once you are confident your published images are optimized, move to the **Duplic
 
 | Date | Change |
 | --- | --- |
+| 2025-10-09 | Added Quick Start workflow, documented diagnostics snapshot card, and noted deep scan legacy issue. |
 | 2025-10-06 | Re-authored for the streamlined analyzer, auto usage refresh, and updated duplicate workflow. Older technical notes moved to `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md`. |

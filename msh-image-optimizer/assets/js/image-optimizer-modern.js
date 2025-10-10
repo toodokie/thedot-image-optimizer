@@ -23,13 +23,18 @@
     const CONFIG = {
         endpoints: {
             analyze: mshImageOptimizer.ajaxurl,
-            optimize: mshImageOptimizer.ajaxurl,
-            buildIndex: mshImageOptimizer.ajaxurl
+            optimize: mshImageOptimizer.ajaxurl
+        },
+        actions: {
+            queueIndex: mshImageOptimizer.indexQueueAction || 'msh_queue_usage_index_rebuild',
+            statusIndex: mshImageOptimizer.indexStatusAction || 'msh_get_usage_index_status'
         },
         nonce: mshImageOptimizer.nonce,
         batchSize: 5,
         autoRefreshInterval: 30000,
-        indexStats: mshImageOptimizer.indexStats || null
+        queuePollInterval: 15000,
+        indexStats: mshImageOptimizer.indexStats || null,
+        diagnostics: mshImageOptimizer.diagnostics || {}
     };
 
     const STATUS_DEFINITIONS = {
@@ -238,6 +243,8 @@
             this.setupEventListeners();
             this.showWelcomeState();
             this.updateIndexStatus(CONFIG.indexStats);
+            this.renderDiagnostics(CONFIG.diagnostics || {}, CONFIG.indexStats || null);
+            Index.startPolling(true);
         }
 
         static setupEventListeners() {
@@ -297,6 +304,11 @@
                 UI.toggleOrphanList();
             });
 
+            $('#modal-dismiss').on('click', (e) => {
+                e.preventDefault();
+                UI.hideProgressModal();
+            });
+
             const $renameToggle = $('#enable-file-rename');
             if ($renameToggle.length) {
                 $renameToggle.prop('checked', AppState.renameEnabled);
@@ -322,34 +334,6 @@
                     });
                 });
             }
-
-            $('#trigger-incremental-refresh').on('click', async (e) => {
-                e.preventDefault();
-                const $btn = $(e.currentTarget);
-                $btn.prop('disabled', true).text('Queueing...');
-
-                try {
-                    const response = await $.ajax({
-                        url: mshImageOptimizer.ajaxurl,
-                        type: 'POST',
-                        data: {
-                            action: 'msh_trigger_incremental_refresh',
-                            nonce: mshImageOptimizer.nonce
-                        }
-                    });
-
-                    if (response.success) {
-                        alert(response.data.message + '\nScheduled for: ' + response.data.scheduled_for);
-                        UI.updateIndexStatus({...CONFIG.indexStats, queued_attachments: response.data.pending_jobs});
-                    } else {
-                        alert('Failed to queue refresh: ' + (response.data || 'Unknown error'));
-                    }
-                } catch (error) {
-                    alert('Error queueing refresh: ' + error.message);
-                } finally {
-                    $btn.prop('disabled', false).text('Trigger Incremental Refresh');
-                }
-            });
 
             $('#rebuild-usage-index').on('click', (e) => {
                 e.preventDefault();
@@ -1468,6 +1452,7 @@
             $('#modal-status').text(status);
             $('#modal-progress-fill').css('width', progress + '%');
             $('#modal-progress-text').text(Math.round(progress) + '%');
+            $('#modal-dismiss').hide();
             $('#processing-modal').show();
         }
 
@@ -1480,8 +1465,19 @@
             }
         }
 
+        static enableModalDismiss(buttonText = 'Dismiss') {
+            const $btn = $('#modal-dismiss');
+            $btn.text(buttonText);
+            $btn.show();
+        }
+
+        static disableModalDismiss() {
+            $('#modal-dismiss').hide();
+        }
+
         static hideProgressModal() {
             $('#processing-modal').hide();
+            $('#modal-dismiss').hide();
         }
 
         static updateIndexStatus(summary) {
@@ -1590,6 +1586,178 @@
             CONFIG.indexStats = stats || null;
             this.updateOrphanToggleLabel(stats);
             this.renderOrphanList(stats);
+            this.renderDiagnostics(CONFIG.diagnostics || {}, CONFIG.indexStats);
+            this.renderSchedulerDetails(stats?.scheduler);
+        }
+
+        static renderDiagnostics(data = {}, indexStats = null) {
+            const map = {
+                '#diagnostics-last-analyzer': data.last_analyzer_run,
+                '#diagnostics-last-optimization': data.last_optimization_run,
+                '#diagnostics-last-quickscan': data.last_quick_scan,
+                '#diagnostics-last-visual': data.last_visual_scan,
+            };
+
+            Object.entries(map).forEach(([selector, value]) => {
+                const $el = $(selector);
+                if (!$el.length) {
+                    return;
+                }
+                $el.text(value ? UI.formatDiagnosticsValue(value) : '—');
+            });
+
+            UI.renderIndexDiagnostics(indexStats);
+        }
+
+        static renderSchedulerDetails(data = null) {
+            const formatted = data || {};
+            const map = {
+                '#scheduler-status-detail': formatted.status ? formatted.status : 'idle',
+                '#scheduler-mode-detail': formatted.mode ? formatted.mode : 'smart',
+                '#scheduler-pending-detail': Number.isFinite(formatted.pending_jobs) ? formatted.pending_jobs : '0',
+                '#scheduler-processed-detail': Number.isFinite(formatted.processed) ? formatted.processed : '0',
+                '#scheduler-queued-detail': UI.formatDiagnosticsValue(formatted.queued_at),
+                '#scheduler-activity-detail': UI.formatDiagnosticsValue(formatted.last_activity),
+                '#scheduler-next-run-detail': UI.formatDiagnosticsValue(formatted.next_run),
+            };
+
+            Object.entries(map).forEach(([selector, value]) => {
+                const $el = $(selector);
+                if (!$el.length) {
+                    return;
+                }
+
+                $el.text(value || '—');
+            });
+        }
+
+        static renderIndexDiagnostics(stats) {
+            const $badge = $('#diagnostics-index-badge');
+            const $details = $('#diagnostics-index-details');
+            const $total = $('#diagnostics-index-total');
+            const $attachments = $('#diagnostics-index-attachments');
+            const $orphans = $('#diagnostics-index-orphans');
+            const $lastUpdate = $('#diagnostics-index-lastupdate');
+
+            if (!$badge.length) {
+                return;
+            }
+
+            if (!stats) {
+                UI.setDiagnosticsBadge($badge, 'unknown', '—');
+                $details.text('—');
+                $total.text('—');
+                $attachments.text('—');
+                $orphans.text('—');
+                $lastUpdate.text('—');
+                return;
+            }
+
+            const health = UI.determineIndexHealth(stats);
+            UI.setDiagnosticsBadge($badge, health.variant, health.label);
+            if (health.tooltip) {
+                $badge.attr('title', health.tooltip);
+            }
+
+            if (health.detail) {
+                $details.text(health.detail);
+            } else {
+                $details.text('—');
+            }
+
+            $total.text(UI.formatNumber(stats.total_entries));
+            $attachments.text(UI.formatNumber(stats.indexed_attachments));
+            $orphans.text(UI.formatNumber(stats.orphaned_entries));
+            $lastUpdate.text(UI.formatDiagnosticsValue(stats.last_update_display || stats.last_update_raw));
+        }
+
+        static setDiagnosticsBadge($badge, variant, label) {
+            if (!$badge || !$badge.length) {
+                return;
+            }
+
+            const variants = ['healthy', 'queued', 'attention', 'unknown'];
+            variants.forEach(state => $badge.removeClass(`diagnostics-badge--${state}`));
+            const safeVariant = variants.includes(variant) ? variant : 'unknown';
+            $badge.addClass(`diagnostics-badge--${safeVariant}`);
+            $badge.text(label || '—');
+        }
+
+        static determineIndexHealth(stats) {
+            const strings = mshImageOptimizer.strings || {};
+            const result = {
+                variant: 'unknown',
+                label: strings.indexNotBuilt || 'Not Built',
+                detail: strings.indexNotBuiltDetail || '',
+                tooltip: '',
+            };
+
+            const totalEntries = parseInt(stats?.total_entries ?? 0, 10);
+            const attachments = parseInt(stats?.indexed_attachments ?? 0, 10);
+            const orphaned = parseInt(stats?.orphaned_entries ?? 0, 10);
+            const lastUpdateRaw = stats?.last_update_raw || null;
+            const lastUpdate = lastUpdateRaw ? new Date(('' + lastUpdateRaw).replace(' ', 'T')) : null;
+            const now = new Date();
+            const MS_IN_DAY = 86400000;
+
+            if (!totalEntries || !attachments) {
+                if (!result.detail) {
+                    result.detail = 'Usage index not initialized.';
+                }
+                result.tooltip = result.detail;
+                return result;
+            }
+
+            result.variant = 'healthy';
+            result.label = strings.indexHealthy || 'Healthy';
+            result.detail = strings.indexHealthyDetail || '';
+
+            if (orphaned > 0) {
+                result.variant = 'attention';
+                result.label = strings.indexAttention || 'Attention';
+                const baseDetail = strings.indexOrphanDetail || '';
+                const formattedCount = UI.formatNumber(orphaned);
+                result.detail = baseDetail
+                    ? `${baseDetail} (${formattedCount})`
+                    : `${formattedCount} orphaned references detected.`;
+            } else if (lastUpdate && ((now - lastUpdate) > (7 * MS_IN_DAY))) {
+                result.variant = 'attention';
+                result.label = strings.indexAttention || 'Attention';
+                const baseDetail = strings.indexStaleDetail || '';
+                const staleDays = Math.max(1, Math.floor((now - lastUpdate) / MS_IN_DAY));
+                result.detail = baseDetail
+                    ? `${baseDetail} (${staleDays} days old)`
+                    : `Index is ${staleDays} days old; refresh recommended.`;
+            }
+
+            if (!result.detail) {
+                result.detail = `${UI.formatNumber(totalEntries)} entries across ${UI.formatNumber(attachments)} attachments`;
+            }
+
+            result.tooltip = result.detail;
+            return result;
+        }
+
+        static formatNumber(value) {
+            const num = Number(value || 0);
+            if (!Number.isFinite(num) || num <= 0) {
+                return '0';
+            }
+            return num.toLocaleString();
+        }
+
+        static formatDiagnosticsValue(rawValue) {
+            if (!rawValue) {
+                return '—';
+            }
+
+            const isoGuess = ('' + rawValue).replace(' ', 'T');
+            const date = new Date(isoGuess);
+            if (!Number.isNaN(date.getTime())) {
+                return date.toLocaleString();
+            }
+
+            return rawValue;
         }
 
         static updateOrphanToggleLabel(summary) {
@@ -1981,6 +2149,9 @@
                 UI.updateProgressModal(`${label} Complete`, `Successfully optimized ${processed} images!`, 100);
                 UI.updateLog(`✅ ${label} optimization complete! Processed ${processed} images.`);
 
+                CONFIG.diagnostics.last_optimization_run = new Date().toISOString();
+                UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
+
                 // Trigger re-analysis after completion
                 setTimeout(() => {
                     if (!AppState.processing) {
@@ -2119,6 +2290,9 @@
                     }, 1500);
 
                     FilterEngine.apply();
+
+                    CONFIG.diagnostics.last_analyzer_run = new Date().toISOString();
+                    UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
                 } else {
                     throw new Error(response.data || 'Analysis failed');
                 }
@@ -2213,136 +2387,241 @@
         }
 
         static async build(force = false) {
-            if (AppState.processing) {
-                return;
-            }
+            const mode = force ? 'full' : 'smart';
+            UI.showLoading(force ? 'Queueing force rebuild…' : 'Queueing smart rebuild…');
+            UI.showProgressModal(
+                force ? 'Force Rebuild Queued' : 'Smart Rebuild Queued',
+                'Background job scheduled. It\'s safe to keep working while this runs in the background.',
+                5
+            );
+            UI.enableModalDismiss('Dismiss');
+            UI.updateLog(force ? 'Force rebuild queued for the usage index…' : 'Smart usage index refresh queued…');
 
-            const state = {
-                force,
-                offset: 0,
-                processedTotal: 0, // Will be updated with actual total from server
-                total: null,
-                batchSize: 25, // Larger batch size for better performance and UX
-            };
-
-            AppState.processing = true;
-            const loadingMessage = force ? 'Force rebuilding usage index…' : 'Building usage index…';
-            const modalTitle = force ? 'Force Rebuilding Usage Index' : 'Building Usage Index';
-            const modalMessage = force ? 'Processing all 219 attachments with optimized method (no timeout)…' : 'Initializing…';
-
-            UI.showLoading(loadingMessage);
-            UI.showProgressModal(modalTitle, modalMessage, 0);
-            UI.updateLog(force ? 'Force rebuilding usage index for fresh cache…' : 'Building usage index for faster rename performance…');
-
-            Index.processBatchData(state)
-                .then(() => {
-                    // Success handled inside processBatch
-                })
-                .catch((error) => {
-                    const message = error?.message || 'Index build failed';
-                    UI.updateLog(`Index build error: ${message}`);
-                    UI.playAlertSound();
-                    UI.updateProgressModal('Usage Index Error', message, 0);
-                    UI.hideProgressModal();
-                    alert('Usage index rebuild failed: ' + message);
-                })
-                .finally(() => {
-                    AppState.processing = false;
-                    UI.hideLoading();
-                });
-        }
-
-        static async processBatch(state) {
             try {
-                // Set timeout based on operation type
-                const timeout = state.force ? 0 : 420000; // No timeout for force rebuild (uses optimized method), 7min for chunked
-
                 const response = await $.ajax({
-                    url: CONFIG.endpoints.buildIndex,
+                    url: mshImageOptimizer.ajaxurl,
                     type: 'POST',
-                    timeout: timeout,
                     data: {
-                        action: 'msh_build_usage_index_batch',
+                        action: CONFIG.actions.queueIndex,
                         nonce: CONFIG.nonce,
-                        offset: state.offset,
-                        batch_size: state.batchSize,
-                        force_rebuild: state.force ? 'true' : 'false',
-                    },
+                        mode,
+                        force: force ? '1' : '0'
+                    }
                 });
 
                 if (!response || !response.success) {
-                    throw new Error((response && response.data) || 'Index build failed');
+                    throw new Error((response && response.data) || 'Failed to queue usage index job.');
                 }
 
-                return response;
-            } catch (xhr) {
-                // Handle timeout errors specifically
-                if (xhr.status === 0 && xhr.statusText === 'timeout') {
-                    throw new Error(`Batch processing timed out after 7 minutes. This chunk may have contained many slow SVG files. Progress has been saved - you can continue from where it left off.`);
-                } else if (xhr.status === 0) {
-                    throw new Error(`Connection lost during processing. Progress has been saved - you can continue from where it left off.`);
-                } else {
-                    throw new Error(xhr.responseJSON?.data || xhr.statusText || 'Index build failed');
+                const data = response.data || {};
+
+                if (data.message) {
+                    UI.updateLog(data.message);
                 }
+
+                if (data.status && data.status.summary) {
+                    const normalized = Index.normalizeSummary(data.status.summary);
+                    if (normalized) {
+                        CONFIG.indexStats = normalized;
+                        UI.updateIndexStatus(normalized);
+                    }
+                }
+
+                Index.startPolling(true);
+            } catch (error) {
+                const message = error?.message || 'Usage index job could not be queued.';
+                UI.updateLog(`Usage index queue error: ${message}`);
+                UI.playAlertSound();
+                UI.updateProgressModal('Usage Index Error', message, 0);
+                UI.enableModalDismiss('Close');
+            } finally {
+                UI.hideLoading();
             }
         }
 
-        static async processBatchData(state) {
-            const response = await this.processBatch(state);
-
-            const data = response.data || {};
-            const processed = parseInt(data.processed, 10) || 0;
-            const total = parseInt(data.total, 10) || state.total || 0;
-
-            state.processedTotal += processed;
-            state.total = total;
-
-            const progress = total > 0 ? Math.min(100, Math.round((state.processedTotal / total) * 100)) : 0;
-            const statusText = total > 0
-                ? `Processed ${state.processedTotal} of ${total} attachments…`
-                : `Processed ${state.processedTotal} attachments…`;
-
-            UI.updateProgressModal('Rebuilding Usage Index', statusText, progress);
-
-            if (data.message) {
-                UI.updateLog(data.message);
+        static startPolling(immediate = false) {
+            if (Index.pollTimer) {
+                window.clearInterval(Index.pollTimer);
             }
 
-            if (data.summary) {
-                const normalized = Index.normalizeSummary(data.summary);
-                UI.updateIndexStatus(normalized);
+            if (immediate) {
+                Index.fetchStatus();
             }
 
-            const hasMore = Boolean(data.has_more);
-
-            if (hasMore) {
-                const nextOffset = data.next_offset !== undefined ? parseInt(data.next_offset, 10) : state.offset + state.batchSize;
-                state.offset = isNaN(nextOffset) ? state.offset + state.batchSize : nextOffset;
-
-                // Prevent overwhelming the server
-                await new Promise((resolve) => setTimeout(resolve, 150));
-                return Index.processBatchData(state);
-            }
-
-            UI.updateLog('Usage index rebuild complete.');
-            UI.playCompletionSound();
-            UI.updateProgressModal('Usage Index Rebuilt', `Processed ${state.processedTotal} attachment(s).`, 100);
-
-            if (data.summary) {
-                const normalized = Index.normalizeSummary(data.summary);
-                UI.updateIndexStatus(normalized);
-            }
-
-            setTimeout(() => {
-                UI.hideProgressModal();
-            }, 1500);
-
-            alert('Usage index rebuild complete!');
+            Index.pollTimer = window.setInterval(() => {
+                Index.fetchStatus();
+            }, CONFIG.queuePollInterval);
         }
 
+        static stopPolling() {
+            if (Index.pollTimer) {
+                window.clearInterval(Index.pollTimer);
+                Index.pollTimer = null;
+            }
+        }
+
+        static async fetchStatus() {
+            try {
+                const response = await $.ajax({
+                    url: mshImageOptimizer.ajaxurl,
+                    type: 'POST',
+                    data: {
+                        action: CONFIG.actions.statusIndex,
+                        nonce: CONFIG.nonce
+                    }
+                });
+
+                if (!response || !response.success) {
+                    return;
+                }
+
+                Index.handleStatus(response.data);
+            } catch (error) {
+                // Network hiccups can be ignored; polling will retry.
+            }
+        }
+
+        static handleStatus(status) {
+            if (!status) {
+                return;
+            }
+
+            if (Array.isArray(status.messages)) {
+                status.messages.forEach((message) => {
+                    UI.updateLog(message);
+                });
+            }
+
+            if (Array.isArray(status.errors) && status.errors.length) {
+                status.errors.forEach((message) => {
+                    UI.updateLog(`Usage index warning: ${message}`);
+                });
+            }
+
+            const summary = status.summary ? Index.normalizeSummary(status.summary) : CONFIG.indexStats;
+            if (summary) {
+                CONFIG.indexStats = summary;
+                UI.updateIndexStatus(summary);
+            }
+
+            const processed = parseInt(status.processed, 10) || 0;
+            const total = parseInt(status.total, 10) || 0;
+            const pending = parseInt(status.pending_jobs, 10);
+            const queueCount = parseInt(status.queued_attachments, 10) || 0;
+            const statusLabel = status.status || 'idle';
+            const modeLabel = status.mode || 'smart';
+            const smartDetails = (modeLabel === 'smart' && status.last_result && status.last_result.stats && Array.isArray(status.last_result.stats.processed_details))
+                ? status.last_result.stats.processed_details
+                : [];
+
+            let progress = 0;
+            if (total > 0) {
+                progress = Math.min(100, Math.round((processed / total) * 100));
+            } else if (pending <= 0) {
+                progress = 100;
+            }
+
+            const detailLines = [];
+            if (total > 0) {
+                detailLines.push(`Processed: ${processed} of ${total} attachments`);
+            } else if (processed > 0) {
+                detailLines.push(`Processed: ${processed} attachment${processed === 1 ? '' : 's'}`);
+            }
+
+            if (queueCount > 0) {
+                detailLines.push(`Queued: ${queueCount}`);
+            }
+
+            if (status.next_run) {
+                const nextRunDate = new Date(status.next_run);
+                if (!Number.isNaN(nextRunDate.getTime())) {
+                    detailLines.push(`Next Run: ${nextRunDate.toLocaleString()}`);
+                }
+            }
+
+            const detailText = detailLines.length
+                ? detailLines.join('\n')
+                : 'Status: Waiting for scheduler…';
+
+            let processedListText = '';
+            let advancedListItems = [];
+            if (smartDetails.length) {
+                const items = smartDetails.slice(0, 6).map((item) => {
+                    const id = item?.id ? `#${item.id}` : '';
+                    const parts = [];
+                    if (item?.title) {
+                        parts.push(item.title);
+                    }
+                    if (item?.filename) {
+                        parts.push(item.filename);
+                    }
+                    const combined = [id, parts.join(' – ')].filter(Boolean).join(' ');
+                    advancedListItems.push(combined || id || 'Attachment');
+                    return `- ${combined || id || 'Attachment'}`;
+                });
+
+                if (smartDetails.length > 6) {
+                    items.push(`- +${smartDetails.length - 6} more…`);
+                    advancedListItems.push(`+${smartDetails.length - 6} more…`);
+                }
+
+                processedListText = ['Attachments re-indexed:'].concat(items).join('\n');
+            }
+
+            if (statusLabel === 'complete' || pending <= 0) {
+                let completionCopy = `${detailText}\n\nNext: Review the Diagnostics Snapshot for final counts.`;
+                if (modeLabel === 'smart' && processedListText) {
+                    completionCopy += `\n\n${processedListText}`;
+                }
+                UI.updateProgressModal('Usage Index Complete', completionCopy, 100);
+                UI.playCompletionSound();
+                UI.disableModalDismiss();
+                setTimeout(() => UI.hideProgressModal(), 1200);
+                Index.stopPolling();
+                if (modeLabel === 'smart' && smartDetails.length) {
+                    const summary = smartDetails.map((item) => {
+                        const id = item?.id ? `#${item.id}` : '';
+                        const parts = [];
+                        if (item?.title) parts.push(item.title);
+                        if (item?.filename) parts.push(item.filename);
+                        return [id, parts.join(' – ')].filter(Boolean).join(' ');
+                    }).join(', ');
+                    UI.updateLog(`[Smart Index] Attachments re-indexed: ${summary}`);
+                    const $list = $('#scheduler-processed-list');
+                    const $container = $('.scheduler-attachments');
+                    if ($list.length && $container.length) {
+                        $list.empty();
+                        advancedListItems.slice(0, 10).forEach((label) => {
+                            $list.append(`<li>${UI.escapeHtml(label)}</li>`);
+                        });
+                        if (advancedListItems.length > 10) {
+                            $list.append(`<li>${UI.escapeHtml(`+${advancedListItems.length - 10} more…`)}</li>`);
+                        }
+                        $container.show();
+                    }
+                }
+                return;
+            }
+
+            if (statusLabel === 'running') {
+                UI.updateProgressModal(
+                    modeLabel === 'full' ? 'Rebuilding Usage Index' : 'Refreshing Usage Index',
+                    `${detailText}\n\nTip: Diagnostics Snapshot updates live; you can dismiss this dialog and keep working.${processedListText ? `\n\n${processedListText}` : ''}`,
+                    progress
+                );
+                UI.enableModalDismiss('Dismiss');
+            } else {
+                UI.updateProgressModal(
+                    'Usage Index Queued',
+                    `${detailText}\n\nTip: Diagnostics Snapshot updates live; you can dismiss this dialog and keep working.${processedListText ? `\n\n${processedListText}` : ''}`,
+                    progress
+                );
+                UI.enableModalDismiss('Dismiss');
+            }
+        }
     }
 
-    Index.isBuilding = false;
+    Index.pollTimer = null;
 
     // =============================================================================
     // INITIALIZATION
@@ -2501,6 +2780,9 @@
                     const duplicates = response.data.total_duplicates || 0;
                     const summary = `${groups} duplicate groups found with ${duplicates} files for potential cleanup`;
                     UI.updateLog('✅ Quick scan completed: ' + summary, 'step2');
+
+                    CONFIG.diagnostics.last_quick_scan = new Date().toISOString();
+                    UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
                 } else {
                     UI.updateLog('❌ Quick scan failed: ' + (response.data || 'Unknown error'), 'step2');
                 }
@@ -2629,6 +2911,9 @@
                             }, 0)
                             : 0);
                     UI.updateLog(`✅ Visual similarity scan complete: ${totalGroups} groups found with ${totalDuplicates} potential duplicates`, 'step2');
+
+                    CONFIG.diagnostics.last_visual_scan = new Date().toISOString();
+                    UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
                 } else {
                     const resultMessage = resultsResponse?.data?.message || 'Failed to retrieve scan results';
                     throw new Error(resultMessage);

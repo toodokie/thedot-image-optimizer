@@ -168,15 +168,14 @@ class MSH_Safe_Rename_System {
         }
 
         if ($old_url) {
-            $original_slug = $old_relative ? sanitize_title(pathinfo($old_relative, PATHINFO_FILENAME)) : sanitize_title(pathinfo($old_url, PATHINFO_FILENAME));
-            global $wpdb;
-            $wpdb->update(
-                $wpdb->posts,
-                ['guid' => $old_url, 'post_name' => $original_slug],
-                ['ID' => $attachment_id],
-                ['%s', '%s'],
-                ['%d']
-            );
+            $original_slug = $old_relative
+                ? sanitize_title(pathinfo($old_relative, PATHINFO_FILENAME))
+                : sanitize_title(pathinfo($old_url, PATHINFO_FILENAME));
+
+            wp_update_post([
+                'ID' => $attachment_id,
+                'post_name' => $original_slug,
+            ]);
         }
     }
 
@@ -491,17 +490,11 @@ class MSH_Safe_Rename_System {
             }
         }
 
-        $guid = wp_get_attachment_url($attachment_id);
-        if ($guid) {
-            global $wpdb;
-            $wpdb->update(
-                $wpdb->posts,
-                ['guid' => $guid, 'post_name' => sanitize_title(pathinfo($new_relative, PATHINFO_FILENAME))],
-                ['ID' => $attachment_id],
-                ['%s', '%s'],
-                ['%d']
-            );
-        }
+        $new_slug = sanitize_title(pathinfo($new_relative, PATHINFO_FILENAME));
+        wp_update_post([
+            'ID' => $attachment_id,
+            'post_name' => $new_slug,
+        ]);
     }
 
     private function build_search_replace_map($old_url, $new_url, $old_metadata, $upload_dir) {

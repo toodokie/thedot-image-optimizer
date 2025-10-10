@@ -419,11 +419,21 @@ class MSH_Image_Optimizer_Admin {
                                         <span><span class="index-mix-swatch options"></span><?php _e('Options:', 'msh-image-optimizer'); ?> <span id="mix-options-count">0</span></span>
                                     </div>
                                 </div>
+                                <div class="index-scheduler-details">
+                                    <div><strong><?php _e('Queue Status:', 'msh-image-optimizer'); ?></strong> <span id="scheduler-status-detail">&mdash;</span></div>
+                                    <div><strong><?php _e('Mode:', 'msh-image-optimizer'); ?></strong> <span id="scheduler-mode-detail">&mdash;</span></div>
+                                    <div><strong><?php _e('Pending Jobs:', 'msh-image-optimizer'); ?></strong> <span id="scheduler-pending-detail">&mdash;</span></div>
+                                    <div><strong><?php _e('Processed:', 'msh-image-optimizer'); ?></strong> <span id="scheduler-processed-detail">&mdash;</span></div>
+                                    <div><strong><?php _e('Queued At:', 'msh-image-optimizer'); ?></strong> <span id="scheduler-queued-detail">&mdash;</span></div>
+                                    <div><strong><?php _e('Last Activity:', 'msh-image-optimizer'); ?></strong> <span id="scheduler-activity-detail">&mdash;</span></div>
+                                    <div><strong><?php _e('Next Run:', 'msh-image-optimizer'); ?></strong> <span id="scheduler-next-run-detail">&mdash;</span></div>
+                                    <div class="scheduler-attachments" style="display:none;">
+                                        <strong><?php _e('Attachments Re-indexed:', 'msh-image-optimizer'); ?></strong>
+                                        <ul id="scheduler-processed-list"></ul>
+                                    </div>
+                                </div>
                             </div>
                             <div class="index-status-actions">
-                                <button id="trigger-incremental-refresh" class="button button-dot-secondary">
-                                    <?php _e('Trigger Incremental Refresh', 'msh-image-optimizer'); ?>
-                                </button>
                                 <button id="rebuild-usage-index" class="button button-dot-secondary">
                                     <?php _e('Smart Build Index', 'msh-image-optimizer'); ?>
                                 </button>
@@ -437,9 +447,9 @@ class MSH_Image_Optimizer_Admin {
                                     <?php _e('Clean Orphans', 'msh-image-optimizer'); ?>
                                 </button>
                                 <div class="index-button-help">
-                                    <div><strong><?php _e('Trigger Incremental Refresh:', 'msh-image-optimizer'); ?></strong> <?php _e('Queues background lookup refresh for next cron cycle', 'msh-image-optimizer'); ?></div>
-                                    <div><strong><?php _e('Smart Build:', 'msh-image-optimizer'); ?></strong> <?php _e('Only processes new or changed attachments (fast, incremental)', 'msh-image-optimizer'); ?></div>
-                                    <div><strong><?php _e('Force Rebuild:', 'msh-image-optimizer'); ?></strong> <?php _e('Clears everything and rebuilds from scratch (slow, complete)', 'msh-image-optimizer'); ?></div>
+                                    <div><strong><?php _e('Automatic monitoring:', 'msh-image-optimizer'); ?></strong> <?php _e('New uploads and edits are queued automatically—no manual action needed under normal use.', 'msh-image-optimizer'); ?></div>
+                                    <div><strong><?php _e('Smart Build:', 'msh-image-optimizer'); ?></strong> <?php _e('Background refresh for out-of-sync entries or after large content edits (fast, incremental).', 'msh-image-optimizer'); ?></div>
+                                    <div><strong><?php _e('Force Rebuild:', 'msh-image-optimizer'); ?></strong> <?php _e('Background full rebuild for troubleshooting or post-migration validation (slower, comprehensive).', 'msh-image-optimizer'); ?></div>
                                 </div>
                             </div>
                         </div>
@@ -460,6 +470,9 @@ class MSH_Image_Optimizer_Admin {
                             </div>
                             <span id="modal-progress-text">0%</span>
                         </div>
+                        <button type="button" id="modal-dismiss" class="button button-dot-secondary" style="display: none; margin-top: 12px;">
+                            <?php _e('Dismiss', 'msh-image-optimizer'); ?>
+                        </button>
                     </div>
                 </div>
                 

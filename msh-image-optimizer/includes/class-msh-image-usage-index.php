@@ -1851,8 +1851,29 @@ class MSH_Image_Usage_Index {
             'potentially_affected' => count($modified_content['potentially_affected_attachments'] ?? []),
             'orphaned_entries' => count($orphaned_entries),
             'processed' => 0,
-            'cleaned_up' => 0
+            'cleaned_up' => 0,
+            'processed_ids' => [],
+            'processed_details' => [],
         ];
+
+        $append_processed = function($attachment_id) use (&$stats) {
+            $attachment_id = (int) $attachment_id;
+            if ($attachment_id <= 0 || in_array($attachment_id, $stats['processed_ids'], true)) {
+                return;
+            }
+
+            $stats['processed_ids'][] = $attachment_id;
+
+            $post = get_post($attachment_id);
+            $file_relative = get_post_meta($attachment_id, '_wp_attached_file', true);
+
+            $stats['processed_details'][] = [
+                'id' => $attachment_id,
+                'title' => $post ? $post->post_title : '',
+                'filename' => $file_relative ? wp_basename($file_relative) : '',
+                'last_modified' => $post ? $post->post_modified : '',
+            ];
+        };
 
         // 4. Check if anything needs updating
         $total_work = $stats['new_attachments'] + $stats['potentially_affected'] + $stats['orphaned_entries'];
@@ -1873,11 +1894,10 @@ class MSH_Image_Usage_Index {
         }
 
         // 6. Process new attachments
-        $processed = 0;
         foreach ($new_attachments as $attachment_id) {
             try {
                 $this->index_attachment_usage($attachment_id, false);
-                $processed++;
+                $append_processed($attachment_id);
             } catch (Exception $e) {
                 error_log("MSH Smart Index: Failed to index new attachment $attachment_id: " . $e->getMessage());
             }
@@ -1893,13 +1913,13 @@ class MSH_Image_Usage_Index {
 
                 // Re-index
                 $this->index_attachment_usage($attachment_id, false);
-                $processed++;
+                $append_processed($attachment_id);
             } catch (Exception $e) {
                 error_log("MSH Smart Index: Failed to re-index affected attachment $attachment_id: " . $e->getMessage());
             }
         }
 
-        $stats['processed'] = $processed;
+        $stats['processed'] = count($stats['processed_ids']);
 
         // Update last build timestamp
         update_option('msh_usage_index_last_build', current_time('mysql'));
@@ -1912,7 +1932,7 @@ class MSH_Image_Usage_Index {
             'success' => true,
             'message' => "Smart index update complete: {$stats['processed']} attachments processed, {$stats['cleaned_up']} orphaned entries cleaned",
             'stats' => $stats,
-            'duration' => round($duration, 3)
+            'duration' => round($duration, 3),
         ];
     }
 

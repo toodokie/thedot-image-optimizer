@@ -9,6 +9,7 @@ if (!defined('ABSPATH')) {
 }
 
 class MSH_Media_Cleanup {
+    private static $instance = null;
     const VISUAL_SCAN_BATCH_SIZE = 100;
     const VISUAL_SCAN_RESULT_TTL = DAY_IN_SECONDS;
     const VISUAL_SCAN_STATE_TTL = 30 * MINUTE_IN_SECONDS;
@@ -23,7 +24,21 @@ class MSH_Media_Cleanup {
      */
     private $perceptual_manager;
     
+    public static function get_instance() {
+        if (null === self::$instance) {
+            self::$instance = new self();
+        }
+
+        return self::$instance;
+    }
+
     public function __construct() {
+        if (null !== self::$instance) {
+            return;
+        }
+
+        self::$instance = $this;
+
         add_action('wp_ajax_msh_analyze_duplicates', array($this, 'ajax_analyze_duplicates'));
         add_action('wp_ajax_msh_cleanup_media', array($this, 'ajax_cleanup_media'));
         add_action('wp_ajax_msh_test_cleanup', array($this, 'ajax_test_cleanup'));
@@ -2037,11 +2052,31 @@ class MSH_Media_Cleanup {
                 return;
             }
 
+            $report = $this->generate_quick_scan_report();
+
+            if (is_wp_error($report)) {
+                wp_send_json_error(['message' => $report->get_error_message()]);
+                return;
+            }
+
+            wp_send_json_success($report);
+
+        } catch (Exception $e) {
+            error_log('MSH DUPLICATE ERROR: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            wp_send_json_error([
+                'message' => 'Quick scan failed: ' . $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine()
+            ]);
+        }
+    }
+
+    public function generate_quick_scan_report($record_timestamp = true) {
+        try {
             global $wpdb;
 
             error_log('MSH DUPLICATE: Starting Quick Duplicate Scan - FULL LIBRARY content-based detection');
 
-            // Get total count first
             $total_images = $wpdb->get_var("
                 SELECT COUNT(*)
                 FROM {$wpdb->posts} p
@@ -2054,11 +2089,9 @@ class MSH_Media_Cleanup {
 
             error_log("MSH DUPLICATE: Full library scan - {$total_images} total images to analyze");
 
-            // REMOVED LIMIT - now processes ALL images using chunked approach
-            // Chunk size based on available memory
             $memory_limit = ini_get('memory_limit');
             $memory_in_mb = intval($memory_limit);
-            $chunk_size = $memory_in_mb > 256 ? 500 : 200; // Adaptive chunk size
+            $chunk_size = $memory_in_mb > 256 ? 500 : 200;
 
             $all_images = $wpdb->get_results("
                 SELECT
@@ -2079,18 +2112,16 @@ class MSH_Media_Cleanup {
             error_log('MSH DUPLICATE: Loaded ' . count($all_images) . ' images for content-based analysis');
 
             if (empty($all_images)) {
-                wp_send_json_success([
+                return [
                     'total_groups' => 0,
                     'total_duplicates' => 0,
                     'groups' => [],
                     'debug_info' => [
                         'message' => 'No images found in media library'
                     ]
-                ]);
-                return;
+                ];
             }
 
-            // Group images by base filename + file size (content-based approach)
             $groups = [];
             $processed = 0;
             $upload_dir = wp_upload_dir();
@@ -2102,7 +2133,6 @@ class MSH_Media_Cleanup {
 
                 $processed++;
 
-                // Get base filename (removes WordPress size suffixes)
                 $base_name = $this->get_base_filename($image['file_path']);
 
                 if (empty($base_name)) {
@@ -2110,19 +2140,16 @@ class MSH_Media_Cleanup {
                     continue;
                 }
 
-                // Extract file size from metadata or filesystem
                 $file_size = null;
                 if (!empty($image['file_metadata'])) {
                     $metadata = maybe_unserialize($image['file_metadata']);
                     if (isset($metadata['filesize'])) {
                         $file_size = $metadata['filesize'];
                     } elseif (isset($metadata['width']) && isset($metadata['height'])) {
-                        // Rough size estimate from dimensions
-                        $file_size = intval($metadata['width'] * $metadata['height'] * 0.3); // Approximate file size
+                        $file_size = intval($metadata['width'] * $metadata['height'] * 0.3);
                     }
                 }
 
-                // Fallback: get actual file size
                 if (!$file_size) {
                     $full_path = $upload_dir['basedir'] . '/' . $image['file_path'];
                     if (file_exists($full_path)) {
@@ -2130,8 +2157,7 @@ class MSH_Media_Cleanup {
                     }
                 }
 
-                // Group by base_name + size_bucket (handles truly identical content)
-                $size_bucket = $file_size ? intval($file_size / 5000) * 5000 : 'unknown'; // 5KB buckets
+                $size_bucket = $file_size ? intval($file_size / 5000) * 5000 : 'unknown';
                 $group_key = $base_name . '_sz_' . $size_bucket;
 
                 if (!isset($groups[$group_key])) {
@@ -2144,7 +2170,7 @@ class MSH_Media_Cleanup {
                     'file_path' => $image['file_path'],
                     'file_size' => $file_size,
                     'base_name' => $base_name,
-                    'is_published' => false, // Quick scan - skip usage check for speed
+                    'is_published' => false,
                     'usage' => [],
                     'keep_score' => 1
                 ];
@@ -2152,13 +2178,11 @@ class MSH_Media_Cleanup {
 
             error_log('MSH DUPLICATE: Processed ' . $processed . ' images into ' . count($groups) . ' content groups');
 
-            // Find groups with multiple files (potential duplicates)
             $duplicate_groups = [];
             $total_duplicates = 0;
 
             foreach ($groups as $group_key => $images) {
                 if (count($images) > 1) {
-                    // Analyze this duplicate group
                     $analyzed_group = $this->analyze_group($images);
                     $analyzed_group['group_key'] = $group_key;
                     $duplicate_groups[] = $analyzed_group;
@@ -2168,8 +2192,7 @@ class MSH_Media_Cleanup {
 
             error_log('MSH DUPLICATE: Found ' . count($duplicate_groups) . ' duplicate groups with ' . $total_duplicates . ' files for potential cleanup');
 
-            // Success response
-            wp_send_json_success([
+            $report = [
                 'total_groups' => count($duplicate_groups),
                 'total_duplicates' => $total_duplicates,
                 'groups' => $duplicate_groups,
@@ -2186,15 +2209,16 @@ class MSH_Media_Cleanup {
                     'full_library_scan' => true,
                     'post_optimization_compatible' => true
                 ]
-            ]);
+            ];
+
+            if ($record_timestamp) {
+                update_option('msh_last_duplicate_scan', current_time('mysql'));
+            }
+
+            return $report;
 
         } catch (Exception $e) {
-            error_log('MSH DUPLICATE ERROR: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-            wp_send_json_error([
-                'message' => 'Quick scan failed: ' . $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine()
-            ]);
+            return new WP_Error('msh_duplicate_scan_failed', $e->getMessage());
         }
     }
 
@@ -2412,6 +2436,8 @@ class MSH_Media_Cleanup {
                 return;
             }
 
+            update_option('msh_last_visual_scan', current_time('mysql'));
+
             wp_send_json_success([
                 'results'          => $results,
                 'total_groups'     => $results['total_groups'],
@@ -2488,4 +2514,4 @@ class MSH_Media_Cleanup {
 }
 
 // Initialize media cleanup
-new MSH_Media_Cleanup();
+MSH_Media_Cleanup::get_instance();

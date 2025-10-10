@@ -119,10 +119,10 @@ This document captures everything required to lift the Main Street Health image 
 ## 7. Post-Migration TODOs
 | Area | Task |
 | --- | --- |
-| Background processing | Introduce Action Scheduler queue for index rebuilds & duplicate scans. |
+| Background processing | ✅ Cron-backed usage index queue now runs rebuilds in the background; evaluate Action Scheduler migration if we need cross-site orchestration. |
 | Onboarding | Add setup wizard with progress indicator + health check. |
 | Settings UI | Expose rename toggle, index rebuild controls, and diagnostic logs. |
-| CLI | Package the existing safe-rename regression helper as a WP-CLI command. |
+| CLI | Bundle the rename + QA WP-CLI commands; extend duplicate reporting once quick-scan helpers are ported. |
 | Testing | Add PHPUnit/Playwright suites covering optimizer batches and duplicate cleanup. |
 
 ## 8. References

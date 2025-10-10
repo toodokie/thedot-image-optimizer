@@ -3,7 +3,7 @@
  * Plugin Name: MSH Image Optimizer
  * Plugin URI: https://github.com/toodokie/thedot-image-optimizer
  * Description: Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking.
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Main Street Health
  * Author URI: https://github.com/toodokie
  * Text Domain: msh-image-optimizer
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 final class MSH_Image_Optimizer_Plugin {
-    const VERSION = '1.0.0';
+    const VERSION = '1.1.0';
 
     private static $instance = null;
 
@@ -63,9 +63,11 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-backup-verification-system.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-hash-cache-manager.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-usage-index.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-usage-index-background.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-content-usage-lookup.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-perceptual-hash.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-safe-rename-cli.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-qa-cli.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-media-cleanup.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-webp-delivery.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
@@ -81,6 +83,9 @@ final class MSH_Image_Optimizer_Plugin {
         }
         if (class_exists('MSH_Content_Usage_Lookup')) {
             MSH_Content_Usage_Lookup::get_instance();
+        }
+        if (class_exists('MSH_Usage_Index_Background')) {
+            MSH_Usage_Index_Background::get_instance();
         }
         // Ensure admin assets are enqueued by the admin file.
         do_action('msh_image_optimizer_plugin_loaded');
