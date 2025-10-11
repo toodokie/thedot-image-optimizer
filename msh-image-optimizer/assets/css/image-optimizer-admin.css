@@ -1004,7 +1004,7 @@ select.msh-select,
 
 .msh-progress-section {
     background: #ffffff;
-    padding: 20px;
+    padding: var(--section-padding-lg);
     border-radius: 8px;
     border: 1px solid #35332f;
     margin-bottom: 20px;
@@ -1361,9 +1361,9 @@ select.msh-select,
     display: flex;
     flex-direction: column;
     align-items: flex-start;
-    gap: 1.5rem;
+    gap: var(--section-gap-lg);
     background: #ffffff;
-    padding: 2.0625rem;
+    padding: var(--section-padding-lg);
     border-radius: 0.625rem;
     border: 1px solid #35332f;
     box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
@@ -1443,7 +1443,7 @@ select.msh-select,
 
 .msh-results-section {
     background: #ffffff;
-    padding: 20px;
+    padding: var(--section-padding-lg);
     border-radius: 8px;
     border: 1px solid #35332f;
 }

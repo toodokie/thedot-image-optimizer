@@ -141,7 +141,7 @@
     background: #faf9f6;
     border: 1px solid #ddd;          /* The Dot grey, not blue-grey */
     border-radius: 12px;             /* The Dot standard for containers */
-    padding: 32px 36px;
+    padding: var(--section-padding-y-lg) var(--section-padding-x-lg);
     margin-bottom: 32px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
     overflow: hidden;                /* Prevent child overflow */
