@@ -352,10 +352,12 @@
 select[name*="msh"],
 select[name*="profiles"],
 select[name*="context"],
-.wp-core-ui select,
-.wp-core-ui select option {
+.wp-core-ui .msh-settings-wrap select,
+.wp-core-ui .msh-settings-wrap select option {
     background-color: #fff !important;
     color: #35332f !important;
+    font-family: var(--font-primary) !important;
+    font-size: var(--form-input-text) !important;
 }
 
 .msh-settings-wrap select:hover,
