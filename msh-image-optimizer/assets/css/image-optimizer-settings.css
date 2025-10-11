@@ -754,7 +754,8 @@ select[name*="context"] option:checked {
     font-size: var(--text-lg);
     font-weight: var(--weight-normal);
     color: #35332f;
-    margin: 0;
+    margin-top: 8px;
+    margin-bottom: 8px;
 }
 
 .msh-radio-copy {
