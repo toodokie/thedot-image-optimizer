@@ -498,7 +498,6 @@
 .msh-textarea:hover {
     border-color: #daff00;
     box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
-    background-color: #fff;
 }
 
 .msh-input:focus,
@@ -518,6 +517,23 @@
     box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
     background-color: #fff !important;
     color: #35332f !important;
+}
+
+/* Override WordPress core blue focus styles (#2271b1) - use brand dark grey instead */
+.wp-core-ui input[type="text"]:focus,
+.wp-core-ui input[type="email"]:focus,
+.wp-core-ui input[type="url"]:focus,
+.wp-core-ui input[type="number"]:focus,
+.wp-core-ui input[type="password"]:focus,
+.wp-core-ui input[type="search"]:focus,
+.wp-core-ui input[type="tel"]:focus,
+.wp-core-ui input[type="date"]:focus,
+.wp-core-ui input[type="time"]:focus,
+.wp-core-ui textarea:focus,
+.wp-core-ui select:focus {
+    border-color: #35332f !important;
+    box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
+    outline: none !important;
 }
 
 .msh-select {

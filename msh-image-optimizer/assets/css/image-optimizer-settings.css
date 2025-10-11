@@ -331,7 +331,6 @@
 .msh-settings-field select:hover {
     border-color: #daff00 !important;
     box-shadow: 0 0 8px rgba(218, 255, 0, 0.3) !important;
-    background-color: #fff !important;
     outline: none !important;
 }
 
@@ -350,6 +349,20 @@
     border-color: #35332f !important;
     box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
     background-color: #fff !important;
+}
+
+/* Override WordPress core blue focus styles - use brand dark grey instead */
+.wp-core-ui .msh-settings-wrap input[type="text"]:focus,
+.wp-core-ui .msh-settings-wrap input[type="email"]:focus,
+.wp-core-ui .msh-settings-wrap input[type="url"]:focus,
+.wp-core-ui .msh-settings-wrap input[type="number"]:focus,
+.wp-core-ui .msh-settings-wrap input[type="password"]:focus,
+.wp-core-ui .msh-settings-wrap input[type="search"]:focus,
+.wp-core-ui .msh-settings-wrap textarea:focus,
+.wp-core-ui .msh-settings-wrap select:focus {
+    border-color: #35332f !important;
+    box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
+    outline: none !important;
 }
 
 /* Fix blue color on dropdown options and selected values - NUCLEAR OPTION */
