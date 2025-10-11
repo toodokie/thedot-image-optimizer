@@ -863,7 +863,7 @@ select.msh-select,
 .rename-setting-card {
     background: #ffffff;
     border-radius: 0.625rem;
-    padding: 1.25rem 1.5rem;
+    padding: var(--section-padding-sm);
     border: none;
     width: 100%;
     display: flex;
@@ -1018,7 +1018,7 @@ select.msh-select,
 
 .stat-box {
     text-align: center;
-    padding: 15px;
+    padding: var(--section-padding-sm);
     background: #fff;
     border-radius: 4px;
     border: 1px solid #35332f;
@@ -1086,10 +1086,10 @@ select.msh-select,
     background: #faf9f6;
     border: 1px solid #dce2ec;
     border-radius: 6px;
-    padding: 16px 20px;
+    padding: var(--section-padding-y-sm) var(--section-padding-x-sm);
     display: grid;
     grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
-    gap: 16px 24px;
+    gap: var(--section-gap-md) var(--section-gap-lg);
     align-items: flex-start;
     width: 100%;
     box-sizing: border-box;

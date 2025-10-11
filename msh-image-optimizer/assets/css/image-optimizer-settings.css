@@ -448,7 +448,7 @@ select[name*="context"] option:checked {
 .msh-profile-details {
     background: #faf9f6;
     border: 1px solid #ece8e2;
-    padding: 20px 24px;
+    padding: var(--section-padding-y-sm) var(--section-padding-x-sm);
 }
 
 .msh-profile-details .msh-settings-grid {
@@ -722,11 +722,11 @@ select[name*="context"] option:checked {
     display: grid !important;
     grid-template-columns: auto 1fr !important;
     grid-template-rows: auto auto !important;
-    column-gap: 12px;
+    column-gap: var(--section-gap-sm);
     row-gap: 6px;
     border: 1px solid #ccc;
     border-radius: 10px;
-    padding: 18px 20px;
+    padding: var(--section-padding-y-sm) var(--section-padding-x-sm);
     background: #ffffff;
     margin-bottom: 12px;
     cursor: pointer;
