@@ -233,13 +233,19 @@
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
 }
 
+.msh-onboarding-wizard .wizard-header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap-xs);
+}
+
 .msh-onboarding-wizard .wizard-header h2 {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: clamp(1.3rem, 3vw, 1.6rem);
 }
 
 .msh-onboarding-wizard .wizard-header p {
-    margin: 0 0 18px;
+    margin: 0;
     color: #4a4945;
     font-size: var(--text-xs);
 }
@@ -305,13 +311,19 @@
     letter-spacing: 0.05em;
 }
 
+.wizard-step-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap-xs);
+}
+
 .wizard-step-content h3 {
-    margin: 0 0 4px;
+    margin: 0;
     font-size: var(--text-sm);
 }
 
 .wizard-step-content p {
-    margin: 0 0 12px;
+    margin: 0;
     color: #4a4945;
     font-size: var(--text-xs);
 }
