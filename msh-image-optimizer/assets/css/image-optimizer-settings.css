@@ -113,7 +113,7 @@
 }
 
 .msh-settings-wrap {
-    font-family: var(--font-primary);
+    font-family: var(--font-primary) !important;
     color: #35332f;
 }
 
@@ -175,12 +175,12 @@
 .msh-settings-wrap h3,
 .msh-settings-wrap h4,
 .msh-settings-wrap h5 {
-    font-family: var(--font-primary);
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    font-size: var(--text-h2);
-    font-weight: var(--weight-normal);
-    color: #35332f;
+    font-family: var(--font-primary) !important;
+    text-transform: uppercase !important;
+    letter-spacing: 0.08em !important;
+    font-size: var(--text-h2) !important;
+    font-weight: var(--weight-normal) !important;
+    color: #35332f !important;
 }
 
 .msh-settings-card {
