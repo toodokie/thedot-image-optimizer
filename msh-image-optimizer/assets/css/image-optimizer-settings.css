@@ -434,7 +434,7 @@ select[name*="context"] option:checked {
     display: inline;              /* Make it inline with label, not below */
 }
 
-.msh-settings-card--profiles .msh-profile {
+.msh-profile {
     border: 1px solid rgba(53, 51, 47, 0.18);
     border-radius: 12px;
     margin-bottom: 28px;
@@ -708,7 +708,7 @@ select[name*="context"] option:checked {
 .msh-diagnostics-grid {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-    gap: 18px;
+    gap: var(--section-gap-md);
     margin-top: 16px;
 }
 

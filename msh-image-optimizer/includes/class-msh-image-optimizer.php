@@ -2167,6 +2167,7 @@ class MSH_Image_Optimizer {
         $meta_time = (int)get_post_meta($attachment_id, 'msh_metadata_last_updated', true);
         $optimized_date = get_post_meta($attachment_id, 'msh_optimized_date', true);
         $version = get_post_meta($attachment_id, 'msh_optimization_version', true);
+        $webp_status = get_post_meta($attachment_id, 'msh_webp_status', true);
 
         $source_file = get_attached_file($attachment_id);
         if (!$source_file || !file_exists($source_file)) {
@@ -2177,6 +2178,13 @@ class MSH_Image_Optimizer {
         // Skip WebP conversion logic for files that don't need it
         $file_extension = strtolower(pathinfo($source_file, PATHINFO_EXTENSION));
         $is_webp_convertible = in_array($file_extension, ['jpg', 'jpeg', 'png']);
+
+        if ($is_webp_convertible && $webp_status === 'unsupported') {
+            if (!$meta_time) {
+                return $this->validate_status('metadata_missing');
+            }
+            return $this->validate_status('optimized');
+        }
 
         // For SVG, WebP, and other non-convertible formats, only check metadata
         if (!$is_webp_convertible) {
@@ -3041,8 +3049,8 @@ class MSH_Image_Optimizer {
 
         error_log("MSH Quality Check: Current='$current_base' (score: $current_score), Suggested='$suggested_base' (score: $suggested_score)");
 
-        // Don't suggest if it's significantly worse (threshold: 3 points)
-        return ($current_score - $suggested_score) >= 3;
+        // Don't suggest if it's significantly worse (threshold: 4 points)
+        return ($current_score - $suggested_score) >= 4;
     }
 
     /**
@@ -3096,6 +3104,28 @@ class MSH_Image_Optimizer {
             'professional' => 1,
             'premium' => 1,
             'advanced' => 1,
+            'brand' => 2,
+            'branding' => 2,
+            'logo' => 2,
+            'team' => 2,
+            'culture' => 2,
+            'workspace' => 2,
+            'office' => 1,
+            'studio' => 1,
+            'campaign' => 2,
+            'marketing' => 2,
+            'services' => 1,
+            'portfolio' => 2,
+            'product' => 2,
+            'catalog' => 2,
+            'brochure' => 2,
+            'flyer' => 1,
+            'testimonial' => 2,
+            'case-study' => 2,
+            'success-story' => 2,
+            'client' => 2,
+            'customer' => 2,
+            'business' => 1,
             // Dimensions (indicate professional stock)
             '1400x1400' => 1,
             '1200x800' => 1
@@ -3113,8 +3143,36 @@ class MSH_Image_Optimizer {
             $score += $word_count;
         }
 
-        // Penalty for generic terms
-        $generic_terms = ['rehabilitation-physiotherapy', 'rehabilitation-equipment', 'service-icon'];
+        // Dynamic brand signals
+        if (!empty($this->business_name)) {
+            $brand_slug = $this->slugify($this->business_name);
+            if ($brand_slug !== '' && strpos($filename_lower, $brand_slug) !== false) {
+                $score += 3;
+            }
+        }
+
+        if (!empty($this->location_slug) && strpos($filename_lower, $this->location_slug) !== false) {
+            $score += 2;
+        }
+
+        if (!empty($this->industry_label)) {
+            $industry_slug = $this->slugify($this->industry_label);
+            if ($industry_slug !== '' && strpos($filename_lower, $industry_slug) !== false) {
+                $score += 2;
+            }
+        }
+
+        // Penalty for generic terms (healthcare + placeholder slugs)
+        $generic_terms = [
+            'rehabilitation-physiotherapy',
+            'rehabilitation-equipment',
+            'service-icon',
+            'img',
+            'image',
+            'photo',
+            'picture',
+            'stock-photo'
+        ];
         foreach ($generic_terms as $term) {
             if (strpos($filename_lower, $term) !== false) {
                 $score -= 5; // Heavy penalty for generic names
@@ -3818,6 +3876,8 @@ class MSH_Image_Optimizer {
         $timestamp = time();
         $meta_applied = [];
         $meta_skipped = [];
+        $metadata_timestamp_applied = false;
+        $filename_refreshed = false;
 
         // Title
         if (!empty($meta_preview['title'])) {
@@ -3881,34 +3941,43 @@ class MSH_Image_Optimizer {
             $mime_type = get_post_mime_type($attachment_id);
             if (in_array($mime_type, ['image/jpeg', 'image/png'])) {
                 $webp_path = preg_replace('/\.(jpg|jpeg|png)$/i', '.webp', $file_path);
+                $webp_supported = function_exists('imagewebp');
 
-                // Convert if WebP doesn't exist or source is newer
-                if (!file_exists($webp_path) || filemtime($file_path) > filemtime($webp_path)) {
-                    $webp_result = $this->convert_to_webp($file_path, $webp_path);
-                    if ($webp_result) {
-                        update_post_meta($attachment_id, 'msh_webp_last_converted', $timestamp);
-                        $result['actions'][] = 'WebP version created';
-                        $webp_converted = true;
-                    } else {
-                        $result['actions'][] = 'WebP conversion failed';
-                    }
-                } elseif (file_exists($webp_path) && !get_post_meta($attachment_id, 'msh_webp_last_converted', true)) {
-                    // WebP exists but timestamp missing - update timestamp
-                    update_post_meta($attachment_id, 'msh_webp_last_converted', $timestamp);
-                    $result['actions'][] = 'WebP timestamp updated';
+                if (!$webp_supported) {
+                    update_post_meta($attachment_id, 'msh_webp_status', 'unsupported');
+                    $result['actions'][] = 'WebP conversion skipped (unsupported)';
                     $webp_timestamp_updated = true;
+                } else {
+                    delete_post_meta($attachment_id, 'msh_webp_status');
+
+                    // Convert if WebP doesn't exist or source is newer
+                    if (!file_exists($webp_path) || filemtime($file_path) > filemtime($webp_path)) {
+                        $webp_result = $this->convert_to_webp($file_path, $webp_path);
+                        if ($webp_result) {
+                            update_post_meta($attachment_id, 'msh_webp_last_converted', $timestamp);
+                            $result['actions'][] = 'WebP version created';
+                            $webp_converted = true;
+                        } else {
+                            $result['actions'][] = 'WebP conversion failed';
+                        }
+                    } elseif (file_exists($webp_path) && !get_post_meta($attachment_id, 'msh_webp_last_converted', true)) {
+                        // WebP exists but timestamp missing - update timestamp
+                        update_post_meta($attachment_id, 'msh_webp_last_converted', $timestamp);
+                        $result['actions'][] = 'WebP timestamp updated';
+                        $webp_timestamp_updated = true;
+                    }
                 }
             }
         }
 
-        if (!empty($meta_applied) || $webp_converted || $webp_timestamp_updated) {
-            // Only update metadata timestamp if metadata was actually changed
-            if (!empty($meta_applied)) {
-                update_post_meta($attachment_id, 'msh_metadata_last_updated', (int) $timestamp);
-                delete_post_meta($attachment_id, 'msh_metadata_source');
-            }
-            // Mark image as optimization complete
-            update_post_meta($attachment_id, 'msh_optimized_date', date('Y-m-d H:i:s', $timestamp));
+        // Always refresh metadata timestamp so status reflects the latest context application
+        if (!empty($meta_applied)) {
+            update_post_meta($attachment_id, 'msh_metadata_last_updated', (int) $timestamp);
+            delete_post_meta($attachment_id, 'msh_metadata_source');
+            $metadata_timestamp_applied = true;
+        } else {
+            update_post_meta($attachment_id, 'msh_metadata_last_updated', (int) $timestamp);
+            $metadata_timestamp_applied = true;
         }
 
         foreach ($meta_skipped as $field) {
@@ -3925,7 +3994,12 @@ class MSH_Image_Optimizer {
                 update_post_meta($attachment_id, '_msh_suggested_filename', $suggested_filename);
                 update_post_meta($attachment_id, 'msh_filename_last_suggested', (int) $timestamp);
                 $result['actions'][] = 'Filename suggestion refreshed';
+                $filename_refreshed = true;
             }
+        }
+
+        if ($metadata_timestamp_applied || $webp_converted || $webp_timestamp_updated || $filename_refreshed) {
+            update_post_meta($attachment_id, 'msh_optimized_date', date('Y-m-d H:i:s', $timestamp));
         }
 
         $result['status'] = $this->get_optimization_status($attachment_id);
