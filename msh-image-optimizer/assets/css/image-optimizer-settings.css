@@ -410,12 +410,12 @@ select[name*="context"] option:checked {
     border: 1px solid rgba(53, 51, 47, 0.18);
     border-radius: 12px;
     margin-bottom: 28px;
-    padding: 28px 32px;
+    padding: var(--section-padding-y-md) var(--section-padding-x-md);
     background: #fff;
     position: relative;
     display: flex;
     flex-direction: column;
-    gap: 24px;
+    gap: var(--section-gap-lg);
     border-left: 4px solid #35332f;
 }
 
