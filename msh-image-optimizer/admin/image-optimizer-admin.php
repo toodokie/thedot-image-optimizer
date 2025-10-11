@@ -387,12 +387,14 @@ class MSH_Image_Optimizer_Admin {
                     </div>
 
                     <div id="msh-onboarding-summary" class="msh-onboarding-summary" style="display:none;">
-                        <div class="summary-header">
-                            <h2><?php _e('Optimization Context Ready', 'msh-image-optimizer'); ?></h2>
-                            <p><?php _e('These preferences drive metadata suggestions, reports, and upcoming AI enhancements. Manage additional profiles (landing pages, multilingual) from Settings.', 'msh-image-optimizer'); ?></p>
-                            <p class="summary-active-label" id="summary-active-label"><?php echo esc_html($active_label); ?></p>
-                        </div>
-                        <div class="summary-context-switcher">
+                        <details class="summary-collapsible" open>
+                            <summary class="summary-header">
+                                <h2><?php _e('Optimization Context', 'msh-image-optimizer'); ?></h2>
+                                <p class="summary-active-label" id="summary-active-label"><?php echo esc_html($active_label); ?></p>
+                            </summary>
+                            <div class="summary-content">
+                                <p class="summary-description"><?php _e('These preferences drive metadata suggestions, reports, and upcoming AI enhancements. Manage additional profiles (landing pages, multilingual) from Settings.', 'msh-image-optimizer'); ?></p>
+                                <div class="summary-context-switcher">
                             <label for="msh-context-selector"><?php _e('Active Context', 'msh-image-optimizer'); ?></label>
                             <select id="msh-context-selector" class="msh-select">
                                 <option value="primary" <?php selected($active_profile, 'primary'); ?>>
@@ -463,6 +465,8 @@ class MSH_Image_Optimizer_Admin {
                             </a>
                             <button type="button" class="button button-dot-secondary summary-reset"><?php _e('Reset', 'msh-image-optimizer'); ?></button>
                         </div>
+                            </div><!-- .summary-content -->
+                        </details><!-- .summary-collapsible -->
                     </div>
                 </div>
 

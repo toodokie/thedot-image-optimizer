@@ -724,9 +724,61 @@ select.msh-select,
     border-radius: 12px;
     padding: var(--section-padding-md);
     margin-bottom: 28px;
+}
+
+.summary-collapsible {
+    border: none;
+    padding: 0;
+    margin: 0;
+}
+
+.summary-header {
+    cursor: pointer;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap-xs);
+    padding: 0;
+    margin: 0;
+}
+
+.summary-header::-webkit-details-marker {
+    display: none;
+}
+
+.summary-header::marker {
+    display: none;
+}
+
+.summary-header h2 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.summary-header h2::before {
+    content: '▼';
+    font-size: 0.75rem;
+    color: #35332f;
+    transition: transform 0.2s ease;
+    display: inline-block;
+}
+
+.summary-collapsible:not([open]) .summary-header h2::before {
+    transform: rotate(-90deg);
+}
+
+.summary-content {
     display: flex;
     flex-direction: column;
     gap: var(--section-gap-sm);
+    padding-top: var(--section-gap-md);
+}
+
+.summary-description {
+    margin: 0;
+    color: #4a4945;
+    font-size: var(--text-xs);
 }
 
 .msh-onboarding-summary p {
