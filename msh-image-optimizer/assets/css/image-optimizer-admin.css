@@ -14,6 +14,7 @@
 .msh-actions-section,
 .msh-results-section,
 .msh-rename-settings-section,
+.msh-advanced-section,
 .rename-setting-card,
 .stat-box,
 .index-status-card,
@@ -177,14 +178,9 @@
     font-family: var(--font-primary);
     text-transform: uppercase;
     letter-spacing: 0.08em;
-}
-
-.msh-optimizer-dashboard .msh-progress-section h2,
-.msh-optimizer-dashboard .msh-actions-section h2,
-.msh-optimizer-dashboard .msh-results-section h2 {
-    font-size: clamp(1.25rem, 3vw, 1.75rem);
-    letter-spacing: 0.04em;
-    font-weight: 300;
+    font-size: var(--text-h2);
+    font-weight: var(--weight-normal);
+    color: #35332f;
 }
 
 .msh-optimizer-dashboard .msh-inline-note {
@@ -2254,25 +2250,13 @@ tr.context-updated {
 
 .msh-advanced-section {
     background: #ffffff;
-    padding: 24px;
-    border-radius: 8px;
+    padding: var(--section-padding-md);
+    border-radius: 12px;
     border: 1px solid #35332f;
     margin: 30px 0;
-}
-
-.advanced-heading {
-    font-family: var(--font-primary);
-    font-size: 1.4rem;
-    letter-spacing: 0.08em;
-    text-transform: uppercase;
-    color: #35332f;
-    margin: 0 0 8px 0;
-}
-
-.advanced-description {
-    margin: 0 0 18px 0;
-    color: rgba(53, 51, 47, 0.7);
-    font-size: 0.9rem;
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap-md);
 }
 
 .advanced-stack {

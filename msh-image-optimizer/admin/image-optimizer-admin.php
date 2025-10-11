@@ -721,8 +721,8 @@ class MSH_Image_Optimizer_Admin {
 
                 <!-- Advanced Tools (Developers) -->
                 <div class="msh-advanced-section">
-                    <h2 class="advanced-heading"><?php _e('Advanced Tools (Developers)', 'msh-image-optimizer'); ?></h2>
-                    <p class="advanced-description"><?php _e('Optional workflows for power users. Safe to ignore for day-to-day optimization.', 'msh-image-optimizer'); ?></p>
+                    <h2><?php _e('Advanced Tools (Developers)', 'msh-image-optimizer'); ?></h2>
+                    <p><?php _e('Optional workflows for power users. Safe to ignore for day-to-day optimization.', 'msh-image-optimizer'); ?></p>
 
                     <div class="advanced-stack">
                         <div class="index-status-card">
