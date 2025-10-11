@@ -145,9 +145,10 @@
 
 .msh-settings-wrap p {
     font-family: var(--font-secondary);
-    font-size: var(--text-base);
+    font-size: var(--text-xs);
     font-weight: var(--weight-light);
     line-height: var(--leading-relaxed);
+    color: #4a4945;
 }
 
 /* Match optimizer page header styling */
@@ -235,9 +236,9 @@
 
 .msh-settings-card header p {
     margin: 0;
-    font-family: var(--font-primary);
+    font-family: var(--font-secondary);
     color: #4a4945;
-    font-size: var(--text-base);
+    font-size: var(--text-xs);
     font-weight: var(--weight-light);
     line-height: var(--leading-relaxed);
 }
