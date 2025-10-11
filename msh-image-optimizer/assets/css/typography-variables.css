@@ -115,6 +115,15 @@
   --section-gap-md: 16px;            /* Medium gap between related elements */
   --section-gap-sm: 12px;            /* Small gap between tightly grouped items */
   --section-gap-xs: 8px;             /* Extra small gap for minimal spacing */
+
+  /* ============================================
+     HEADING SPACING (Vertical Padding)
+     Fluid spacing that scales with viewport
+     Use when headings need visual breathing room
+     ============================================ */
+  --heading-spacing-h1: clamp(20px, 3vw, 32px);   /* h1: 20px-32px top/bottom */
+  --heading-spacing-h2: clamp(16px, 2.5vw, 24px); /* h2: 16px-24px top/bottom */
+  --heading-spacing-h3: clamp(12px, 2vw, 20px);   /* h3: 12px-20px top/bottom */
 }
 
 /**

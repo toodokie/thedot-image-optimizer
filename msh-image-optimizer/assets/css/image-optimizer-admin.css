@@ -28,6 +28,22 @@
         margin-top: 0;
         margin-bottom: 0;
     }
+
+    /* Fluid heading spacing for visual hierarchy */
+    & > h1, & > div > h1 {
+        padding-top: var(--heading-spacing-h1);
+        padding-bottom: var(--heading-spacing-h1);
+    }
+
+    & > h2, & > div > h2 {
+        padding-top: var(--heading-spacing-h2);
+        padding-bottom: var(--heading-spacing-h2);
+    }
+
+    & > h3, & > div > h3 {
+        padding-top: var(--heading-spacing-h3);
+        padding-bottom: var(--heading-spacing-h3);
+    }
 }
 
 /* Page Background - Apply to entire WordPress admin content area */
