@@ -9,20 +9,25 @@
    Headings: futura-pt (primary)
    WordPress admin CSS has extremely high specificity
    ============================================ */
-.msh-settings-wrap,
-.msh-settings-wrap * {
-    font-family: var(--font-secondary) !important;  /* ff-real-text-pro for body */
+.msh-settings-wrap {
+    font-family: var(--font-secondary) !important;  /* ff-real-text-pro base */
 }
 
+/* Headings and buttons use futura-pt */
 .msh-settings-wrap h1,
 .msh-settings-wrap h2,
 .msh-settings-wrap h3,
 .msh-settings-wrap h4,
 .msh-settings-wrap h5,
-.msh-settings-wrap h6,
+.msh-settings-wrap h6 {
+    font-family: var(--font-primary) !important;    /* futura-pt for headings */
+}
+
 .msh-settings-wrap button,
-.msh-settings-wrap .button {
-    font-family: var(--font-primary) !important;    /* futura-pt for headings/buttons */
+.msh-settings-wrap .button,
+.msh-settings-wrap input[type="submit"],
+.msh-settings-wrap input[type="button"] {
+    font-family: var(--font-primary) !important;    /* futura-pt for buttons */
 }
 
 /* ============================================
