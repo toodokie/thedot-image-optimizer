@@ -1421,6 +1421,17 @@
                 UI.toggleOrphanList();
             });
 
+            const $resetOptimization = $('#reset-optimization');
+            if ($resetOptimization.length) {
+                $resetOptimization.on('click', (event) => {
+                    event.preventDefault();
+                    const message = 'This will reset all optimization flags, allowing images to be re-optimized with improved metadata preservation. Continue?';
+                    if (window.confirm(message)) {
+                        UI.resetOptimizationFlags();
+                    }
+                });
+            }
+
             $('#modal-dismiss').on('click', (e) => {
                 e.preventDefault();
                 UI.hideProgressModal();
@@ -2561,6 +2572,35 @@
             $('#progress-status').text('Ready');
             $('.action-buttons button').prop('disabled', false);
             this.updateStats(); // Re-enable buttons based on actual state
+        }
+
+        static resetOptimizationFlags() {
+            this.updateLog('Resetting optimization flags...');
+
+            $.post(CONFIG.endpoints.optimize, {
+                action: 'msh_reset_optimization',
+                nonce: CONFIG.nonce
+            })
+            .done((response) => {
+                if (response && response.success) {
+                    const message = response.data && response.data.message
+                        ? response.data.message
+                        : 'Optimization flags have been reset.';
+                    this.updateLog(message);
+
+                    AppState.images = [];
+                    FilterEngine.reset();
+                    this.updateFilterControls();
+                    this.showWelcomeState();
+                    this.updateStats();
+                    $('#progress-status').text('Ready for analysis…');
+                } else {
+                    this.updateLog('Error resetting optimization flags.');
+                }
+            })
+            .fail(() => {
+                this.updateLog('Error resetting optimization flags.');
+            });
         }
 
         static showProgressModal(title, status, progress) {
