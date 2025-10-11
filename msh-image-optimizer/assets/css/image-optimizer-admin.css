@@ -278,11 +278,6 @@
     gap: var(--section-gap-xs);
 }
 
-.msh-onboarding-wizard .wizard-header h2 {
-    margin: 0;
-    font-size: clamp(1.3rem, 3vw, 1.6rem);
-}
-
 .msh-onboarding-wizard .wizard-header p {
     margin: 0;
     color: #4a4945;
@@ -953,13 +948,6 @@ select.msh-select,
     margin-bottom: 0;
 }
 
-.msh-rename-settings-section h2,
-.msh-rename-settings-section h3 {
-    font-size: var(--msh-font-md);
-    color: #35332f;
-    margin: 0;
-}
-
 .rename-setting-card {
     background: #ffffff;
     border-radius: 0.625rem;
@@ -1475,12 +1463,6 @@ select.msh-select,
     align-self: stretch;
     width: 100%;
     box-sizing: border-box;
-}
-
-.msh-actions-section > h2 {
-    margin: 0;
-    font-weight: var(--weight-normal);
-    letter-spacing: 0.1em;
 }
 
 .msh-actions-section > p {
