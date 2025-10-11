@@ -3,6 +3,28 @@
 /* Import centralized typography variables */
 @import url('typography-variables.css');
 
+/* ============================================
+   GLOBAL SPACING RESET - THE LAW
+   All section containers control spacing via gap
+   Children have NO top/bottom margins
+   ============================================ */
+.msh-settings-card,
+.msh-settings-card header,
+.msh-profile,
+.msh-profile-header,
+.msh-profile-details,
+.msh-radio-tile,
+.msh-settings-field,
+.msh-diagnostics-grid,
+.msh-settings-checkbox-group {
+    & > h1, & > h2, & > h3, & > h4, & > h5, & > h6,
+    & > p, & > ul, & > ol, & > div > h1, & > div > h2,
+    & > div > h3, & > div > h4, & > div > p {
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+}
+
 /* Match optimizer page background */
 #wpcontent,
 #wpbody,

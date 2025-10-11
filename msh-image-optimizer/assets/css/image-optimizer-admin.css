@@ -3,6 +3,33 @@
 /* Import centralized typography variables */
 @import url('typography-variables.css');
 
+/* ============================================
+   GLOBAL SPACING RESET - THE LAW
+   All section containers control spacing via gap
+   Children have NO top/bottom margins
+   ============================================ */
+.msh-onboarding-wizard,
+.msh-onboarding-summary,
+.msh-progress-section,
+.msh-actions-section,
+.msh-results-section,
+.msh-rename-settings-section,
+.rename-setting-card,
+.stat-box,
+.index-status-card,
+.msh-header,
+.wizard-header,
+.wizard-step-content,
+.wizard-step,
+.onboarding-step {
+    & > h1, & > h2, & > h3, & > h4, & > h5, & > h6,
+    & > p, & > ul, & > ol, & > div > h1, & > div > h2,
+    & > div > h3, & > div > h4, & > div > p {
+        margin-top: 0;
+        margin-bottom: 0;
+    }
+}
+
 /* Page Background - Apply to entire WordPress admin content area */
 #wpcontent,
 #wpbody,

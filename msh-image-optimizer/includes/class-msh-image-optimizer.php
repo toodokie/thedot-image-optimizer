@@ -277,7 +277,7 @@ class MSH_Contextual_Meta_Generator {
             }
 
             $product_context = $this->detect_product_context($attachment_id, $context);
-            if ($product_context && $context['type'] === 'clinical') {
+            if ($product_context && in_array($context['type'], ['clinical', 'business'], true)) {
                 $context = array_merge($context, $product_context);
             }
         }
@@ -581,11 +581,15 @@ class MSH_Contextual_Meta_Generator {
         $text = trim($text);
 
         if ($text === '') {
-            return 'Patient';
+            return $this->is_healthcare_industry($this->industry) ? 'Patient' : 'Client';
         }
 
         $normalized = ucwords(strtolower($text));
-        return $normalized ?: 'Patient';
+        if (empty($normalized)) {
+            return $this->is_healthcare_industry($this->industry) ? 'Patient' : 'Client';
+        }
+
+        return $normalized;
     }
 
     private function truncate_slug($slug, $max_words = 4) {
@@ -669,6 +673,7 @@ class MSH_Contextual_Meta_Generator {
         $title = strtolower($context['attachment_title'] ?? '');
         $caption = strtolower((string) get_post_field('post_excerpt', $attachment_id));
         $combined = $filename . ' ' . $title . ' ' . $caption;
+        $is_healthcare = $this->is_healthcare_industry($this->industry);
 
         $patterns = [
             '/mediflow|waterbase|pillow/' => ['product_type' => 'therapeutic-pillow'],
@@ -680,15 +685,44 @@ class MSH_Contextual_Meta_Generator {
             '/brace|support|wrap|sleeve|splint|stabilizer/' => ['product_type' => 'support-product']
         ];
 
+        // Broader business-friendly patterns (marketing/product collateral)
+        $business_patterns = [
+            '/product|catalog|brochure|sell-sheet|sell sheet|flyer|one-pager|one pager|lookbook|portfolio/' => 'product-collateral',
+            '/packaging|label|bottle|jar|box|mockup|prototype/' => 'product-packaging',
+            '/device|hardware|equipment|kit|bundle|collection/' => 'product-showcase'
+        ];
+
         foreach ($patterns as $pattern => $data) {
             if (preg_match($pattern, $combined)) {
+                if ($is_healthcare) {
+                    return [
+                        'type' => 'equipment',
+                        'service' => 'rehabilitation',
+                        'product_type' => $data['product_type'],
+                        'asset' => 'product',
+                        'source' => 'auto'
+                    ];
+                }
+
                 return [
-                    'type' => 'equipment',
-                    'service' => 'rehabilitation',
-                    'product_type' => $data['product_type'],
+                    'type' => 'business',
                     'asset' => 'product',
+                    'product_type' => $data['product_type'],
                     'source' => 'auto'
                 ];
+            }
+        }
+
+        if (!$is_healthcare) {
+            foreach ($business_patterns as $pattern => $category) {
+                if (preg_match($pattern, $combined)) {
+                    return [
+                        'type' => 'business',
+                        'asset' => 'product',
+                        'product_category' => $category,
+                        'source' => 'auto'
+                    ];
+                }
             }
         }
 
