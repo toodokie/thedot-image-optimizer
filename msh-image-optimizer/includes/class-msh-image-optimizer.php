@@ -12,6 +12,16 @@ class MSH_Contextual_Meta_Generator {
     private $business_name = 'Main Street Health';
     private $location = 'Hamilton';
     private $location_slug = 'hamilton';
+    private $active_context = [];
+    private $industry = '';
+    private $industry_label = '';
+    private $brand_voice = '';
+    private $cta_preference = '';
+    private $target_audience = '';
+    private $uvp = '';
+    private $pain_points = '';
+    private $active_profile_id = 'primary';
+    private $active_profile_label = '';
 
     private $service_keyword_map = [
         'physiotherapy' => [
@@ -67,9 +77,81 @@ class MSH_Contextual_Meta_Generator {
         'first-responder' => ['first responder', 'firefighter', 'paramedic', 'police', 'dispatcher']
     ];
 
+    public function __construct() {
+        $this->hydrate_active_context();
+    }
+
+    private function hydrate_active_context() {
+        if (!class_exists('MSH_Image_Optimizer_Context_Helper')) {
+            return;
+        }
+
+        $profiles = MSH_Image_Optimizer_Context_Helper::get_profiles();
+        $active_profile = MSH_Image_Optimizer_Context_Helper::get_active_profile($profiles);
+        $context = isset($active_profile['context']) && is_array($active_profile['context'])
+            ? $active_profile['context']
+            : array();
+
+        $this->active_profile_id = isset($active_profile['id']) ? sanitize_title($active_profile['id']) : 'primary';
+        $this->active_profile_label = isset($active_profile['label']) ? $active_profile['label'] : '';
+        $this->active_context = $context;
+
+        if (!empty($context['business_name'])) {
+            $this->business_name = sanitize_text_field($context['business_name']);
+        }
+
+        $city = isset($context['city']) ? sanitize_text_field($context['city']) : '';
+        $region = isset($context['region']) ? sanitize_text_field($context['region']) : '';
+        $service_area = isset($context['service_area']) ? sanitize_text_field($context['service_area']) : '';
+
+        $location_parts = array_filter([$city, $region], 'strlen');
+        if (!empty($location_parts)) {
+            $this->location = implode(', ', $location_parts);
+        } elseif ($service_area !== '') {
+            $this->location = $service_area;
+        }
+
+        if (!empty($this->location)) {
+            $this->location_slug = $this->slugify($this->location);
+        } elseif ($service_area !== '') {
+            $this->location_slug = $this->slugify($service_area);
+        }
+
+        $this->industry = isset($context['industry']) ? sanitize_text_field($context['industry']) : '';
+        $label_map = MSH_Image_Optimizer_Context_Helper::get_label_map();
+        $this->industry_label = MSH_Image_Optimizer_Context_Helper::lookup_label('industry', $this->industry, $label_map);
+        $this->brand_voice = isset($context['brand_voice']) ? sanitize_text_field($context['brand_voice']) : '';
+        $this->cta_preference = isset($context['cta_preference']) ? sanitize_text_field($context['cta_preference']) : '';
+        $this->target_audience = isset($context['target_audience']) ? sanitize_text_field($context['target_audience']) : '';
+        $this->uvp = isset($context['uvp']) ? sanitize_textarea_field($context['uvp']) : '';
+        $this->pain_points = isset($context['pain_points']) ? sanitize_textarea_field($context['pain_points']) : '';
+    }
+
+    private function get_default_context_type() {
+        if (empty($this->active_context)) {
+            return 'clinical';
+        }
+
+        if ($this->is_healthcare_industry($this->industry)) {
+            return 'clinical';
+        }
+
+        return 'business';
+    }
+
+    private function is_healthcare_industry($industry) {
+        if ($industry === '') {
+            return false;
+        }
+
+        $health_slugs = array('medical', 'dental', 'therapy', 'wellness');
+
+        return in_array($industry, $health_slugs, true);
+    }
+
     public function detect_context($attachment_id, $ignore_manual = false) {
         $context = [
-            'type' => 'clinical',
+            'type' => $this->get_default_context_type(),
             'page_type' => null,
             'page_title' => null,
             'service' => 'rehabilitation',
@@ -80,7 +162,16 @@ class MSH_Contextual_Meta_Generator {
             'attachment_title' => '',
             'attachment_slug' => '',
             'file_basename' => '',
-            'subject_name' => ''
+            'subject_name' => '',
+            'active_profile_id' => $this->active_profile_id,
+            'active_profile_label' => $this->active_profile_label,
+            'industry' => $this->industry,
+            'industry_label' => $this->industry_label,
+            'brand_voice' => $this->brand_voice,
+            'cta_preference' => $this->cta_preference,
+            'target_audience' => $this->target_audience,
+            'uvp' => $this->uvp,
+            'pain_points' => $this->pain_points
         ];
 
         $manual = get_post_meta($attachment_id, '_msh_context', true);

@@ -749,25 +749,25 @@ select[name*="context"] option:checked {
     background-color: #ffffff;
 }
 
-.msh-radio-title {
+.msh-radio-tile .msh-radio-title {
     grid-column: 2;
     grid-row: 1;
     font-family: var(--font-primary);
     font-size: var(--text-lg);
     font-weight: var(--weight-normal);
     color: #35332f;
-    margin-top: 8px;
-    margin-bottom: 8px;
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
 }
 
-.msh-radio-copy {
+.msh-radio-tile .msh-radio-copy {
     grid-column: 2;
     grid-row: 2;
     font-family: var(--font-secondary);
     font-size: var(--text-sm);
     color: rgba(53, 51, 47, 0.75);
     line-height: var(--leading-normal);
-    margin: 0;
+    margin: 0 !important;
 }
 
 .msh-settings-checkbox-group {

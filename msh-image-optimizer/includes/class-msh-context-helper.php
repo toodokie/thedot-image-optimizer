@@ -234,4 +234,63 @@ class MSH_Image_Optimizer_Context_Helper {
 
         return $sanitized;
     }
+
+    /**
+     * Retrieve the primary (default) context.
+     *
+     * @return array
+     */
+    public static function get_primary_context() {
+        $stored = get_option('msh_onboarding_context', array());
+        $existing_timestamp = isset($stored['updated_at']) ? absint($stored['updated_at']) : 0;
+
+        return self::sanitize_context($stored, false, $existing_timestamp);
+    }
+
+    /**
+     * Retrieve the active context profile record with metadata.
+     *
+     * @param null|array $profiles Optional pre-fetched profiles.
+     * @return array
+     */
+    public static function get_active_profile($profiles = null) {
+        if (null === $profiles) {
+            $profiles = self::get_profiles();
+        }
+
+        $active_id = get_option('msh_active_context_profile', 'primary');
+
+        if ('primary' !== $active_id && isset($profiles[$active_id])) {
+            $profile = $profiles[$active_id];
+
+            if (empty($profile['label'])) {
+                $profile['label'] = __('Context profile', 'msh-image-optimizer');
+            }
+
+            return $profile;
+        }
+
+        return array(
+            'id' => 'primary',
+            'label' => __('Primary Context', 'msh-image-optimizer'),
+            'usage' => '',
+            'locale' => '',
+            'notes' => '',
+            'context' => self::get_primary_context(),
+        );
+    }
+
+    /**
+     * Convenience accessor for the active context payload.
+     *
+     * @param null|array $profiles Optional pre-fetched profiles.
+     * @return array
+     */
+    public static function get_active_context($profiles = null) {
+        $active = self::get_active_profile($profiles);
+
+        return isset($active['context']) && is_array($active['context'])
+            ? $active['context']
+            : array();
+    }
 }
