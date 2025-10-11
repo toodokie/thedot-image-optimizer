@@ -321,7 +321,8 @@ select[name*="context"] option:checked {
     color: #35332f;
 }
 
-.msh-settings-checkbox span {
+.msh-settings-checkbox span,
+.msh-settings-field.msh-settings-checkbox label > span {
     margin-top: 8px !important;
     margin-bottom: 8px !important;
     margin-left: 0 !important;
@@ -370,9 +371,10 @@ select[name*="context"] option:checked {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
-.msh-radio-grid label span {
-    margin-top: 8px;
-    margin-bottom: 8px;
+.msh-radio-grid label span,
+.msh-settings-field.msh-settings-radio label > span {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
 }
 
 .msh-radio-grid label:hover,
