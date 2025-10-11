@@ -93,8 +93,21 @@ class MSH_Image_Optimizer_Settings {
             false
         );
 
-        $profiles = $this->get_context_profiles();
+        $profiles = MSH_Image_Optimizer_Context_Helper::get_profiles();
         $labels = MSH_Image_Optimizer_Context_Helper::get_label_map();
+        $active_profile = get_option('msh_active_context_profile', 'primary');
+        if ('primary' !== $active_profile && !isset($profiles[$active_profile])) {
+            $active_profile = 'primary';
+        }
+        $rename_enabled = get_option('msh_enable_file_rename', '0') === '1';
+        $index_stats = $this->get_usage_index_stats();
+        $diagnostics = $this->get_diagnostics_snapshot();
+        $ai_mode = get_option('msh_ai_mode', 'manual');
+        $ai_api_key = get_option('msh_ai_api_key', '');
+        $ai_features = get_option('msh_ai_enabled_features', array());
+        if (!is_array($ai_features)) {
+            $ai_features = array();
+        }
         $success = isset($_GET['msh_saved']) && '1' === $_GET['msh_saved'];
         $errors = isset($_GET['msh_error']) ? sanitize_text_field($_GET['msh_error']) : '';
 
@@ -243,6 +256,32 @@ class MSH_Image_Optimizer_Settings {
 
                         <input type="hidden" name="primary[updated_at]" value="<?php echo esc_attr(isset($primary_context['updated_at']) ? (int) $primary_context['updated_at'] : 0); ?>">
                     </div>
+                    <div class="msh-settings-field">
+                        <label for="msh_active_profile"><?php esc_html_e('Active Context', 'msh-image-optimizer'); ?></label>
+                        <select id="msh_active_profile" name="options[active_profile]" class="msh-select">
+                            <?php
+                            $primary_label = !empty($primary_context['business_name'])
+                                ? $primary_context['business_name']
+                                : __('Primary Context', 'msh-image-optimizer');
+                            ?>
+                            <option value="primary" <?php selected($active_profile, 'primary'); ?>>
+                                <?php echo esc_html(sprintf(__('Primary – %s', 'msh-image-optimizer'), $primary_label)); ?>
+                            </option>
+                            <?php foreach ($profiles as $profile) : ?>
+                                <?php
+                                $label = !empty($profile['label'])
+                                    ? $profile['label']
+                                    : __('Context profile', 'msh-image-optimizer');
+                                ?>
+                                <option value="<?php echo esc_attr($profile['id']); ?>" <?php selected($active_profile, $profile['id']); ?>>
+                                    <?php echo esc_html(sprintf(__('Profile – %s', 'msh-image-optimizer'), $label)); ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <p class="msh-settings-note">
+                            <?php esc_html_e('This context powers dashboard copy, automation prompts, and AI recommendations.', 'msh-image-optimizer'); ?>
+                        </p>
+                    </div>
                 </section>
 
                 <section class="msh-settings-card msh-settings-card--profiles">
@@ -265,6 +304,168 @@ class MSH_Image_Optimizer_Settings {
                         <?php esc_html_e('Add Context Profile', 'msh-image-optimizer'); ?>
                     </button>
                     <p class="msh-settings-note"><?php esc_html_e('Changes to profiles are saved when you click “Save Settings” below.', 'msh-image-optimizer'); ?></p>
+                </section>
+
+                <section class="msh-settings-card msh-settings-card--rename">
+                    <header>
+                        <h2><?php esc_html_e('Optimization Controls', 'msh-image-optimizer'); ?></h2>
+                        <p><?php esc_html_e('Keep file renaming in sync with your usage index so URLs stay intact across campaigns and migrations.', 'msh-image-optimizer'); ?></p>
+                    </header>
+                    <div class="msh-settings-grid">
+                        <div class="msh-settings-field msh-settings-checkbox">
+                            <input type="hidden" name="options[rename_enabled]" value="0">
+                            <label class="msh-checkbox-field">
+                                <input type="checkbox" name="options[rename_enabled]" value="1" <?php checked($rename_enabled); ?>>
+                                <span><?php esc_html_e('Enable safe file renaming', 'msh-image-optimizer'); ?></span>
+                            </label>
+                            <p class="msh-settings-note">
+                                <?php esc_html_e('When active, Analyze & Apply can publish SEO-friendly filenames without breaking links. Requires a fresh usage index.', 'msh-image-optimizer'); ?>
+                            </p>
+                            <?php
+                            $index_status_class = 'status-disabled';
+                            $index_status_label = __('Renaming disabled', 'msh-image-optimizer');
+                            if ($rename_enabled) {
+                                if (!empty($index_stats)) {
+                                    $index_status_class = 'status-ready';
+                                    $index_status_label = __('Ready – usage index verified', 'msh-image-optimizer');
+                                } else {
+                                    $index_status_class = 'status-pending';
+                                    $index_status_label = __('Action needed – build usage index before renaming', 'msh-image-optimizer');
+                                }
+                            }
+                            ?>
+                            <div class="msh-status-pill <?php echo esc_attr($index_status_class); ?>">
+                                <?php echo esc_html($index_status_label); ?>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="msh-settings-card msh-settings-card--diagnostics">
+                    <header>
+                        <h2><?php esc_html_e('Diagnostics Snapshot', 'msh-image-optimizer'); ?></h2>
+                        <p><?php esc_html_e('Quick glance at the most recent optimization activity. Use this to confirm scheduled jobs and automation are running on time.', 'msh-image-optimizer'); ?></p>
+                    </header>
+                    <div class="msh-diagnostics-grid">
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('Analyzer', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value"><?php echo esc_html($diagnostics['last_analyzer_run']); ?></span>
+                        </div>
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('Optimization batch', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value"><?php echo esc_html($diagnostics['last_optimization_run']); ?></span>
+                        </div>
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('Duplicate scan', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value"><?php echo esc_html($diagnostics['last_duplicate_scan']); ?></span>
+                        </div>
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('Visual similarity scan', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value"><?php echo esc_html($diagnostics['last_visual_scan']); ?></span>
+                        </div>
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('CLI optimization', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value"><?php echo esc_html($diagnostics['last_cli_run']); ?></span>
+                        </div>
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('Index entries', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value">
+                                <?php
+                                if ($index_stats) {
+                                    echo esc_html(number_format_i18n($index_stats['total_entries']));
+                                } else {
+                                    esc_html_e('Not yet built', 'msh-image-optimizer');
+                                }
+                                ?>
+                            </span>
+                        </div>
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('Indexed attachments', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value">
+                                <?php
+                                if ($index_stats) {
+                                    echo esc_html(number_format_i18n($index_stats['unique_attachments']));
+                                } else {
+                                    esc_html_e('—', 'msh-image-optimizer');
+                                }
+                                ?>
+                            </span>
+                        </div>
+                        <div class="msh-diagnostics-item">
+                            <span class="msh-diagnostics-label"><?php esc_html_e('Index refreshed', 'msh-image-optimizer'); ?></span>
+                            <span class="msh-diagnostics-value">
+                                <?php
+                                if ($index_stats && !empty($index_stats['last_update'])) {
+                                    echo esc_html($this->format_datetime($index_stats['last_update']));
+                                } else {
+                                    esc_html_e('—', 'msh-image-optimizer');
+                                }
+                                ?>
+                            </span>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="msh-settings-card msh-settings-card--ai">
+                    <header>
+                        <h2><?php esc_html_e('AI Automation', 'msh-image-optimizer'); ?></h2>
+                        <p><?php esc_html_e('Choose how AI assists your team. Manual keeps everything human, Assisted handles metadata on request, Hybrid enables full automation once you are ready.', 'msh-image-optimizer'); ?></p>
+                    </header>
+                    <div class="msh-settings-grid">
+                        <div class="msh-settings-field msh-ai-mode-field">
+                            <span class="msh-field-heading"><?php esc_html_e('AI Mode', 'msh-image-optimizer'); ?></span>
+                            <label class="msh-radio-tile">
+                                <input type="radio" name="options[ai_mode]" value="manual" <?php checked($ai_mode, 'manual'); ?>>
+                                <span class="msh-radio-title"><?php esc_html_e('Manual', 'msh-image-optimizer'); ?></span>
+                                <span class="msh-radio-copy"><?php esc_html_e('Keep prompts handy but require a human to approve each change.', 'msh-image-optimizer'); ?></span>
+                            </label>
+                            <label class="msh-radio-tile">
+                                <input type="radio" name="options[ai_mode]" value="assist" <?php checked($ai_mode, 'assist'); ?>>
+                                <span class="msh-radio-title"><?php esc_html_e('Assisted', 'msh-image-optimizer'); ?></span>
+                                <span class="msh-radio-copy"><?php esc_html_e('Generate metadata, descriptions, and alt text on request. You approve before publish.', 'msh-image-optimizer'); ?></span>
+                            </label>
+                            <label class="msh-radio-tile">
+                                <input type="radio" name="options[ai_mode]" value="hybrid" <?php checked($ai_mode, 'hybrid'); ?>>
+                                <span class="msh-radio-title"><?php esc_html_e('Hybrid Automation', 'msh-image-optimizer'); ?></span>
+                                <span class="msh-radio-copy"><?php esc_html_e('Let AI run in the background with escalations when confidence drops.', 'msh-image-optimizer'); ?></span>
+                            </label>
+                        </div>
+
+                        <div class="msh-settings-field">
+                            <label for="msh_ai_api_key"><?php esc_html_e('Bring-your-own API key (optional)', 'msh-image-optimizer'); ?></label>
+                            <input
+                                type="password"
+                                id="msh_ai_api_key"
+                                name="options[ai_api_key]"
+                                value="<?php echo esc_attr($ai_api_key); ?>"
+                                class="msh-input"
+                                autocomplete="off"
+                                placeholder="<?php esc_attr_e('sk-••••', 'msh-image-optimizer'); ?>"
+                            />
+                            <p class="msh-settings-note">
+                                <?php esc_html_e('Provide your own OpenAI key to bypass credit billing. Leave blank to use bundled credits.', 'msh-image-optimizer'); ?>
+                            </p>
+                        </div>
+
+                        <div class="msh-settings-field msh-settings-checkbox-group">
+                            <span class="msh-field-heading"><?php esc_html_e('Enabled AI modules', 'msh-image-optimizer'); ?></span>
+                            <label class="msh-checkbox-field">
+                                <input type="checkbox" name="options[ai_features][]" value="meta" <?php checked(in_array('meta', $ai_features, true)); ?>>
+                                <span><?php esc_html_e('Metadata & alt text suggestions', 'msh-image-optimizer'); ?></span>
+                            </label>
+                            <label class="msh-checkbox-field">
+                                <input type="checkbox" name="options[ai_features][]" value="vision" <?php checked(in_array('vision', $ai_features, true)); ?>>
+                                <span><?php esc_html_e('Vision analysis (quality & branding checks)', 'msh-image-optimizer'); ?></span>
+                            </label>
+                            <label class="msh-checkbox-field">
+                                <input type="checkbox" name="options[ai_features][]" value="duplicate" <?php checked(in_array('duplicate', $ai_features, true)); ?>>
+                                <span><?php esc_html_e('Duplicate detection + smart cleanup targets', 'msh-image-optimizer'); ?></span>
+                            </label>
+                            <p class="msh-settings-note">
+                                <?php esc_html_e('AI modules respect the active context profile and only run when credits are available.', 'msh-image-optimizer'); ?>
+                            </p>
+                        </div>
+                    </div>
                 </section>
 
                 <div class="msh-settings-actions">
@@ -304,6 +505,39 @@ class MSH_Image_Optimizer_Settings {
         $profiles_raw = isset($_POST['profiles']) ? wp_unslash($_POST['profiles']) : array();
         $sanitized_profiles = $this->sanitize_profiles($profiles_raw);
         update_option(self::PROFILES_OPTION, $sanitized_profiles, false);
+
+        $options_raw = isset($_POST['options']) ? wp_unslash($_POST['options']) : array();
+
+        $rename_enabled = (isset($options_raw['rename_enabled']) && '1' === (string) $options_raw['rename_enabled']) ? '1' : '0';
+        update_option('msh_enable_file_rename', $rename_enabled, false);
+
+        $ai_mode = isset($options_raw['ai_mode']) ? sanitize_text_field($options_raw['ai_mode']) : 'manual';
+        if (!in_array($ai_mode, array('manual', 'assist', 'hybrid'), true)) {
+            $ai_mode = 'manual';
+        }
+        update_option('msh_ai_mode', $ai_mode, false);
+
+        $ai_api_key = isset($options_raw['ai_api_key']) ? sanitize_text_field($options_raw['ai_api_key']) : '';
+        update_option('msh_ai_api_key', $ai_api_key, false);
+
+        $ai_features_sanitized = array();
+        if (isset($options_raw['ai_features']) && is_array($options_raw['ai_features'])) {
+            $allowed_features = array('meta', 'vision', 'duplicate');
+            foreach ($options_raw['ai_features'] as $feature) {
+                $feature = sanitize_text_field($feature);
+                if (in_array($feature, $allowed_features, true)) {
+                    $ai_features_sanitized[] = $feature;
+                }
+            }
+        }
+        update_option('msh_ai_enabled_features', $ai_features_sanitized, false);
+
+        $pending_active_profile = isset($options_raw['active_profile']) ? sanitize_text_field($options_raw['active_profile']) : 'primary';
+        $available_profiles = MSH_Image_Optimizer_Context_Helper::get_profiles();
+        if ('primary' !== $pending_active_profile && !isset($available_profiles[$pending_active_profile])) {
+            $pending_active_profile = 'primary';
+        }
+        update_option('msh_active_context_profile', $pending_active_profile, false);
 
         wp_safe_redirect(add_query_arg('msh_saved', '1', $redirect_url));
         exit;
@@ -375,6 +609,67 @@ class MSH_Image_Optimizer_Settings {
         }
 
         return $sanitized;
+    }
+
+    /**
+     * Fetch usage index stats for display.
+     *
+     * @return array|false
+     */
+    private function get_usage_index_stats() {
+        try {
+            if (class_exists('MSH_Image_Usage_Index')) {
+                $usage_index = MSH_Image_Usage_Index::get_instance();
+                $stats = $usage_index->get_index_stats();
+
+                if ($stats && isset($stats['summary']) && $stats['summary']->total_entries > 0) {
+                    return array(
+                        'total_entries' => (int) $stats['summary']->total_entries,
+                        'unique_attachments' => (int) $stats['summary']->indexed_attachments,
+                        'last_update' => $stats['summary']->last_update,
+                    );
+                }
+            }
+        } catch (Exception $e) {
+            // Silent fail – diagnostics card will show placeholders.
+        }
+
+        return false;
+    }
+
+    /**
+     * Build diagnostics snapshot from stored timestamps.
+     *
+     * @return array
+     */
+    private function get_diagnostics_snapshot() {
+        return array(
+            'last_analyzer_run' => $this->format_datetime(get_option('msh_last_analyzer_run')),
+            'last_optimization_run' => $this->format_datetime(get_option('msh_last_optimization_run')),
+            'last_duplicate_scan' => $this->format_datetime(get_option('msh_last_duplicate_scan')),
+            'last_visual_scan' => $this->format_datetime(get_option('msh_last_visual_scan')),
+            'last_cli_run' => $this->format_datetime(get_option('msh_last_cli_optimization')),
+        );
+    }
+
+    /**
+     * Format stored datetime into a localized string.
+     *
+     * @param string|false $value Raw value from database.
+     * @return string
+     */
+    private function format_datetime($value) {
+        if (empty($value)) {
+            return __('—', 'msh-image-optimizer');
+        }
+
+        $timestamp = strtotime($value);
+        if (!$timestamp) {
+            return $value;
+        }
+
+        $format = get_option('date_format') . ' ' . get_option('time_format');
+        return date_i18n($format, $timestamp);
     }
 
     /**
