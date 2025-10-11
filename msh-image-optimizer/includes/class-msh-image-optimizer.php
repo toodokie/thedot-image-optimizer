@@ -2598,15 +2598,26 @@ class MSH_Image_Optimizer {
         $path_info = pathinfo($current_file);
         $extension = isset($path_info['extension']) ? strtolower($path_info['extension']) : '';
         $current_basename = strtolower($path_info['basename']);
+        $current_slug = strtolower(isset($path_info['filename']) ? $path_info['filename'] : '');
+
+        // Generate target slug for comparison (context-aware)
+        $expected_slug = '';
+        if (!empty($extension)) {
+            $expected_slug = $this->contextual_meta_generator->generate_filename_slug($attachment_id, $context_info, $extension);
+        }
 
         // If file already has good name, clear any existing suggestion and don't generate new one
-        $has_good_name = (strpos($current_basename, 'msh') !== false ||
-                         strpos($current_basename, 'hamilton') !== false ||
-                         strpos($current_basename, 'main-street-health') !== false ||
-                         // Also detect common SEO patterns our system generates
-                         preg_match('/^(rehabilitation|physiotherapy|chiropractic|acupuncture|massage|orthotics|chronic-pain|work-related|sport-injuries|motor-vehicle|patient-testimonial|bluecross|canada-life|manulife)-/', $current_basename) ||
-                         // Or files that end with OUR attachment ID pattern (more specific to avoid false matches)
-                         preg_match('/-' . $attachment_id . '\.(jpg|jpeg|png|gif|svg|webp)$/', $current_basename));
+        if (!empty($expected_slug)) {
+            $has_good_name = ($current_slug === strtolower($expected_slug));
+        } else {
+            $has_good_name = (strpos($current_basename, 'msh') !== false ||
+                             strpos($current_basename, 'hamilton') !== false ||
+                             strpos($current_basename, 'main-street-health') !== false ||
+                             // Also detect common SEO patterns our system generates
+                             preg_match('/^(rehabilitation|physiotherapy|chiropractic|acupuncture|massage|orthotics|chronic-pain|work-related|sport-injuries|motor-vehicle|patient-testimonial|bluecross|canada-life|manulife)-/', $current_basename) ||
+                             // Or files that end with OUR attachment ID pattern (more specific to avoid false matches)
+                             preg_match('/-' . $attachment_id . '\.(jpg|jpeg|png|gif|svg|webp)$/', $current_basename));
+        }
 
         // Debug filename suggestion logic for SVGs
         $is_svg = (strtolower(pathinfo($current_file, PATHINFO_EXTENSION)) === 'svg');
@@ -2628,9 +2639,9 @@ class MSH_Image_Optimizer {
             if (empty($suggested_filename) && !empty($extension)) {
                 // Debug disabled for performance
 
-                $slug = $this->contextual_meta_generator->generate_filename_slug($attachment_id, $context_info, $extension);
-
-                // Debug disabled for performance
+                $slug = !empty($expected_slug)
+                    ? $expected_slug
+                    : $this->contextual_meta_generator->generate_filename_slug($attachment_id, $context_info, $extension);
 
                 if (!empty($slug)) {
                     $suggested_filename = $this->ensure_unique_filename($slug, $extension, $attachment_id);

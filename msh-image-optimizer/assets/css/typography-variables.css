@@ -87,6 +87,34 @@
   --space-field-group: 20px;         /* Gap between form field groups */
   --space-section: 32px;             /* Gap between major form sections */
   --space-radio-checkbox-text: 8px;  /* Top/bottom margin for radio/checkbox spans ⚠️ CRITICAL */
+
+  /* ============================================
+     SECTION CONTAINER PADDING
+     3-tier system for consistent box model
+     ============================================ */
+  /* Large Sections - Main cards, primary containers */
+  --section-padding-lg: 32px;        /* Uniform padding for large sections */
+  --section-padding-x-lg: 36px;      /* Horizontal padding for large sections */
+  --section-padding-y-lg: 32px;      /* Vertical padding for large sections */
+
+  /* Medium Sections - Nested cards, secondary containers */
+  --section-padding-md: 24px;        /* Uniform padding for medium sections */
+  --section-padding-x-md: 28px;      /* Horizontal padding for medium sections */
+  --section-padding-y-md: 24px;      /* Vertical padding for medium sections */
+
+  /* Small Sections - Compact widgets, tertiary containers */
+  --section-padding-sm: 20px;        /* Uniform padding for small sections */
+  --section-padding-x-sm: 20px;      /* Horizontal padding for small sections */
+  --section-padding-y-sm: 16px;      /* Vertical padding for small sections */
+
+  /* ============================================
+     SECTION INTERNAL SPACING (GAP)
+     Use with flex/grid containers for child spacing
+     ============================================ */
+  --section-gap-lg: 24px;            /* Large gap between major content blocks */
+  --section-gap-md: 16px;            /* Medium gap between related elements */
+  --section-gap-sm: 12px;            /* Small gap between tightly grouped items */
+  --section-gap-xs: 8px;             /* Extra small gap for minimal spacing */
 }
 
 /**
