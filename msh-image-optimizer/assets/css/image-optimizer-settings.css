@@ -4,6 +4,39 @@
 @import url('typography-variables.css');
 
 /* ============================================
+   NUCLEAR FONT OVERRIDE
+   Force futura-pt on all text elements
+   WordPress admin CSS has extremely high specificity
+   ============================================ */
+body.settings_page_msh-image-optimizer-settings,
+body.settings_page_msh-image-optimizer-settings h1,
+body.settings_page_msh-image-optimizer-settings h2,
+body.settings_page_msh-image-optimizer-settings h3,
+body.settings_page_msh-image-optimizer-settings h4,
+body.settings_page_msh-image-optimizer-settings h5,
+body.settings_page_msh-image-optimizer-settings h6,
+body.settings_page_msh-image-optimizer-settings p,
+body.settings_page_msh-image-optimizer-settings div,
+body.settings_page_msh-image-optimizer-settings span,
+body.settings_page_msh-image-optimizer-settings label,
+body.settings_page_msh-image-optimizer-settings a,
+body.settings_page_msh-image-optimizer-settings button,
+body.settings_page_msh-image-optimizer-settings input,
+body.settings_page_msh-image-optimizer-settings select,
+body.settings_page_msh-image-optimizer-settings textarea,
+body.settings_page_msh-image-optimizer-settings dt,
+body.settings_page_msh-image-optimizer-settings dd,
+#wpwrap .msh-settings-wrap,
+#wpwrap .msh-settings-wrap h1,
+#wpwrap .msh-settings-wrap h2,
+#wpwrap .msh-settings-wrap h3,
+#wpwrap .msh-settings-wrap h4,
+#wpwrap .msh-settings-wrap h5,
+#wpwrap .msh-settings-wrap h6 {
+    font-family: var(--font-primary) !important;
+}
+
+/* ============================================
    GLOBAL SPACING RESET - THE LAW
    All section containers control spacing via gap
    Children have NO top/bottom margins
