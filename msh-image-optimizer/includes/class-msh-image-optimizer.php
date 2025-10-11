@@ -149,6 +149,67 @@ class MSH_Contextual_Meta_Generator {
         return in_array($industry, $health_slugs, true);
     }
 
+    private function get_industry_label_or_default() {
+        if ($this->industry_label !== '') {
+            return $this->industry_label;
+        }
+
+        return __('Business Services', 'msh-image-optimizer');
+    }
+
+    private function get_industry_descriptor() {
+        $label = $this->get_industry_label_or_default();
+        $descriptor = strtolower($label);
+
+        if (!preg_match('/(service|services|solutions|agency|studio|clinic|store|practice)$/', $descriptor)) {
+            $descriptor .= ' services';
+        }
+
+        return $descriptor;
+    }
+
+    private function get_location_phrase($prefix = ' in ') {
+        if ($this->location === '') {
+            return '';
+        }
+
+        return $prefix . $this->location;
+    }
+
+    private function get_cta_sentence() {
+        switch ($this->cta_preference) {
+            case 'direct':
+                return __('Contact us today to get started.', 'msh-image-optimizer');
+            case 'balanced':
+                return __('Reach out for details or a consultation.', 'msh-image-optimizer');
+            case 'soft':
+                return __('Discover how we can support your goals.', 'msh-image-optimizer');
+            default:
+                return '';
+        }
+    }
+
+    private function get_target_audience_sentence() {
+        if ($this->target_audience === '') {
+            return '';
+        }
+
+        return sprintf(__('Serving %s.', 'msh-image-optimizer'), $this->target_audience);
+    }
+
+    private function normalize_sentence($text) {
+        $text = trim((string) $text);
+        if ($text === '') {
+            return '';
+        }
+
+        if (!preg_match('/[.!?]$/', $text)) {
+            $text .= '.';
+        }
+
+        return $text;
+    }
+
     public function detect_context($attachment_id, $ignore_manual = false) {
         $this->hydrate_active_context();
 
@@ -809,8 +870,13 @@ class MSH_Contextual_Meta_Generator {
                 }
                 return $this->generate_equipment_meta($context);
             case 'business':
-                if (!empty($context['asset']) && $context['asset'] === 'logo') {
-                    return $this->generate_logo_meta($context);
+                if (!empty($context['asset'])) {
+                    if ($context['asset'] === 'logo') {
+                        return $this->generate_logo_meta($context);
+                    }
+                    if ($context['asset'] === 'product') {
+                        return $this->generate_product_meta($context);
+                    }
                 }
                 return $this->generate_business_meta($context);
             case 'clinical':
@@ -829,8 +895,10 @@ class MSH_Contextual_Meta_Generator {
                 $name = !empty($context['staff_name']) ? $context['staff_name'] : 'team-member';
                 return $this->slugify("{$this->business_name}-team-{$name}");
             case 'testimonial':
-                $subject_slug = !empty($context['attachment_slug']) ? $this->truncate_slug($context['attachment_slug'], 3) : 'patient';
-                return $this->slugify('patient-testimonial-' . $subject_slug . '-' . $this->location_slug);
+                $prefix = $this->is_healthcare_industry($this->industry) ? 'patient' : 'client';
+                $subject_slug = !empty($context['attachment_slug']) ? $this->truncate_slug($context['attachment_slug'], 3) : $prefix;
+                $location_component = $this->location_slug !== '' ? '-' . $this->location_slug : '';
+                return $this->slugify($prefix . '-testimonial-' . $subject_slug . $location_component);
             case 'icon':
                 // Legacy fallback - reuse service-icon generator with proper arguments
                 $normalized_context = $context;
@@ -889,21 +957,49 @@ class MSH_Contextual_Meta_Generator {
                 }
                 return $this->slugify('rehabilitation-equipment-' . $this->location_slug);
             case 'business':
-                // Extract brand/company name from filename
                 $original_filename = strtolower($context['original_filename'] ?? '');
                 $brand_keywords = $this->extract_brand_keywords($original_filename);
+                $location_component = $this->location_slug !== '' ? '-' . $this->location_slug : '';
 
-                if (!empty($context['asset']) && $context['asset'] === 'logo') {
-                    if (!empty($brand_keywords)) {
-                        return $this->slugify($brand_keywords . '-logo-' . $this->location_slug);
+                if (!empty($context['asset'])) {
+                    if ($context['asset'] === 'logo') {
+                        if (!empty($brand_keywords)) {
+                            return $this->slugify($brand_keywords . '-logo' . $location_component);
+                        }
+
+                        $brand_slug = $this->business_name !== ''
+                            ? $this->slugify($this->business_name)
+                            : 'brand';
+
+                        return $this->slugify($brand_slug . '-logo' . $location_component);
                     }
-                    return $this->slugify($this->business_name . '-logo-' . $this->location_slug);
+
+                    if ($context['asset'] === 'product') {
+                        $product_slug = !empty($context['attachment_slug'])
+                            ? $this->truncate_slug($context['attachment_slug'], 4)
+                            : 'product';
+
+                        $components = array_filter([
+                            $this->business_name !== '' ? $this->slugify($this->business_name) : null,
+                            $product_slug,
+                            $this->location_slug !== '' ? $this->location_slug : null,
+                        ]);
+
+                        return $this->slugify(implode('-', $components));
+                    }
                 }
 
                 if (!empty($brand_keywords)) {
-                    return $this->slugify($brand_keywords . '-logo-' . $this->location_slug);
+                    return $this->slugify($brand_keywords . $location_component);
                 }
-                return $this->slugify($this->business_name . '-' . $this->location_slug . '-branding');
+
+                $components = array_filter([
+                    $this->business_name !== '' ? $this->slugify($this->business_name) : null,
+                    $this->location_slug !== '' ? $this->location_slug : null,
+                    'branding'
+                ]);
+
+                return $this->slugify(implode('-', $components));
             case 'clinical':
             default:
                 // SEO-optimized treatment keywords (more specific first, word-boundary safe)
@@ -1050,47 +1146,139 @@ class MSH_Contextual_Meta_Generator {
     }
 
     private function generate_team_meta(array $context) {
-        $name = !empty($context['staff_name']) ? $context['staff_name'] : 'Healthcare Professional';
+        $is_healthcare = $this->is_healthcare_industry($this->industry);
+        $default_name = $is_healthcare ? __('Healthcare Professional', 'msh-image-optimizer') : __('Team Member', 'msh-image-optimizer');
+        $name = !empty($context['staff_name']) ? $context['staff_name'] : $default_name;
+
+        if ($is_healthcare) {
+            return [
+                'title' => $this->clean_text("{$name} - {$this->business_name} {$this->location}"),
+                'alt_text' => $this->clean_text("{$name}, healthcare professional at {$this->business_name} {$this->location}"),
+                'caption' => $this->clean_text("{$name} - Registered rehabilitation provider"),
+                'description' => $this->clean_text("{$name} provides expert rehabilitation services at {$this->business_name} in {$this->location}. Specialized in WSIB and MVA recovery programs.")
+            ];
+        }
+
+        $industry_label = $this->get_industry_label_or_default();
+        $title_components = [$name];
+        $company_segment = $this->business_name !== '' ? $this->business_name : $industry_label;
+        if ($company_segment !== '') {
+            $title_components[] = $company_segment;
+        }
+        if ($this->location !== '') {
+            $title_components[] = $this->location;
+        }
+
+        $title = $this->clean_text($this->ensure_unique_title(
+            implode(' – ', array_filter($title_components)),
+            $context['attachment_id'] ?? 0
+        ));
+
+        $alt_text = $this->clean_text(sprintf(
+            __('%1$s from %2$s%3$s.', 'msh-image-optimizer'),
+            $name,
+            $this->business_name !== '' ? $this->business_name : $industry_label,
+            $this->get_location_phrase(' in ')
+        ));
+
+        $caption = $this->clean_text(sprintf(
+            __('%1$s – part of the %2$s team', 'msh-image-optimizer'),
+            $name,
+            strtolower($industry_label)
+        ));
+
+        $description_parts = array_filter([
+            sprintf(
+                __('Meet %1$s from %2$s%3$s.', 'msh-image-optimizer'),
+                $name,
+                $this->business_name,
+                $this->get_location_phrase(' in ')
+            ),
+            $this->normalize_sentence($this->uvp),
+            $this->get_target_audience_sentence(),
+            $this->get_cta_sentence(),
+        ]);
 
         return [
-            'title' => $this->clean_text("{$name} - {$this->business_name} {$this->location}"),
-            'alt_text' => $this->clean_text("{$name}, healthcare professional at {$this->business_name} {$this->location}"),
-            'caption' => $this->clean_text("{$name} - Registered rehabilitation provider"),
-            'description' => $this->clean_text("{$name} provides expert rehabilitation services at {$this->business_name} in {$this->location}. Specialized in WSIB and MVA recovery programs.")
+            'title' => $title,
+            'alt_text' => $alt_text,
+            'caption' => $caption,
+            'description' => $this->clean_text(implode(' ', $description_parts))
         ];
     }
 
     private function generate_testimonial_meta(array $context) {
-        $subject = !empty($context['subject_name']) ? $context['subject_name'] : 'Patient';
-        $service = $context['service'] ?? 'rehabilitation';
-        $service_label = $this->format_service_label($service);
-        $service_lower = strtolower($service_label);
-        $keywords_line = $this->get_service_keyword_line($service, 'default');
+        $is_healthcare = $this->is_healthcare_industry($this->industry);
+        $subject = !empty($context['subject_name'])
+            ? $context['subject_name']
+            : ($is_healthcare ? __('Patient', 'msh-image-optimizer') : __('Client', 'msh-image-optimizer'));
+
+        if ($is_healthcare) {
+            $service = $context['service'] ?? 'rehabilitation';
+            $service_label = $this->format_service_label($service);
+            $service_lower = strtolower($service_label);
+            $keywords_line = $this->get_service_keyword_line($service, 'default');
+
+            $caption = sprintf(
+                __('%1$s shares %2$s recovery experience at %3$s', 'msh-image-optimizer'),
+                $subject,
+                $service_lower,
+                $this->business_name
+            );
+
+            $description = sprintf(
+                __('Patient testimonial from %1$s highlighting %2$s recovery at %3$s %4$s. %5$s', 'msh-image-optimizer'),
+                $subject,
+                $service_lower,
+                $this->business_name,
+                $this->location,
+                $keywords_line
+            );
+
+            $title_base = "{$subject} Patient Success Story - {$this->business_name} {$this->location}";
+            $final_title = $this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0);
+
+            return [
+                'title' => $this->clean_text($final_title),
+                'alt_text' => $this->clean_text(sprintf(__('Patient %1$s shares %2$s recovery story at %3$s %4$s', 'msh-image-optimizer'), $subject, $service_lower, $this->business_name, $this->location)),
+                'caption' => $this->clean_text($caption),
+                'description' => $this->clean_text($description)
+            ];
+        }
+
+        $industry_label = $this->get_industry_label_or_default();
+        $location_phrase = $this->get_location_phrase(' | ');
+        $title_base = sprintf(
+            __('%1$s Success Story – %2$s%3$s', 'msh-image-optimizer'),
+            $subject,
+            $this->business_name,
+            $location_phrase
+        );
+
+        $description_parts = array_filter([
+            sprintf(
+                __('Testimonial from %1$s showcasing %2$s outcomes with %3$s%4$s.', 'msh-image-optimizer'),
+                $subject,
+                strtolower($industry_label),
+                $this->business_name,
+                $this->get_location_phrase(' in ')
+            ),
+            $this->normalize_sentence($this->uvp),
+            $this->normalize_sentence($this->pain_points),
+            $this->get_cta_sentence(),
+        ]);
 
         $caption = sprintf(
-            '%s shares %s recovery experience at %s',
+            __('%1$s shares their experience with %2$s.', 'msh-image-optimizer'),
             $subject,
-            $service_lower,
             $this->business_name
         );
 
-        $description = sprintf(
-            'Patient testimonial from %s highlighting %s recovery at %s %s. %s',
-            $subject,
-            $service_lower,
-            $this->business_name,
-            $this->location,
-            $keywords_line
-        );
-
-        $title_base = "{$subject} Patient Success Story - {$this->business_name} {$this->location}";
-        $final_title = $this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0);
-
         return [
-            'title' => $this->clean_text($final_title),
-            'alt_text' => $this->clean_text("Patient {$subject} shares {$service_lower} recovery story at {$this->business_name} {$this->location}"),
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text(sprintf(__('Client %1$s testimonial for %2$s%3$s.', 'msh-image-optimizer'), $subject, $this->business_name, $this->get_location_phrase(' in '))),
             'caption' => $this->clean_text($caption),
-            'description' => $this->clean_text($description)
+            'description' => $this->clean_text(implode(' ', $description_parts))
         ];
     }
 
@@ -1122,27 +1310,135 @@ class MSH_Contextual_Meta_Generator {
             $concept_label = $this->format_service_label($service);
         }
 
-        $concept_lower = strtolower($concept_label);
+        $industry_label = $this->get_industry_label_or_default();
+        $title_base = $this->business_name !== ''
+            ? sprintf(__('%1$s Icon – %2$s', 'msh-image-optimizer'), $concept_label, $this->business_name)
+            : sprintf(__('%s Icon', 'msh-image-optimizer'), $concept_label);
+
+        if ($this->location !== '') {
+            $title_base .= ' | ' . $this->location;
+        }
+
+        $alt_text = $this->business_name !== ''
+            ? sprintf(__('Illustrated %1$s icon for %2$s%3$s.', 'msh-image-optimizer'), $concept_label, $this->business_name, $this->get_location_phrase(' in '))
+            : sprintf(__('Illustrated %s icon.', 'msh-image-optimizer'), $concept_label);
+
+        $description_parts = array_filter([
+            sprintf(
+                __('Custom %1$s icon supporting %2$s digital experience%3$s.', 'msh-image-optimizer'),
+                strtolower($concept_label),
+                $this->business_name !== '' ? $this->business_name : __('the brand', 'msh-image-optimizer'),
+                $this->get_location_phrase(' in ')
+            ),
+            sprintf(__('Designed for %s navigation.', 'msh-image-optimizer'), strtolower($industry_label)),
+            $this->get_cta_sentence(),
+        ]);
 
         return [
-            'title' => $this->clean_text("{$concept_label} Service Icon - {$this->business_name} {$this->location}"),
-            'alt_text' => $this->clean_text("{$concept_label} icon for {$this->business_name} {$this->location}"),
-            'caption' => $this->clean_text("{$concept_label} service icon for navigation"),
-            'description' => $this->clean_text("{$concept_label} service icon used across {$this->business_name} {$this->location} website. Professional rehabilitation with WSIB approved programs and direct billing.")
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text(sprintf(__('%1$s icon for %2$s', 'msh-image-optimizer'), $concept_label, strtolower($industry_label))),
+            'description' => $this->clean_text(implode(' ', $description_parts))
         ];
     }
 
 
     private function generate_logo_meta(array $context) {
+        $location = $this->location;
+        $industry_label = $this->get_industry_label_or_default();
+        $title = $this->business_name !== ''
+            ? sprintf(__('%s Logo', 'msh-image-optimizer'), $this->business_name)
+            : __('Brand Logo', 'msh-image-optimizer');
+
+        if ($location !== '') {
+            $title .= ' | ' . $location;
+        }
+
+        $alt_text = $this->business_name !== ''
+            ? sprintf(__('Official logo for %s', 'msh-image-optimizer'), $this->business_name)
+            : __('Official brand logo', 'msh-image-optimizer');
+
+        $caption = $this->business_name !== ''
+            ? sprintf(__('%1$s %2$s branding', 'msh-image-optimizer'), $this->business_name, strtolower($industry_label))
+            : sprintf(__('Branding for %s', 'msh-image-optimizer'), strtolower($industry_label));
+
+        $description_parts = array_filter([
+            sprintf(
+                __('Official %1$s logo showcasing %2$s%3$s.', 'msh-image-optimizer'),
+                $this->business_name !== '' ? $this->business_name : __('the business', 'msh-image-optimizer'),
+                $this->get_industry_descriptor(),
+                $this->get_location_phrase(' in ')
+            ),
+            $this->normalize_sentence($this->uvp),
+            $this->get_cta_sentence(),
+        ]);
+
         return [
-            'title' => $this->clean_text("{$this->business_name} Logo - {$this->location} Rehabilitation Clinic"),
-            'alt_text' => $this->clean_text("{$this->business_name} brand logo"),
-            'caption' => $this->clean_text("{$this->business_name} branding for rehabilitation services"),
-            'description' => $this->clean_text("Official {$this->business_name} logo representing rehabilitation, physiotherapy, chiropractic, and workplace injury care in {$this->location}.")
+            'title' => $this->clean_text($this->ensure_unique_title($title, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text(implode(' ', $description_parts))
         ];
     }
 
     private function generate_product_meta(array $context) {
+        if (!$this->is_healthcare_industry($this->industry)) {
+            $product_name = !empty($context['attachment_title'])
+                ? $context['attachment_title']
+                : __('Featured Product', 'msh-image-optimizer');
+
+            $title_components = [$product_name];
+            if ($this->business_name !== '') {
+                $title_components[] = $this->business_name;
+            }
+
+            $title = implode(' – ', array_filter($title_components));
+            if ($this->location !== '') {
+                $title .= ' | ' . $this->location;
+            }
+
+            $alt_text = sprintf(
+                __('Product spotlight: %1$s%2$s.', 'msh-image-optimizer'),
+                $product_name,
+                $this->business_name !== '' ? sprintf(__(' from %s', 'msh-image-optimizer'), $this->business_name) : ''
+            );
+            if ($this->location !== '') {
+                $alt_text = rtrim($alt_text, '.') . sprintf(__(' in %s.', 'msh-image-optimizer'), $this->location);
+            }
+
+            $caption_candidates = [
+                $this->normalize_sentence($this->uvp),
+                $this->business_name !== '' ? sprintf(__('Signature offering from %s.', 'msh-image-optimizer'), $this->business_name) : __('Signature offering.', 'msh-image-optimizer'),
+            ];
+
+            $caption = '';
+            foreach ($caption_candidates as $candidate) {
+                if ($candidate !== '') {
+                    $caption = $candidate;
+                    break;
+                }
+            }
+
+            $description_parts = array_filter([
+                sprintf(
+                __('%1$s provides %2$s solutions like %3$s%4$s.', 'msh-image-optimizer'),
+                $this->business_name !== '' ? $this->business_name : __('This business', 'msh-image-optimizer'),
+                $this->get_industry_descriptor(),
+                $product_name,
+                $this->get_location_phrase(' in ')
+            ),
+                $this->normalize_sentence($this->pain_points),
+                $this->get_cta_sentence(),
+            ]);
+
+            return [
+                'title' => $this->clean_text($this->ensure_unique_title($title, $context['attachment_id'] ?? 0)),
+                'alt_text' => $this->clean_text($alt_text),
+                'caption' => $this->clean_text($caption),
+                'description' => $this->clean_text(implode(' ', $description_parts))
+            ];
+        }
+
         $map = [
             'therapeutic-pillow' => [
                 'name' => 'Therapeutic Support Pillow',
@@ -1198,29 +1494,167 @@ class MSH_Contextual_Meta_Generator {
     }
 
     private function generate_facility_meta(array $context) {
+        if ($this->is_healthcare_industry($this->industry)) {
+            return [
+                'title' => $this->clean_text("{$this->business_name} Clinic - {$this->location} Rehabilitation Facility"),
+                'alt_text' => $this->clean_text("Interior view of {$this->business_name} rehabilitation clinic in {$this->location}"),
+                'caption' => $this->clean_text("Modern rehabilitation facility at {$this->business_name} {$this->location}"),
+                'description' => $this->clean_text("Modern rehabilitation facility at {$this->business_name} {$this->location}. Professional physiotherapy and chiropractic clinic with specialized treatment rooms and WSIB approved programs.")
+            ];
+        }
+
+        $industry_label = $this->get_industry_label_or_default();
+        $location = $this->location;
+
+        $title = $this->business_name !== ''
+            ? sprintf(__('%1$s Workspace – %2$s', 'msh-image-optimizer'), $this->business_name, $location)
+            : sprintf(__('Workspace – %s', 'msh-image-optimizer'), $location);
+
+        $alt_text = $this->business_name !== ''
+            ? sprintf(__('Interior view of %1$s%2$s.', 'msh-image-optimizer'), $this->business_name, $this->get_location_phrase(' in '))
+            : sprintf(__('Interior workspace%1$s.', 'msh-image-optimizer'), $this->get_location_phrase(' in '));
+
+        $caption = sprintf(
+            __('Collaborative space for %1$s team members.', 'msh-image-optimizer'),
+            strtolower($industry_label)
+        );
+
+        $description_parts = array_filter([
+            sprintf(
+                __('The %1$s workspace%2$s designed for %3$s collaboration.', 'msh-image-optimizer'),
+                $this->business_name !== '' ? $this->business_name : __('business', 'msh-image-optimizer'),
+                $this->get_location_phrase(' in '),
+                strtolower($industry_label)
+            ),
+            $this->normalize_sentence($this->uvp),
+            $this->get_target_audience_sentence(),
+            $this->get_cta_sentence(),
+        ]);
+
         return [
-            'title' => $this->clean_text("{$this->business_name} Clinic - {$this->location} Rehabilitation Facility"),
-            'alt_text' => $this->clean_text("Interior view of {$this->business_name} rehabilitation clinic in {$this->location}"),
-            'caption' => $this->clean_text("Modern rehabilitation facility at {$this->business_name} {$this->location}"),
-            'description' => $this->clean_text("Modern rehabilitation facility at {$this->business_name} {$this->location}. Professional physiotherapy and chiropractic clinic with specialized treatment rooms and WSIB approved programs.")
+            'title' => $this->clean_text($this->ensure_unique_title($title, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text(implode(' ', $description_parts))
         ];
     }
 
     private function generate_equipment_meta(array $context) {
+        if ($this->is_healthcare_industry($this->industry)) {
+            return [
+                'title' => $this->clean_text("Therapeutic Equipment - {$this->business_name} {$this->location}"),
+                'alt_text' => $this->clean_text("Therapeutic rehabilitation equipment at {$this->business_name} clinic in {$this->location}"),
+                'caption' => $this->clean_text("Advanced therapeutic equipment for rehabilitation at {$this->business_name}"),
+                'description' => $this->clean_text("Professional rehabilitation equipment at {$this->business_name} {$this->location}. Advanced therapeutic technology supporting physiotherapy, chiropractic care, and patient recovery.")
+            ];
+        }
+
+        $industry_label = $this->get_industry_label_or_default();
+        $title = __('Operational Equipment', 'msh-image-optimizer');
+        $company_segment = $this->business_name !== '' ? $this->business_name : $industry_label;
+        if ($company_segment !== '') {
+            $title .= ' – ' . $company_segment;
+        }
+        if ($this->location !== '') {
+            $title .= ' | ' . $this->location;
+        }
+
+        $alt_text = sprintf(
+            __('Operational equipment at %1$s%2$s.', 'msh-image-optimizer'),
+            $this->business_name !== '' ? $this->business_name : __('the business', 'msh-image-optimizer'),
+            $this->get_location_phrase(' in ')
+        );
+
+        $caption = sprintf(
+            __('Equipment supporting %s delivery.', 'msh-image-optimizer'),
+            strtolower($industry_label)
+        );
+
+        $description_parts = array_filter([
+            sprintf(
+                __('Professional equipment used by %1$s for %2$s.', 'msh-image-optimizer'),
+                $this->business_name !== '' ? $this->business_name : __('the business', 'msh-image-optimizer'),
+                strtolower($industry_label)
+            ),
+            $this->normalize_sentence($this->uvp),
+            $this->get_cta_sentence(),
+        ]);
+
         return [
-            'title' => $this->clean_text("Therapeutic Equipment - {$this->business_name} {$this->location}"),
-            'alt_text' => $this->clean_text("Therapeutic rehabilitation equipment at {$this->business_name} clinic in {$this->location}"),
-            'caption' => $this->clean_text("Advanced therapeutic equipment for rehabilitation at {$this->business_name}"),
-            'description' => $this->clean_text("Professional rehabilitation equipment at {$this->business_name} {$this->location}. Advanced therapeutic technology supporting physiotherapy, chiropractic care, and patient recovery.")
+            'title' => $this->clean_text($this->ensure_unique_title($title, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text(implode(' ', $description_parts))
         ];
     }
 
     private function generate_business_meta(array $context) {
+        $industry_label = $this->get_industry_label_or_default();
+        $location = $this->location;
+
+        $title_parts = array_filter([$this->business_name, $industry_label]);
+        $base_title = implode(' – ', $title_parts);
+        if ($base_title === '') {
+            $base_title = $this->business_name !== '' ? $this->business_name : __('Business Overview', 'msh-image-optimizer');
+        }
+
+        $title = $base_title;
+        if ($location !== '') {
+            $title .= ' | ' . $location;
+        }
+
+        if ($this->business_name !== '') {
+            $alt_text = $location !== ''
+                ? sprintf(__('Brand imagery for %1$s in %2$s.', 'msh-image-optimizer'), $this->business_name, $location)
+                : sprintf(__('Brand imagery for %s.', 'msh-image-optimizer'), $this->business_name);
+        } else {
+            $alt_text = $location !== ''
+                ? sprintf(__('Brand imagery in %s.', 'msh-image-optimizer'), $location)
+                : __('Brand imagery preview.', 'msh-image-optimizer');
+        }
+
+        $caption_candidates = [
+            $this->normalize_sentence($this->uvp),
+            $this->normalize_sentence($this->pain_points),
+            $this->get_target_audience_sentence(),
+        ];
+
+        $caption = '';
+        foreach ($caption_candidates as $candidate) {
+            if ($candidate !== '') {
+                $caption = $candidate;
+                break;
+            }
+        }
+
+        if ($caption === '') {
+            $caption = $this->business_name !== ''
+                ? sprintf(__('Snapshot from %s.', 'msh-image-optimizer'), $this->business_name)
+                : __('Snapshot from the business.', 'msh-image-optimizer');
+        }
+
+        $provider_name = $this->business_name !== '' ? $this->business_name : __('This business', 'msh-image-optimizer');
+
+        $description_parts = array_filter([
+            sprintf(
+                __('%1$s%3$s provides %2$s.', 'msh-image-optimizer'),
+                $provider_name,
+                $this->get_industry_descriptor(),
+                $this->get_location_phrase(' in ')
+            ),
+            $this->normalize_sentence($this->uvp),
+            $this->normalize_sentence($this->pain_points),
+            $this->get_target_audience_sentence(),
+            $this->get_cta_sentence(),
+        ]);
+
+        $description = implode(' ', $description_parts);
+
         return [
-            'title' => $this->clean_text("{$this->business_name} - {$this->location} Rehabilitation Services"),
-            'alt_text' => $this->clean_text("{$this->business_name} rehabilitation clinic branding in {$this->location}"),
-            'caption' => $this->clean_text("{$this->business_name} providing professional rehabilitation services in {$this->location}"),
-            'description' => $this->clean_text("{$this->business_name} {$this->location} rehabilitation clinic. Professional physiotherapy, chiropractic, and workplace injury rehabilitation services. WSIB approved provider with direct billing available for MVA recovery and first responder care.")
+            'title' => $this->clean_text($this->ensure_unique_title($title, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
         ];
     }
 

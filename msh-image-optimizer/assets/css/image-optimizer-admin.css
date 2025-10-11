@@ -514,7 +514,12 @@ select.msh-select,
 #msh-context-selector option:hover,
 #msh-context-selector option:checked,
 #msh-context-selector option:active,
-#msh-context-selector option[selected] {
+#msh-context-selector option[selected],
+.context-dropdown option:hover,
+.context-dropdown option:focus,
+.context-dropdown option:checked,
+.context-dropdown option:active,
+.context-dropdown option[selected] {
     background-color: #faf9f6 !important;
     color: #35332f !important;
     outline: none !important;
