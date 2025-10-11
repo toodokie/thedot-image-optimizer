@@ -735,7 +735,6 @@ select.msh-select,
     gap: var(--section-gap-xs);
     padding: 0;
     margin: 0;
-    position: relative;
 }
 
 .summary-header::-webkit-details-marker {
@@ -746,19 +745,23 @@ select.msh-select,
     display: none;
 }
 
-.summary-header::after {
+.summary-header h2 {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.summary-header h2::after {
     content: '▼';
-    font-size: 1.5rem;
+    font-size: 1rem;
     color: #35332f;
     transition: transform 0.2s ease;
-    position: absolute;
-    right: 0;
-    top: 0;
+    display: inline-block;
     line-height: 1;
 }
 
-.summary-collapsible:not([open]) .summary-header::after {
-    transform: rotate(-90deg);
+.summary-collapsible:not([open]) .summary-header h2::after {
+    transform: rotate(90deg);
 }
 
 .summary-content {
