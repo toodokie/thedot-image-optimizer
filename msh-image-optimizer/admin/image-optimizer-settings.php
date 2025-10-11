@@ -49,9 +49,16 @@ class MSH_Image_Optimizer_Settings {
         }
 
         wp_enqueue_style(
+            'msh-image-optimizer-fonts',
+            'https://use.typekit.net/gac6jnd.css',
+            array(),
+            null
+        );
+
+        wp_enqueue_style(
             'msh-image-optimizer-settings',
             trailingslashit(MSH_IO_ASSETS_URL) . 'css/image-optimizer-settings.css',
-            array(),
+            array('msh-image-optimizer-fonts'),
             MSH_Image_Optimizer_Plugin::VERSION
         );
 

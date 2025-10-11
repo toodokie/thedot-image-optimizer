@@ -761,7 +761,7 @@ select.msh-select,
 }
 
 .summary-collapsible:not([open]) .summary-header h2::after {
-    transform: rotate(90deg);
+    transform: rotate(180deg);
 }
 
 .summary-content {
