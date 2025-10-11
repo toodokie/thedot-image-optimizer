@@ -156,7 +156,7 @@ class MSH_Contextual_Meta_Generator {
             'type' => $this->get_default_context_type(),
             'page_type' => null,
             'page_title' => null,
-            'service' => 'rehabilitation',
+            'service' => $this->is_healthcare_industry($this->industry) ? 'rehabilitation' : '',
             'parent_id' => 0,
             'tags' => [],
             'manual' => false,
@@ -211,7 +211,7 @@ class MSH_Contextual_Meta_Generator {
             }
 
             $icon_context = $this->detect_icon_context($attachment_id, $context, $width, $height);
-            if ($icon_context && $context['type'] === 'clinical') {
+            if ($icon_context && in_array($context['type'], ['clinical', 'business'], true)) {
                 $context = array_merge($context, $icon_context);
             }
 
