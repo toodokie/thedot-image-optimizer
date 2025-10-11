@@ -1,0 +1,129 @@
+/**
+ * MSH Image Optimizer - Typography Variables
+ *
+ * Centralized typography system for consistent styling across all pages.
+ * Based on The Dot Creative brand standards with simplified, maintainable values.
+ *
+ * @see /docs/TYPOGRAPHY_CONSOLIDATION_PLAN.md
+ * @see /docs/MSH_IMAGE_OPTIMIZER_STYLE_GUIDE.md
+ */
+
+:root {
+  /* ============================================
+     FONT FAMILIES
+     Font family usage rules:
+     - Primary (futura-pt): Body, forms, UI, buttons, h1, h2, labels
+     - Secondary (ff-real-text-pro): h3, h4, descriptions, helper text
+     ============================================ */
+  --font-primary: 'futura-pt', sans-serif;
+  --font-secondary: 'ff-real-text-pro', sans-serif;
+
+  /* ============================================
+     FONT WEIGHTS (Simplified to 3 core values)
+     This is a "light brand" - use 300-400 primarily
+     ============================================ */
+  --weight-light: 300;       /* Body, inputs, most UI elements */
+  --weight-normal: 400;      /* Headings, buttons, labels, emphasis */
+  --weight-medium: 500;      /* Strong emphasis only (rare use) */
+
+  /* ============================================
+     CORE FONT SIZES (Desktop-first, 16px base)
+     ============================================ */
+  --text-xs: 0.875rem;       /* 14px - Helper text, small notes, disclaimers */
+  --text-sm: 0.9375rem;      /* 15px - Small labels, meta info, secondary text */
+  --text-base: 1rem;         /* 16px - Body text, forms, standard UI */
+  --text-lg: 1.125rem;       /* 18px - Large body, emphasis text */
+  --text-xl: 1.25rem;        /* 20px - Section subtitles, callouts */
+
+  /* ============================================
+     HEADING SIZES (Fluid/Responsive with clamp)
+     Automatically scale between mobile and desktop
+     ============================================ */
+  --text-h4: clamp(1.125rem, 2.5vw, 1.5rem);     /* 18px - 24px */
+  --text-h3: clamp(1.25rem, 3vw, 1.875rem);      /* 20px - 30px */
+  --text-h2: clamp(1.5rem, 4vw, 2.5rem);         /* 24px - 40px */
+  --text-h1: clamp(2rem, 6vw, 4rem);             /* 32px - 64px */
+
+  /* ============================================
+     FORM-SPECIFIC TYPOGRAPHY
+     Consistent sizing across all form elements
+     ============================================ */
+  --form-input-text: 1rem;        /* 16px - All input field text */
+  --form-label-text: 0.9375rem;   /* 15px - All form labels */
+  --form-helper-text: 0.875rem;   /* 14px - Helper/hint text below fields */
+  --form-section-title: 1.5rem;   /* 24px - Form section headers */
+
+  /* ============================================
+     FORM ELEMENT SIZING
+     Standardized heights, padding, and rounding
+     ============================================ */
+  --input-height: 48px;              /* Standard height for text inputs */
+  --input-padding: 12px 16px;        /* Vertical and horizontal padding */
+  --input-border-radius: 4px;        /* Subtle rounding for inputs */
+
+  --select-height: 52px;             /* Taller to prevent text cutoff */
+  --select-padding: 14px 16px;       /* More vertical padding */
+
+  --textarea-min-height: 120px;      /* Minimum height for textareas */
+  --textarea-padding: 12px 16px;     /* Same as inputs */
+
+  --button-padding: 12px 24px;       /* Standard button padding */
+  --button-border-radius: 6px;       /* Slightly rounder than inputs */
+
+  /* ============================================
+     LINE HEIGHTS
+     Optimized for readability and vertical rhythm
+     ============================================ */
+  --leading-tight: 1.2;      /* Headings, compact text */
+  --leading-snug: 1.3;       /* Subheadings, labels */
+  --leading-normal: 1.5;     /* Body text, forms */
+  --leading-relaxed: 1.6;    /* Paragraphs, long-form content */
+
+  /* ============================================
+     SPACING FOR TYPOGRAPHY
+     Consistent vertical rhythm throughout forms
+     ============================================ */
+  --space-label-input: 8px;          /* Gap between label and input field */
+  --space-field-group: 20px;         /* Gap between form field groups */
+  --space-section: 32px;             /* Gap between major form sections */
+  --space-radio-checkbox-text: 8px;  /* Top/bottom margin for radio/checkbox spans ⚠️ CRITICAL */
+}
+
+/**
+ * ============================================
+ * USAGE EXAMPLES
+ * ============================================
+ *
+ * Input field:
+ * input[type="text"] {
+ *   font-family: var(--font-primary);
+ *   font-size: var(--form-input-text);
+ *   font-weight: var(--weight-light);
+ *   height: var(--input-height);
+ *   padding: var(--input-padding);
+ * }
+ *
+ * Label:
+ * label {
+ *   font-family: var(--font-primary);
+ *   font-size: var(--form-label-text);
+ *   font-weight: var(--weight-normal);
+ *   margin-bottom: var(--space-label-input);
+ * }
+ *
+ * Heading:
+ * h2 {
+ *   font-family: var(--font-primary);
+ *   font-size: var(--text-h2);
+ *   font-weight: var(--weight-normal);
+ *   line-height: var(--leading-tight);
+ * }
+ *
+ * Helper text:
+ * .helper-text {
+ *   font-family: var(--font-secondary);
+ *   font-size: var(--form-helper-text);
+ *   font-weight: var(--weight-light);
+ *   line-height: var(--leading-normal);
+ * }
+ */

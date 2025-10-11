@@ -195,4 +195,43 @@ class MSH_Image_Optimizer_Context_Helper {
 
         return $location;
     }
+
+    /**
+     * Retrieve and sanitize stored context profiles.
+     *
+     * @return array
+     */
+    public static function get_profiles() {
+        $profiles = get_option('msh_onboarding_context_profiles', array());
+        if (!is_array($profiles)) {
+            return array();
+        }
+
+        $sanitized = array();
+        foreach ($profiles as $profile_id => $profile) {
+            if (!is_array($profile)) {
+                continue;
+            }
+
+            $context = isset($profile['context'])
+                ? self::sanitize_context($profile['context'], false)
+                : array();
+
+            $sanitized_id = isset($profile['id']) ? sanitize_title($profile['id']) : sanitize_title($profile_id);
+            if (empty($sanitized_id)) {
+                $sanitized_id = uniqid('context_', false);
+            }
+
+            $sanitized[$sanitized_id] = array(
+                'id' => $sanitized_id,
+                'label' => isset($profile['label']) ? sanitize_text_field($profile['label']) : '',
+                'usage' => isset($profile['usage']) ? sanitize_text_field($profile['usage']) : '',
+                'locale' => isset($profile['locale']) ? sanitize_text_field($profile['locale']) : '',
+                'notes' => isset($profile['notes']) ? sanitize_textarea_field($profile['notes']) : '',
+                'context' => $context,
+            );
+        }
+
+        return $sanitized;
+    }
 }

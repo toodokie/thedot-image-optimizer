@@ -71,7 +71,9 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-media-cleanup.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-webp-delivery.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-admin.php';
+        require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-settings.php';
     }
 
     public function init() {

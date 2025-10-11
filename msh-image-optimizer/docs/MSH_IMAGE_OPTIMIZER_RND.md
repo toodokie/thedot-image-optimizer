@@ -22,6 +22,103 @@ This file contains ongoing research, experimental approaches, performance invest
 
 ---
 
+## AI Implementation Roadmap (Planning Phase)
+
+> **Status:** Planning | **Priority:** High | **Estimated Build:** 2–3 weeks for Phase 1 | **ROI:** 10–20× user time savings  
+> Objective: deliver a dual-mode system (Manual / AI / Hybrid) so sites can toggle between zero-cost optimisation and AI-assisted automation without migrating away from the plugin.
+
+### Provider Landscape
+
+- **Primary (recommended start)** – OpenAI  
+  GPT‑4 Vision for content analysis, GPT‑3.5 Turbo for metadata, Embeddings API for similarity.  
+  ✅ Best quality, easy integration, single vendor for text + vision.  
+  ❌ Requires outbound requests, per-use cost, data leaves site.
+- **Alternatives (later phases)** – Anthropic Claude, Google Vision, Amazon Rekognition, self-hosted LLMs (privacy but higher infra cost / lower quality).
+
+### Pricing & Monetisation Concept
+
+- **Hybrid tiers with bundled credits**
+  - Free: manual tools only, 0 credits.
+  - Pro ($99/yr): everything in free + duplicate cleanup + safe rename + **50 AI credits/month**.
+  - Business ($199/yr): 5 sites, **500 credits/month**, advanced AI (duplicate detection, quality scoring).
+  - Agency ($399/yr): unlimited sites, **2 000 credits/month**, multilingual metadata, reporting, API.
+- **Add-ons**
+  - Credit packs (100/$5, 500/$20, 1 000/$35, 5 000/$150).
+  - AI Unlimited add-on ($49/mo/site) for heavy usage.
+  - Bring-your-own-key mode (bypass credit billing; user pays OpenAI directly).
+- **Unit economics** – OpenAI stack ≈ $0.03 per analysed image (API + infra + support). Pricing yields 50–80 % margins on AI usage.
+
+### Core AI Feature Set
+
+1. **Visual Context Detection** – GPT‑4 Vision to describe subjects, environments, keywords, quality score.  
+2. **Intelligent Metadata** – GPT‑3.5 prompts tuned for healthcare/local SEO to generate title/alt/caption/description.  
+3. **Visual Duplicate Detection** – Use embeddings + cosine similarity to spot near-duplicates beyond matching filenames.  
+4. **Content-aware Filenames** – Suggest SEO-friendly slugs based on detected content + business/location data.  
+5. **Learning System** – Record user adjustments → refine prompts / add business-specific rules over time.
+
+### Implementation Phases
+
+| Phase | Timeframe | Deliverables |
+|-------|-----------|--------------|
+| **Phase 1 – Foundation (Week 1)** | OpenAI wrapper, error handling, caching, credit manager schema, settings UI (mode selector, credit balance, BYOK field). |
+| **Phase 2 – Core Features (Week 2)** | Meta generation (GPT‑3.5), vision analysis (GPT‑4), duplicate detection via embeddings, UI for reviewing AI output with manual fallback. |
+| **Phase 3 – Polish (Week 3)** | Queue/batch processing, progress indicators, learning system hooks, automated tests, documentation + onboarding tutorials. |
+
+### UI Concepts
+
+- Mode selector cards (Manual / AI / Hybrid) with copy highlighting speed vs control.  
+- AI configuration panel showing credit balance, toggles for vision/meta/duplicate modules, BYOK input, purchase/upgrade actions.  
+- Upsell messaging when free/pro users click AI actions (e.g., “Upgrade to unlock AI metadata – 50 credits included”).
+
+### Architecture Sketch
+
+```php
+class MSH_AI_Manager {
+    private $provider;        // Implements MSH_AI_Provider_Interface
+    private $credit_manager;  // Tracks plan limits & purchased credits
+    private $mode;            // 'manual', 'ai', 'hybrid'
+}
+
+interface MSH_AI_Provider_Interface {
+    public function analyze_image($attachment_id);
+    public function generate_meta(array $context);
+    public function get_embeddings(string $text);
+}
+
+class MSH_OpenAI_Provider implements MSH_AI_Provider_Interface {
+    // Handles GPT vision/text/embedding calls + retries
+}
+
+class MSH_AI_Credit_Manager {
+    public function has_credits(int $user_id, int $required = 1): bool;
+    public function deduct_credits(int $user_id, int $amount = 1): string; // 'monthly_allowance' or 'purchased'
+    public function get_balance(int $user_id): array;
+}
+```
+
+- Credits stored per licence/site (Freemius compatible) with monthly allowance + rollover + purchased packs.
+- Learning service records original vs corrected AI metadata to refine prompts later.
+- Queue-friendly AI calls (Action Scheduler / cron) with status surfaced in dashboard.
+
+### Monetisation Snapshot
+
+- Year 1 projections with AI: ~$28 K gross vs ~$14 K without AI (73 % uplift).  
+- Year 2: ~$86 K gross (~$67 K net) assuming growth in Pro/Business/Agency tiers.  
+- Year 3: ~$172 K gross (~$135 K net) with expanded customer base + AI upsells.
+
+### Launch Strategy & Success Metrics
+
+1. Stabilise standalone build + onboarding/settings (in progress).  
+2. Phase 1 AI (meta + credit system) in 2–3 weeks.  
+3. Release Free + Pro with bundled AI credits; monitor conversion & overage purchases.  
+4. Expand to vision/duplicate/quality, BYOK, multilingual in following releases.
+
+**KPIs**: API success rate >95 %, AI response <2 s, 30 % of users trial AI, 50 % conversion from trial to paid, support tickets <5 % of AI runs.
+
+> Refer back to this section when scoping AI development sprints; see `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md` for the condensed checklist/live status.
+
+---
+
 ## 🚨 CRITICAL CORRECTIONS (Based on Code Review)
 
 **This document contained several fundamental inaccuracies that have been corrected:**

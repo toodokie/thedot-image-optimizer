@@ -75,6 +75,1123 @@
         }
     };
 
+    const WIZARD_STORAGE_KEY = 'msh_wizard_state_v1';
+
+    const Onboarding = {
+        init() {
+            this.$container = $('#msh-onboarding-container');
+            if (!this.$container.length) {
+                return;
+            }
+
+            this.$formWrapper = $('#msh-onboarding-form');
+            this.$form = $('#msh-onboarding-form-element');
+            this.$steps = this.$form.find('.onboarding-step');
+            this.$message = $('#onboarding-message');
+            this.$progressBar = $('#onboarding-progress-bar');
+            this.$progressLabel = $('#onboarding-progress-label');
+            this.$btnPrev = this.$formWrapper.find('.wizard-prev');
+            this.$btnNext = this.$formWrapper.find('.wizard-next');
+            this.$btnSave = this.$formWrapper.find('.wizard-save');
+            this.$summary = $('#msh-onboarding-summary');
+            this.$summarySettings = this.$summary.find('.summary-settings');
+            this.$summaryReset = this.$summary.find('.summary-reset');
+            this.settingsUrl = mshImageOptimizer.settingsUrl || '';
+            this.$indexStatusValue = $('#summary-index-status-value');
+
+            this.totalSteps = this.$steps.length || 1;
+            this.currentStep = 1;
+            this.isBusy = false;
+            this.isComplete = Boolean(mshImageOptimizer.onboardingComplete);
+            this.labels = mshImageOptimizer.onboardingLabels || {};
+            this.strings = mshImageOptimizer.strings || {};
+            this.context = $.extend(true, {}, mshImageOptimizer.onboardingContext || {});
+            this.summary = $.extend(true, {}, mshImageOptimizer.onboardingSummary || {});
+            this.primaryContext = $.extend(true, {}, this.context);
+            this.primarySummary = $.extend(true, {}, this.summary);
+            this.profiles = Array.isArray(window.mshImageOptimizer.contextProfiles) ? window.mshImageOptimizer.contextProfiles : [];
+            this.profileMap = {};
+            (this.profiles || []).forEach((profile) => {
+                if (profile && profile.id) {
+                    this.profileMap[profile.id] = profile;
+                }
+            });
+            this.activeProfileId = window.mshImageOptimizer.activeProfile || 'primary';
+            this.$contextSelector = $('#msh-context-selector');
+            this.$activeLabel = $('#summary-active-label');
+            this.contextChangeInFlight = false;
+            this.indexStats = window.mshImageOptimizer.indexStats || null;
+
+            this.prefillForm();
+            this.bindEvents();
+            this.initializeContextSwitcher();
+
+            if (this.isComplete) {
+                this.showSummary();
+            } else {
+                this.showForm(true);
+            }
+
+            this.setActiveProfile(this.activeProfileId, { suppressMessage: true });
+            this.updateIndexStatusLabel(this.indexStats || null);
+            this.updateProgress();
+            this.updateNav();
+        },
+
+        bindEvents() {
+            if (!this.$form.length) {
+                return;
+            }
+
+            this.$btnNext.on('click', (event) => {
+                event.preventDefault();
+                this.nextStep();
+            });
+
+            this.$btnPrev.on('click', (event) => {
+                event.preventDefault();
+                this.prevStep();
+            });
+
+            this.$btnSave.on('click', (event) => {
+                event.preventDefault();
+                this.save();
+            });
+
+            this.$summarySettings.on('click', (event) => {
+                event.preventDefault();
+                this.openSettings();
+            });
+
+            this.$summaryReset.on('click', (event) => {
+                event.preventDefault();
+                this.resetContext();
+            });
+
+            this.$form.on('input change', 'input, select, textarea', (event) => {
+                const $field = $(event.currentTarget);
+                if ($field.hasClass('field-error')) {
+                    $field.removeClass('field-error');
+                }
+                const $radioWrapper = $field.closest('.radio-grid');
+                if ($radioWrapper.hasClass('field-error')) {
+                    $radioWrapper.removeClass('field-error');
+                }
+                if (this.$message.is(':visible')) {
+                    this.hideMessage();
+                }
+            });
+        },
+
+        initializeContextSwitcher() {
+            if (!this.$contextSelector || !this.$contextSelector.length) {
+                return;
+            }
+
+            this.$contextSelector.on('change', (event) => {
+                const selected = $(event.currentTarget).val();
+                this.handleContextChange(selected);
+            });
+        },
+
+        getContextPayload(profileId) {
+            if (!profileId || profileId === 'primary') {
+                return {
+                    id: 'primary',
+                    context: $.extend(true, {}, this.primaryContext || {}),
+                    summary: $.extend(true, {}, this.primarySummary || {}),
+                    label: this.getProfileLabel('primary')
+                };
+            }
+
+            const profile = this.profileMap[profileId];
+            if (!profile) {
+                return null;
+            }
+
+            const context = profile.context ? $.extend(true, {}, profile.context) : {};
+            const summary = profile.summary && Object.keys(profile.summary || {}).length
+                ? $.extend(true, {}, profile.summary)
+                : this.formatSummary(context);
+
+            return {
+                id: profileId,
+                context,
+                summary,
+                label: this.getProfileLabel(profileId)
+            };
+        },
+
+        getProfileLabel(profileId) {
+            if (profileId === 'primary' || !profileId) {
+                const template = this.strings.primaryProfileLabel || 'Primary – %s';
+                const fallback = this.strings.primaryContextFallback || 'Primary Context';
+                const name = this.primaryContext && this.primaryContext.business_name
+                    ? this.primaryContext.business_name
+                    : fallback;
+                return template.replace('%s', name);
+            }
+
+            const profile = this.profileMap[profileId];
+            if (!profile) {
+                return '';
+            }
+
+            const template = this.strings.profileLabelTemplate || 'Profile – %s';
+            const fallback = this.strings.profileContextFallback || 'Context profile';
+            const label = profile.label || fallback;
+            return template.replace('%s', label);
+        },
+
+        setActiveProfile(profileId, options = {}) {
+            const settings = $.extend({
+                contextOverride: null,
+                summaryOverride: null,
+                labelOverride: null,
+                suppressMessage: false
+            }, options || {});
+
+            const payload = this.getContextPayload(profileId);
+            if (!payload) {
+                return;
+            }
+
+            const context = settings.contextOverride ? $.extend(true, {}, settings.contextOverride) : payload.context;
+            const summary = settings.summaryOverride ? $.extend(true, {}, settings.summaryOverride) : payload.summary;
+
+            if (profileId === 'primary') {
+                this.primaryContext = $.extend(true, {}, context);
+                this.primarySummary = $.extend(true, {}, summary);
+            } else if (this.profileMap[profileId]) {
+                this.profileMap[profileId].context = $.extend(true, {}, context);
+                this.profileMap[profileId].summary = $.extend(true, {}, summary);
+            }
+
+            this.activeProfileId = profileId;
+            this.context = $.extend(true, {}, context);
+            this.summary = $.extend(true, {}, summary);
+            this.applySummaryData(this.summary);
+            this.updateActiveLabel(settings.labelOverride || payload.label || '');
+
+            if (this.$contextSelector && this.$contextSelector.length) {
+                this.$contextSelector.val(profileId);
+            }
+
+            window.mshImageOptimizer.activeProfile = profileId;
+            window.mshImageOptimizer.onboardingContext = this.context;
+            window.mshImageOptimizer.onboardingSummary = this.summary;
+            window.mshImageOptimizer.indexStats = this.indexStats;
+            this.updateIndexStatusLabel(this.indexStats || null);
+
+            if (!settings.suppressMessage && this.strings.contextSwitchSuccess) {
+                this.showMessage('success', this.strings.contextSwitchSuccess);
+            }
+        },
+
+        updateActiveLabel(label) {
+            if (!this.$activeLabel || !this.$activeLabel.length) {
+                return;
+            }
+            this.$activeLabel.text(label || '');
+        },
+
+        updateIndexStatusLabel(indexStats = null, queued = false) {
+            if (!this.$indexStatusValue || !this.$indexStatusValue.length) {
+                return;
+            }
+
+            if (queued) {
+                this.$indexStatusValue
+                    .text(this.strings.indexStatusQueued || 'Usage index building…');
+                this.$indexStatusValue.attr('data-status', 'queued');
+                return;
+            }
+
+            if (indexStats && indexStats.last_update_formatted) {
+                const template = this.strings.indexStatusReady || 'Usage index ready – last refreshed %s';
+                this.$indexStatusValue
+                    .text(template.replace('%s', indexStats.last_update_formatted));
+                this.$indexStatusValue.attr('data-status', 'ready');
+            } else {
+                this.$indexStatusValue
+                    .text(this.strings.indexStatusNotBuilt || 'Usage index not built yet');
+                this.$indexStatusValue.attr('data-status', 'none');
+            }
+        },
+
+        disableContextSelector(disabled) {
+            if (!this.$contextSelector || !this.$contextSelector.length) {
+                return;
+            }
+            this.$contextSelector.prop('disabled', Boolean(disabled));
+        },
+
+        handleContextChange(profileId) {
+            const targetId = profileId || 'primary';
+            if (targetId === this.activeProfileId || this.contextChangeInFlight) {
+                if (this.$contextSelector && this.$contextSelector.length) {
+                    this.$contextSelector.val(this.activeProfileId);
+                }
+                return;
+            }
+
+            if (!this.profileMap[targetId] && targetId !== 'primary') {
+                if (this.$contextSelector && this.$contextSelector.length) {
+                    this.$contextSelector.val(this.activeProfileId);
+                }
+                return;
+            }
+
+            this.contextChangeInFlight = true;
+            this.disableContextSelector(true);
+            this.hideMessage();
+
+            const previous = this.activeProfileId;
+
+            $.post(mshImageOptimizer.ajaxurl, {
+                action: 'msh_set_active_context_profile',
+                nonce: CONFIG.nonce,
+                profile_id: targetId
+            })
+            .done((response) => {
+                const data = response && response.data ? response.data : {};
+                const context = data.context || this.getContextPayload(targetId)?.context;
+                const summary = data.summary || this.getContextPayload(targetId)?.summary;
+                const label = data.label || this.getProfileLabel(targetId);
+
+                if (data.index_stats) {
+                    this.indexStats = data.index_stats;
+                }
+
+                this.setActiveProfile(targetId, {
+                    contextOverride: context,
+                    summaryOverride: summary,
+                    labelOverride: label,
+                    suppressMessage: true
+                });
+
+                this.updateIndexStatusLabel(this.indexStats || null);
+
+                if (data.message) {
+                    this.showMessage('success', data.message);
+                } else if (this.strings.contextSwitchSuccess) {
+                    this.showMessage('success', this.strings.contextSwitchSuccess);
+                }
+            })
+            .fail(() => {
+                if (this.$contextSelector && this.$contextSelector.length) {
+                    this.$contextSelector.val(previous);
+                }
+                this.showMessage('error', this.strings.contextSwitchError || 'Unable to change the active context right now.');
+            })
+            .always(() => {
+                this.contextChangeInFlight = false;
+                this.disableContextSelector(false);
+            });
+        },
+
+        prefillForm() {
+            if (!this.$form.length) {
+                return;
+            }
+
+            this.fillFormFromContext(this.context);
+        },
+
+        fillFormFromContext(context) {
+            const data = context || {};
+
+            this.$form.find('input[type="text"], input[type="search"], textarea').each((_, element) => {
+                const $element = $(element);
+                const name = $element.attr('name');
+                if (!name || name === 'ai_interest') {
+                    return;
+                }
+                const value = Object.prototype.hasOwnProperty.call(data, name) ? data[name] : '';
+                $element.val(value);
+            });
+
+            this.$form.find('select').each((_, element) => {
+                const $element = $(element);
+                const name = $element.attr('name');
+                if (!name) {
+                    return;
+                }
+                const value = Object.prototype.hasOwnProperty.call(data, name) ? data[name] : '';
+                $element.val(value);
+            });
+
+            this.$form.find('input[name="brand_voice"]').prop('checked', false);
+            if (data.brand_voice) {
+                this.$form.find(`input[name="brand_voice"][value="${data.brand_voice}"]`).prop('checked', true);
+            }
+
+            this.$form.find('input[name="ai_interest"]').prop('checked', Boolean(data.ai_interest));
+        },
+
+        showForm(resetStep = false) {
+            this.isComplete = false;
+            this.clearAllErrors();
+            this.hideMessage();
+            this.$summary.hide();
+            this.$formWrapper.show();
+            if (resetStep) {
+                this.currentStep = 1;
+            }
+            this.showStep(this.currentStep);
+            this.updateProgress();
+            this.updateNav();
+        },
+
+        showSummary() {
+            this.isComplete = true;
+            this.$formWrapper.hide();
+            this.$summary.show();
+            this.updateProgress();
+            this.updateNav();
+        },
+
+        showStep(step) {
+            const targetStep = Math.min(Math.max(step, 1), this.totalSteps);
+            this.currentStep = targetStep;
+            this.$steps.removeClass('is-active');
+            const $activeStep = this.$steps.filter(`[data-step="${targetStep}"]`);
+            if ($activeStep.length) {
+                $activeStep.addClass('is-active');
+            }
+            this.updateProgress();
+            this.updateNav();
+        },
+
+        nextStep() {
+            if (this.isBusy) {
+                return;
+            }
+            if (!this.validateStep(this.currentStep)) {
+                return;
+            }
+            if (this.currentStep < this.totalSteps) {
+                this.showStep(this.currentStep + 1);
+            }
+        },
+
+        prevStep() {
+            if (this.isBusy) {
+                return;
+            }
+            if (this.currentStep > 1) {
+                this.showStep(this.currentStep - 1);
+            }
+        },
+
+        updateProgress() {
+            if (!this.$progressBar.length) {
+                return;
+            }
+
+            if (this.isComplete) {
+                this.$progressBar.css('width', '100%');
+                if (this.$progressLabel.length) {
+                    this.$progressLabel.text(
+                        this.strings.onboardingProgressComplete || 'Setup complete'
+                    );
+                }
+                return;
+            }
+
+            const percent = Math.round(((this.currentStep - 1) / Math.max(this.totalSteps, 1)) * 100);
+            this.$progressBar.css('width', `${percent}%`);
+
+            if (this.$progressLabel.length) {
+                const template = this.strings.onboardingProgressLabel || 'Step %1$d of %2$d';
+                this.$progressLabel.text(
+                    template.replace('%1$d', this.currentStep).replace('%2$d', this.totalSteps)
+                );
+            }
+        },
+
+        updateNav() {
+            const atFirstStep = this.currentStep <= 1;
+            const atLastStep = this.currentStep >= this.totalSteps;
+
+            this.$btnPrev.prop('disabled', this.isBusy || atFirstStep);
+            this.$btnNext.toggle(!atLastStep);
+            this.$btnNext.prop('disabled', this.isBusy);
+            this.$btnSave.toggle(atLastStep);
+            this.$btnSave.prop('disabled', this.isBusy);
+            this.$summaryReset.prop('disabled', this.isBusy);
+
+            if (this.isComplete && this.$summarySettings && this.$summarySettings.length) {
+                if (this.settingsUrl) {
+                    this.$summarySettings.attr('href', this.settingsUrl);
+                } else {
+                    this.$summarySettings.attr('href', '#');
+                }
+            }
+        },
+
+        getStepRequiredFields(step) {
+            switch (step) {
+                case 1:
+                    return ['business_name', 'industry', 'business_type'];
+                case 2:
+                    return ['target_audience'];
+                case 3:
+                    return ['brand_voice', 'uvp'];
+                default:
+                    return [];
+            }
+        },
+
+        validateStep(step, options = {}) {
+            const { showMessage = true } = options;
+            const $step = this.$steps.filter(`[data-step="${step}"]`);
+            if (!$step.length) {
+                return true;
+            }
+
+            this.clearStepErrors(step);
+
+            let valid = true;
+            const requiredFields = this.getStepRequiredFields(step);
+
+            requiredFields.forEach((name) => {
+                if (name === 'brand_voice') {
+                    const $radio = this.$form.find('input[name="brand_voice"]:checked');
+                    if (!$radio.length) {
+                        valid = false;
+                        this.$form.find('.radio-grid').addClass('field-error');
+                    }
+                    return;
+                }
+
+                const $field = this.$form.find(`[name="${name}"]`);
+                const value = $field.val ? $field.val() : '';
+                if (!value || (Array.isArray(value) && value.length === 0)) {
+                    valid = false;
+                    $field.addClass('field-error');
+                }
+            });
+
+            if (!valid && showMessage) {
+                this.showMessage('error', this.strings.onboardingValidationError || 'Please complete the required fields before continuing.');
+            }
+
+            return valid;
+        },
+
+        validateAll() {
+            for (let step = 1; step <= this.totalSteps; step += 1) {
+                if (!this.validateStep(step, { showMessage: false })) {
+                    this.showStep(step);
+                    this.showMessage('error', this.strings.onboardingValidationError || 'Please complete the required fields before continuing.');
+                    return false;
+                }
+            }
+            return true;
+        },
+
+        clearStepErrors(step) {
+            const $step = this.$steps.filter(`[data-step="${step}"]`);
+            if (!$step.length) {
+                return;
+            }
+
+            $step.find('.field-error').removeClass('field-error');
+        },
+
+        collectFormData() {
+            const raw = {};
+            const serialized = this.$form.serializeArray();
+
+            serialized.forEach((entry) => {
+                raw[entry.name] = entry.value.trim();
+            });
+
+            raw.ai_interest = this.$form.find('input[name="ai_interest"]').is(':checked') ? '1' : '';
+
+            return raw;
+        },
+
+        toggleBusy(state) {
+            this.isBusy = Boolean(state);
+            this.updateNav();
+        },
+
+        save() {
+            if (this.isBusy) {
+                return;
+            }
+
+            if (!this.validateStep(this.currentStep) || !this.validateAll()) {
+                return;
+            }
+
+            const payload = this.collectFormData();
+            this.toggleBusy(true);
+
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'msh_save_onboarding_context',
+                    nonce: CONFIG.nonce,
+                    context: payload
+                }
+            })
+            .done((response) => {
+                if (response && response.success) {
+                    const context = response.data && response.data.context ? response.data.context : payload;
+                    const summary = response.data && response.data.summary ? response.data.summary : this.formatSummary(context);
+                    const message = response.data && response.data.message
+                        ? response.data.message
+                        : (this.strings.onboardingSaveSuccess || 'Setup saved successfully.');
+
+                    this.primaryContext = $.extend(true, {}, context);
+                    this.primarySummary = $.extend(true, {}, summary);
+
+                    if (this.activeProfileId === 'primary') {
+                        this.setActiveProfile('primary', {
+                            contextOverride: this.primaryContext,
+                            summaryOverride: this.primarySummary,
+                            suppressMessage: true
+                        });
+                    }
+
+                    if (response.data && response.data.index_stats) {
+                        this.indexStats = response.data.index_stats;
+                    }
+
+                    if (response.data && response.data.auto_index_queued) {
+                        this.updateIndexStatusLabel(this.indexStats || null, true);
+                    } else {
+                        this.updateIndexStatusLabel(this.indexStats || null);
+                    }
+
+                    this.showMessage('success', message);
+                    this.showSummary();
+
+                    window.mshImageOptimizer.onboardingContext = this.context;
+                    window.mshImageOptimizer.onboardingSummary = this.summary;
+                    window.mshImageOptimizer.onboardingComplete = true;
+                } else {
+                    const errorMessage = response && response.data && response.data.message
+                        ? response.data.message
+                        : (this.strings.onboardingSaveError || 'Unable to save the setup right now. Please try again.');
+                    this.showMessage('error', errorMessage);
+                }
+            })
+            .fail(() => {
+                this.showMessage('error', this.strings.onboardingSaveError || 'Unable to save the setup right now. Please try again.');
+            })
+            .always(() => {
+                this.toggleBusy(false);
+            });
+        },
+
+        resetContext() {
+            if (this.isBusy) {
+                return;
+            }
+
+            const confirmationMessage = this.strings.onboardingResetConfirm || 'Reset the saved context? This will clear all onboarding answers.';
+            if (!window.confirm(confirmationMessage)) {
+                return;
+            }
+
+            this.toggleBusy(true);
+
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action: 'msh_reset_onboarding_context',
+                    nonce: CONFIG.nonce
+                }
+            })
+            .done((response) => {
+                if (response && response.success) {
+                    const context = response.data && response.data.context ? response.data.context : {};
+                    const summary = response.data && response.data.summary ? response.data.summary : this.formatSummary(context);
+                    const message = response.data && response.data.message
+                        ? response.data.message
+                        : (this.strings.onboardingResetDone || 'Context cleared. You can complete the setup whenever you’re ready.');
+
+                    this.primaryContext = $.extend(true, {}, context);
+                    this.primarySummary = $.extend(true, {}, summary);
+                    this.fillFormFromContext(context);
+                    this.clearAllErrors();
+                    this.showForm(true);
+                    this.setActiveProfile('primary', {
+                        contextOverride: this.primaryContext,
+                        summaryOverride: this.primarySummary,
+                        suppressMessage: true
+                    });
+                    this.showMessage('success', message);
+                    this.updateIndexStatusLabel(this.indexStats || null);
+
+                    window.mshImageOptimizer.onboardingContext = this.context;
+                    window.mshImageOptimizer.onboardingSummary = this.summary;
+                    window.mshImageOptimizer.onboardingComplete = false;
+                } else {
+                    const errorMessage = response && response.data && response.data.message
+                        ? response.data.message
+                        : (this.strings.onboardingResetError || 'Unable to reset the setup right now. Please try again.');
+                    this.showMessage('error', errorMessage);
+                }
+            })
+            .fail(() => {
+                this.showMessage('error', this.strings.onboardingResetError || 'Unable to reset the setup right now. Please try again.');
+            })
+            .always(() => {
+                this.toggleBusy(false);
+            });
+        },
+
+        clearAllErrors() {
+            if (!this.$form.length) {
+                return;
+            }
+            this.$form.find('.field-error').removeClass('field-error');
+        },
+
+        openSettings() {
+            if (!this.settingsUrl) {
+                return;
+            }
+            window.location.href = this.settingsUrl;
+        },
+
+        showMessage(type, text) {
+            if (!this.$message.length) {
+                return;
+            }
+
+            const normalizedType = type === 'success' ? 'is-success' : 'is-error';
+
+            this.$message
+                .removeClass('is-error is-success')
+                .addClass(normalizedType)
+                .text(text || '')
+                .show();
+        },
+
+        hideMessage() {
+            if (!this.$message.length) {
+                return;
+            }
+
+            this.$message.removeClass('is-error is-success').hide();
+        },
+
+        updateSummary(context, summary) {
+            this.primaryContext = $.extend(true, {}, context || {});
+            this.primarySummary = summary && Object.keys(summary || {}).length
+                ? $.extend(true, {}, summary)
+                : this.formatSummary(this.primaryContext);
+
+            if (this.activeProfileId === 'primary') {
+                this.setActiveProfile('primary', {
+                    contextOverride: this.primaryContext,
+                    summaryOverride: this.primarySummary,
+                    suppressMessage: true
+                });
+            }
+        },
+
+        applySummaryData(summary) {
+            if (!this.$summary.length) {
+                return;
+            }
+
+            const mappings = {
+                business_name: '#summary-business-name',
+                industry: '#summary-industry',
+                business_type: '#summary-business-type',
+                target_audience: '#summary-target-audience',
+                pain_points: '#summary-pain-points',
+                brand_voice: '#summary-brand-voice',
+                uvp: '#summary-uvp',
+                cta_preference: '#summary-cta',
+                location: '#summary-location',
+                ai_interest: '#summary-ai-interest'
+            };
+
+            Object.entries(mappings).forEach(([key, selector]) => {
+                const value = summary && Object.prototype.hasOwnProperty.call(summary, key) ? summary[key] : '';
+                const displayValue = value && typeof value === 'string' ? value : '';
+                const $element = this.$summary.find(selector);
+                if ($element.length) {
+                    $element.text(displayValue || '—');
+                }
+            });
+        },
+
+        formatSummary(context) {
+            const labels = this.labels || {};
+            const labelFor = (group, value) => {
+                if (!value) {
+                    return '';
+                }
+                if (labels[group] && labels[group][value]) {
+                    return labels[group][value];
+                }
+                return value;
+            };
+
+            const audienceParts = [];
+            if (context.target_audience) {
+                audienceParts.push(context.target_audience);
+            }
+            if (context.demographics) {
+                const demographicLabel = this.strings.onboardingSummaryDemographics
+                    ? this.strings.onboardingSummaryDemographics.replace('%s', context.demographics)
+                    : `Demographics: ${context.demographics}`;
+                audienceParts.push(demographicLabel);
+            }
+
+            const locationParts = [];
+            if (context.city) {
+                locationParts.push(context.city);
+            }
+            if (context.region) {
+                if (locationParts.length) {
+                    locationParts[locationParts.length - 1] = `${locationParts[locationParts.length - 1]}, ${context.region}`;
+                } else {
+                    locationParts.push(context.region);
+                }
+            }
+
+            let location = locationParts.join(' ');
+            if (context.service_area) {
+                const serviceLabel = this.strings.onboardingSummaryServiceArea
+                    ? this.strings.onboardingSummaryServiceArea.replace('%s', context.service_area)
+                    : `Service area: ${context.service_area}`;
+                location = location ? `${location} (${serviceLabel})` : serviceLabel;
+            }
+
+            if (!location) {
+                location = this.strings.onboardingSummaryNotSpecified || 'Not specified';
+            }
+
+            return {
+                business_name: context.business_name || '',
+                industry: labelFor('industry', context.industry),
+                business_type: labelFor('business_type', context.business_type),
+                target_audience: audienceParts.join(' — '),
+                pain_points: context.pain_points || '',
+                brand_voice: labelFor('brand_voice', context.brand_voice),
+                uvp: context.uvp || '',
+                cta_preference: labelFor('cta_preference', context.cta_preference),
+                location,
+                ai_interest: context.ai_interest
+                    ? (this.strings.onboardingSummaryAiYes || 'Subscribed to updates')
+                    : (this.strings.onboardingSummaryAiNo || 'No updates requested')
+            };
+        }
+    };
+
+    class Wizard {
+        static init() {
+            if (!this.state) {
+                this.state = {
+                    dismissed: true,
+                    steps: {
+                        1: 'pending',
+                        2: 'pending',
+                        3: 'pending',
+                        4: 'pending',
+                        5: 'upcoming'
+                    }
+                };
+            }
+            this.$wizard = $('#msh-onboarding-wizard');
+            this.$processedList = $('#scheduler-processed-list');
+            this.$processedContainer = $('.scheduler-attachments');
+            this.$progressBar = $('#wizard-progress-bar');
+            this.$progressLabel = $('#wizard-progress-label');
+            this.totalTrackedSteps = 4;
+
+            if (!this.$wizard.length) {
+                this.state.dismissed = true;
+                return;
+            }
+
+            this.$steps = this.$wizard.find('.wizard-step');
+            this.totalTrackedSteps = this.$steps.filter((_, el) => parseInt($(el).data('step'), 10) <= 4).length;
+
+            this.loadState();
+            this.bindUI();
+            this.updateUI();
+        }
+
+        static loadState() {
+            const defaultState = {
+                dismissed: false,
+                steps: {
+                    1: 'active',
+                    2: 'pending',
+                    3: 'pending',
+                    4: 'pending',
+                    5: 'upcoming'
+                }
+            };
+
+            try {
+                const stored = localStorage.getItem(WIZARD_STORAGE_KEY);
+                if (stored) {
+                    const parsed = JSON.parse(stored);
+                    this.state = Object.assign({}, defaultState, parsed);
+                } else {
+                    this.state = defaultState;
+                }
+            } catch (error) {
+                console.warn('Wizard state load failed:', error);
+                this.state = defaultState;
+            }
+
+            if (this.state.dismissed) {
+                this.$wizard.hide();
+            }
+        }
+
+        static saveState() {
+            try {
+                localStorage.setItem(WIZARD_STORAGE_KEY, JSON.stringify(this.state));
+            } catch (error) {
+                console.warn('Wizard state save failed:', error);
+            }
+        }
+
+        static bindUI() {
+            this.$wizard.on('click', '.wizard-action', (event) => {
+                event.preventDefault();
+                const action = $(event.currentTarget).data('action');
+                this.triggerAction(action);
+            });
+
+            $('#wizard-restart').on('click', (event) => {
+                event.preventDefault();
+                this.reset();
+            });
+
+            $('#wizard-dismiss').on('click', (event) => {
+                event.preventDefault();
+                this.dismiss();
+            });
+        }
+
+        static triggerAction(action) {
+            switch (action) {
+                case 'analyze':
+                    this.setStepStatus(1, 'active');
+                    Analysis.run(false);
+                    break;
+                case 'view-analysis-log':
+                    const log = document.getElementById('optimization-log');
+                    if (log) {
+                        log.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    }
+                    break;
+                case 'optimize-high':
+                    this.setStepStatus(2, 'active');
+                    Optimization.runByPriority('high');
+                    break;
+                case 'optimize-medium':
+                    this.setStepStatus(2, 'active');
+                    Optimization.runByPriority('medium');
+                    break;
+                case 'duplicate-quick':
+                    this.setStepStatus(3, 'active');
+                    DuplicateCleanup.runQuickScan();
+                    break;
+                case 'duplicate-deep':
+                    this.setStepStatus(3, 'active');
+                    DuplicateCleanup.runDeepScan();
+                    break;
+                case 'smart-build':
+                    this.setStepStatus(4, 'active');
+                    $('#rebuild-usage-index').trigger('click');
+                    break;
+                case 'force-build':
+                    this.setStepStatus(4, 'active');
+                    $('#force-rebuild-usage-index').trigger('click');
+                    break;
+                case 'ai-preview':
+                    alert('AI-powered mode is coming soon. Stay tuned!');
+                    break;
+                default:
+                    console.warn('Unknown wizard action:', action);
+            }
+        }
+
+        static dismiss() {
+            this.state.dismissed = true;
+            this.saveState();
+            this.$wizard.slideUp();
+        }
+
+        static reset() {
+            this.state.dismissed = false;
+            this.state.steps = {
+                1: 'active',
+                2: 'pending',
+                3: 'pending',
+                4: 'pending',
+                5: 'upcoming'
+            };
+            this.saveState();
+            this.$wizard.slideDown();
+            this.updateUI();
+            this.recordProcessedAttachments([]);
+        }
+
+        static setStepStatus(step, status) {
+            const stepNumber = parseInt(step, 10);
+            if (!this.state || !this.state.steps || !this.state.steps[stepNumber]) {
+                return;
+            }
+
+            this.state.steps[stepNumber] = status;
+
+            if (status === 'complete') {
+                const next = this.getNextTrackedStep(stepNumber + 1);
+                if (next) {
+                    if (this.state.steps[next] !== 'complete') {
+                        this.state.steps[next] = 'active';
+                    }
+                }
+            } else if (status === 'active' && this.$steps && this.$steps.length) {
+                // Downgrade later steps to pending if they are not complete
+                this.$steps.each((_, element) => {
+                    const num = parseInt($(element).data('step'), 10);
+                    if (num > stepNumber && this.state.steps[num] !== 'complete' && num <= 4) {
+                        this.state.steps[num] = 'pending';
+                    }
+                });
+            }
+
+            this.saveState();
+            this.updateUI();
+        }
+
+        static ensureActive(step) {
+            if (!this.state || !this.state.steps) {
+                return;
+            }
+
+            if (this.state.steps[step] === 'complete') {
+                return;
+            }
+
+            this.setStepStatus(step, 'active');
+        }
+
+        static getNextTrackedStep(start) {
+            let candidate = start;
+            while (candidate <= 4) {
+                if (this.state.steps[candidate] && this.state.steps[candidate] !== 'complete') {
+                    return candidate;
+                }
+                candidate += 1;
+            }
+            return null;
+        }
+
+        static handleEvent(event) {
+            switch (event) {
+                case 'analysis-complete':
+                    this.setStepStatus(1, 'complete');
+                    break;
+                case 'analysis-reset':
+                    this.setStepStatus(1, 'active');
+                    break;
+                case 'optimize-complete':
+                    this.setStepStatus(2, 'complete');
+                    break;
+                case 'duplicate-complete':
+                    this.setStepStatus(3, 'complete');
+                    break;
+                case 'index-complete':
+                    this.setStepStatus(4, 'complete');
+                    break;
+                default:
+                    break;
+            }
+        }
+
+        static updateUI() {
+            if (!this.$wizard || !this.$wizard.length) return;
+
+            if (this.state.dismissed) {
+                this.$wizard.hide();
+            } else if (!this.$wizard.is(':visible')) {
+                this.$wizard.show();
+            }
+
+            this.$steps.each((_, element) => {
+                const $step = $(element);
+                const stepNumber = parseInt($step.data('step'), 10);
+                let status = this.state.steps[stepNumber] || 'pending';
+
+                if (stepNumber === 5) {
+                    status = 'upcoming';
+                }
+
+                $step.attr('data-status', status);
+
+                const $statusLabel = $step.find('.wizard-step-status');
+                if ($statusLabel.length) {
+                    switch (status) {
+                        case 'complete':
+                            $statusLabel.text(window.mshImageOptimizer?.strings?.wizardComplete || 'Complete');
+                            break;
+                        case 'active':
+                            $statusLabel.text(window.mshImageOptimizer?.strings?.wizardActive || 'In progress');
+                            break;
+                        case 'upcoming':
+                            $statusLabel.text(window.mshImageOptimizer?.strings?.wizardUpcoming || 'Coming soon');
+                            break;
+                        default:
+                            $statusLabel.text(window.mshImageOptimizer?.strings?.wizardPending || 'Pending');
+                    }
+                }
+            });
+
+            const completed = Object.entries(this.state.steps)
+                .filter(([step, status]) => parseInt(step, 10) <= 4 && status === 'complete').length;
+            const progressPercent = this.totalTrackedSteps > 0 ? Math.round((completed / this.totalTrackedSteps) * 100) : 0;
+            if (this.$progressBar.length) {
+                this.$progressBar.css('width', `${progressPercent}%`);
+            }
+            if (this.$progressLabel.length) {
+                if (completed >= this.totalTrackedSteps) {
+                    this.$progressLabel.text(window.mshImageOptimizer?.strings?.wizardComplete || 'Complete');
+                } else {
+                    this.$progressLabel.text(`Step ${Math.min(completed + 1, this.totalTrackedSteps)} of ${this.totalTrackedSteps}`);
+                }
+            }
+        }
+
+        static recordProcessedAttachments(list) {
+            if (!this.$processedList.length) return;
+
+            this.$processedList.empty();
+            (list || []).forEach((label) => {
+                this.$processedList.append(`<li>${UI.escapeHtml(label)}</li>`);
+            });
+
+            if (this.$processedContainer && this.$processedContainer.length) {
+                if ((list || []).length) {
+                    this.$processedContainer.show();
+                } else {
+                    this.$processedContainer.hide();
+                }
+            }
+        }
+    }
     // =============================================================================
     // MODERN FILTER SYSTEM
     // =============================================================================
@@ -2000,6 +3117,7 @@
 
             if (unoptimizedImages.length === 0) {
                 UI.updateLog('No images need optimization.');
+                Wizard.handleEvent('optimize-complete');
                 return;
             }
 
@@ -2037,6 +3155,7 @@
 
             if (imagesToOptimize.length === 0) {
                 UI.updateLog(`No ${label.toLowerCase()} images need optimization.`);
+                Wizard.handleEvent('optimize-complete');
                 return;
             }
 
@@ -2059,6 +3178,7 @@
 
             if (selectedImages.length === 0) {
                 UI.updateLog('No selected images need optimization.');
+                Wizard.handleEvent('optimize-complete');
                 return;
             }
 
@@ -2105,6 +3225,7 @@
         static async processImagesBatch(images, label) {
             if (AppState.processing || images.length === 0) return;
 
+            Wizard.ensureActive(2);
             AppState.processing = true;
             const batchSize = 5; // Process 5 images at a time
             let processed = 0;
@@ -2151,6 +3272,7 @@
 
                 CONFIG.diagnostics.last_optimization_run = new Date().toISOString();
                 UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
+                Wizard.handleEvent('optimize-complete');
 
                 // Trigger re-analysis after completion
                 setTimeout(() => {
@@ -2226,6 +3348,7 @@
                 UI.updateLog('Force refresh: Clearing cache and re-analyzing...');
             }
 
+            Wizard.ensureActive(1);
             AppState.processing = true;
             UI.showProgressModal('Analyzing Images', 'Analyzing published images...', 0);
             UI.updateLog('Starting image analysis...');
@@ -2293,6 +3416,7 @@
 
                     CONFIG.diagnostics.last_analyzer_run = new Date().toISOString();
                     UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
+                    Wizard.handleEvent('analysis-complete');
                 } else {
                     throw new Error(response.data || 'Analysis failed');
                 }
@@ -2303,6 +3427,7 @@
                 UI.updateLog(`Analysis error: ${error.message}`);
                 UI.showWelcomeState();
                 UI.hideProgressModal();
+                Wizard.handleEvent('analysis-reset');
             } finally {
                 AppState.processing = false;
                 UI.hideLoading();
@@ -2514,6 +3639,14 @@
                 ? status.last_result.stats.processed_details
                 : [];
 
+            if (modeLabel !== 'smart') {
+                Wizard.recordProcessedAttachments([]);
+            }
+
+            if (pending > 0 || statusLabel === 'running' || statusLabel === 'queued') {
+                Wizard.ensureActive(4);
+            }
+
             let progress = 0;
             if (total > 0) {
                 progress = Math.min(100, Math.round((processed / total) * 100));
@@ -2587,19 +3720,11 @@
                         return [id, parts.join(' – ')].filter(Boolean).join(' ');
                     }).join(', ');
                     UI.updateLog(`[Smart Index] Attachments re-indexed: ${summary}`);
-                    const $list = $('#scheduler-processed-list');
-                    const $container = $('.scheduler-attachments');
-                    if ($list.length && $container.length) {
-                        $list.empty();
-                        advancedListItems.slice(0, 10).forEach((label) => {
-                            $list.append(`<li>${UI.escapeHtml(label)}</li>`);
-                        });
-                        if (advancedListItems.length > 10) {
-                            $list.append(`<li>${UI.escapeHtml(`+${advancedListItems.length - 10} more…`)}</li>`);
-                        }
-                        $container.show();
-                    }
+                    Wizard.recordProcessedAttachments(advancedListItems);
+                } else {
+                    Wizard.recordProcessedAttachments([]);
                 }
+                Wizard.handleEvent('index-complete');
                 return;
             }
 
@@ -2610,6 +3735,9 @@
                     progress
                 );
                 UI.enableModalDismiss('Dismiss');
+                if (modeLabel === 'smart') {
+                    Wizard.recordProcessedAttachments(advancedListItems);
+                }
             } else {
                 UI.updateProgressModal(
                     'Usage Index Queued',
@@ -2617,6 +3745,13 @@
                     progress
                 );
                 UI.enableModalDismiss('Dismiss');
+                if (modeLabel === 'smart') {
+                    Wizard.recordProcessedAttachments(advancedListItems);
+                }
+            }
+
+            if (statusLabel === 'idle' && !smartDetails.length) {
+                Wizard.recordProcessedAttachments([]);
             }
         }
     }
@@ -2628,7 +3763,10 @@
     // =============================================================================
 
     $(document).ready(function() {
+        Onboarding.init();
+        Wizard.init();
         UI.init();
+        WebPBrowserDetection.check(); // Check browser WebP support on page load
 
         // DISABLED: Auto-refresh causing analysis loop every 30 seconds
         // if (CONFIG.autoRefreshInterval > 0) {
@@ -2672,6 +3810,83 @@
                 console.error('WebP Verification Request Failed:', error);
                 alert('Failed to verify WebP status. Check console for details.');
             }
+        }
+    };
+
+    // =============================================================================
+    // WEBP BROWSER DETECTION
+    // =============================================================================
+
+    const WebPBrowserDetection = {
+        check() {
+            console.log('MSH: Starting WebP browser support detection...');
+
+            // Set a timeout fallback in case detection hangs
+            const detectionTimeout = setTimeout(() => {
+                console.warn('MSH: WebP detection timed out, assuming supported');
+                this.updateStatus(true, 'timeout');
+            }, 2000); // 2 second timeout
+
+            // Create a WebP test image
+            const webp = new Image();
+
+            webp.onload = () => {
+                clearTimeout(detectionTimeout);
+                const supported = (webp.height === 2);
+                console.log('MSH: WebP test image loaded, height:', webp.height, 'supported:', supported);
+                this.updateStatus(supported, 'onload');
+            };
+
+            webp.onerror = () => {
+                clearTimeout(detectionTimeout);
+                console.log('MSH: WebP test image failed to load, not supported');
+                this.updateStatus(false, 'onerror');
+            };
+
+            // Set the test image source (tiny 2x2 WebP image)
+            webp.src = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA';
+        },
+
+        updateStatus(supported, source) {
+            console.log('MSH: Updating WebP status - supported:', supported, 'source:', source);
+
+            // Update Browser Support status
+            const supportElement = $('#webp-browser-support');
+            if (supportElement.length === 0) {
+                console.error('MSH: WebP support element #webp-browser-support not found in DOM');
+                return;
+            }
+
+            if (supported) {
+                supportElement
+                    .text('Supported')
+                    .removeClass('not-supported')
+                    .addClass('status-value supported');
+            } else {
+                supportElement
+                    .text('Not Supported')
+                    .removeClass('supported')
+                    .addClass('status-value not-supported');
+            }
+
+            // Update Detection Method
+            const cookieExists = document.cookie.indexOf('webp_support=') !== -1;
+            const methodElement = $('#webp-detection-method');
+            if (methodElement.length > 0) {
+                methodElement
+                    .text(cookieExists ? 'Cookie + JavaScript' : 'JavaScript Detection')
+                    .addClass('status-value active');
+            }
+
+            // Update Delivery Status
+            const deliveryElement = $('#webp-delivery-status');
+            if (deliveryElement.length > 0) {
+                deliveryElement
+                    .text('Active')
+                    .addClass('status-value active');
+            }
+
+            console.log('MSH: WebP status update complete');
         }
     };
 
@@ -2758,6 +3973,7 @@
                 return;
             }
 
+            Wizard.ensureActive(3);
             AppState.processing = true;
 
             try {
@@ -2783,6 +3999,7 @@
 
                     CONFIG.diagnostics.last_quick_scan = new Date().toISOString();
                     UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
+                    Wizard.handleEvent('duplicate-complete');
                 } else {
                     UI.updateLog('❌ Quick scan failed: ' + (response.data || 'Unknown error'), 'step2');
                 }
@@ -2802,6 +4019,7 @@
                 return;
             }
 
+            Wizard.ensureActive(3);
             AppState.processing = true;
             this.scanState = {
                 offset: 0,
@@ -2986,6 +4204,7 @@
                 this.clearScanState();
                 AppState.processing = false;
                 UI.hideProgressModal();
+                Wizard.handleEvent('duplicate-complete');
                 return;
             }
 
@@ -4149,6 +5368,7 @@
     // Expose API for debugging
     window.MSH_ImageOptimizer = {
         AppState,
+        Onboarding,
         FilterEngine,
         UI,
         Optimization,

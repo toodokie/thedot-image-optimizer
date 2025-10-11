@@ -1590,32 +1590,64 @@
     }
     
     function checkWebPSupport() {
+        console.log('MSH: Starting WebP support detection...');
+
+        // Set a timeout fallback in case detection hangs
+        const detectionTimeout = setTimeout(function() {
+            console.warn('MSH: WebP detection timed out, assuming supported');
+            updateWebPStatus(true, 'timeout');
+        }, 2000); // 2 second timeout
+
         // Create a WebP test image
         var webp = new Image();
-        webp.onload = webp.onerror = function () {
+
+        webp.onload = function() {
+            clearTimeout(detectionTimeout);
             var supported = (webp.height == 2);
-            
-            // Update UI
-            const supportElement = $('#webp-browser-support');
-            if (supported) {
-                supportElement.text('Supported').addClass('status-value supported');
-                updateLog('WebP support detected - optimized images will be served automatically.');
-            } else {
-                supportElement.text('Not Supported').addClass('status-value not-supported');
-                updateLog('WebP not supported - original images will be served (full compatibility).');
-            }
-            
-            // Check if cookie exists
-            const cookieExists = document.cookie.indexOf('webp_support=') !== -1;
-            if (cookieExists) {
-                $('#webp-detection-method').text('Cookie + JavaScript').addClass('status-value active');
-            } else {
-                $('#webp-detection-method').text('JavaScript Detection').addClass('status-value active');
-            }
-            
-            $('#webp-delivery-status').text('Active').addClass('status-value active');
+            console.log('MSH: WebP test image loaded, height:', webp.height, 'supported:', supported);
+            updateWebPStatus(supported, 'onload');
         };
+
+        webp.onerror = function() {
+            clearTimeout(detectionTimeout);
+            console.log('MSH: WebP test image failed to load, not supported');
+            updateWebPStatus(false, 'onerror');
+        };
+
+        // Set the test image source
         webp.src = 'data:image/webp;base64,UklGRjoAAABXRUJQVlA4IC4AAACyAgCdASoCAAIALmk0mk0iIiIiIgBoSygABc6WWgAA/veff/0PP8bA//LwYAAA';
+    }
+
+    function updateWebPStatus(supported, source) {
+        console.log('MSH: Updating WebP status - supported:', supported, 'source:', source);
+
+        // Update UI
+        const supportElement = $('#webp-browser-support');
+
+        if (supportElement.length === 0) {
+            console.error('MSH: WebP support element not found in DOM');
+            return;
+        }
+
+        if (supported) {
+            supportElement.text('Supported').removeClass('not-supported').addClass('status-value supported');
+            updateLog('WebP support detected - optimized images will be served automatically.');
+        } else {
+            supportElement.text('Not Supported').removeClass('supported').addClass('status-value not-supported');
+            updateLog('WebP not supported - original images will be served (full compatibility).');
+        }
+
+        // Check if cookie exists
+        const cookieExists = document.cookie.indexOf('webp_support=') !== -1;
+        if (cookieExists) {
+            $('#webp-detection-method').text('Cookie + JavaScript').addClass('status-value active');
+        } else {
+            $('#webp-detection-method').text('JavaScript Detection').addClass('status-value active');
+        }
+
+        $('#webp-delivery-status').text('Active').addClass('status-value active');
+
+        console.log('MSH: WebP status update complete');
     }
     
     function updateLog(message) {

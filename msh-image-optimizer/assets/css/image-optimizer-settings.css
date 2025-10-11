@@ -1,3 +1,8 @@
+/* MSH Image Optimizer Settings Styles - The Dot Creative Agency Brand */
+
+/* Import centralized typography variables */
+@import url('typography-variables.css');
+
 /* Match optimizer page background */
 #wpcontent,
 #wpbody,

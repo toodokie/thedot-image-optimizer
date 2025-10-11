@@ -12,6 +12,9 @@ This document captures everything required to lift the Main Street Health image 
 | Documentation | The client guide **and** developer docs (`MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md`, `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md`, `MSH_IMAGE_OPTIMIZER_RND.md`, `MSH_IMAGE_OPTIMIZER_MULTILANGUAGE_GUIDE.md`) plus this plan. |
 | Optional extras | Safe-rename regression scripts, CLI helpers, and unit/integration tests (if we decide to ship them with the plugin). |
 
+> **Roadmap note:** AI-powered metadata/duplicate detection is queued for the standalone build after migration stabilises. See the “AI Implementation Roadmap” section in `MSH_IMAGE_OPTIMIZER_RND.md` for provider strategy, pricing, and phased delivery plan.
+> **Onboarding note:** The legacy dashboard shipped in the client theme includes one-off WebP status messaging. The standalone plugin will replace this with a universal onboarding wizard that gathers reusable business context (business name, audience, voice, location) and feeds manual + AI workflows. Treat the Wizard + settings screen as core deliverables during packaging.
+
 ## 3. File Map
 
 ### 3.1 Core PHP Classes (Theme → Plugin `includes/`)

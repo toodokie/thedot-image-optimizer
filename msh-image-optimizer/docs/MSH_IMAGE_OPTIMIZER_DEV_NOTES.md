@@ -59,6 +59,7 @@ The MSH Image Optimizer is a comprehensive WordPress plugin designed specificall
 - 📊 **Diagnostics widget** – Diagnostics card ships in this build; next iteration should surface index health counters and optional live log streaming.
 - 🕒 **Background job telemetry** – Add CLI/status endpoints for the usage-index queue (processed totals, retry counts) and stream warnings into the diagnostics log download.
 - ⏱️ **Cron watchdog** – Consider adding a fallback health check or Action Scheduler migration for hosts where native WP-Cron is unreliable.
+- 🤖 **AI rollout (planning)** – Phase 1 targets API wrapper + credit manager + settings mode selector; Phase 2 adds meta/vision/duplicate AI; Phase 3 covers batch UX + learning system. See `docs/MSH_IMAGE_OPTIMIZER_RND.md#ai-implementation-roadmap-planning-phase` for the full roadmap.
 
 ### Regression Toolkit (October 2025)
 - `wp msh rename-regression --ids=1,2` now delegates to the shared helper used by `wp msh qa`.
@@ -66,6 +67,14 @@ The MSH Image Optimizer is a comprehensive WordPress plugin designed specificall
 - Admin UI ships a diagnostics card with the latest analyzer/optimization/duplicate timestamps and a downloadable log snapshot for support tickets.
 - Duplicate CLI now enforces minimum coverage (`--duplicate-min-coverage`) and can hard-fail when no groups are returned (`--duplicate-require-groups`) to catch regressions early.
 - Usage-index rebuild buttons now queue the cron worker; progress auto-refreshes in the diagnostics panel, queue telemetry (mode, pending, processed, timestamps) is displayed inline, Smart Build lists the attachment IDs it re-indexed for user verification, and the modal can be dismissed while work continues in the background.
+- Dashboard onboarding widget is being replaced with a true setup wizard that gathers reusable business context (global identity, audience, brand voice, location) instead of the legacy client-specific WebP status block. The wizard will store answers in plugin options, provide a rerun/edit flow, and act as the entry point for future AI mode prompts.
+
+### Onboarding & Context Capture Backlog
+- 🚧 **Universal onboarding wizard** – Build a multi-step flow that replaces hardcoded client copy and collects global business context, target audience, brand voice, and service area. Persist data in plugin options and surface a summary/edit card once complete.
+- 🛠️ **First-run indexing** – Auto-queue a smart usage index build as soon as onboarding completes so new sites reach “Ready” without manual clicks. Add progress badges + health checks.
+- 🎯 **Workflow shortcuts** – Move the existing “Analyze / Optimise / Duplicate / Index” quick actions beneath the wizard (or into a “Daily Workflow” panel) so the first screen focuses on setup.
+- ✅ **Settings integration** – Settings → Image Optimizer now exposes primary context editing, profile management, the rename safety toggle, a live diagnostics snapshot, and AI mode controls (manual/assisted/hybrid with BYOK support).
+- 🤖 **AI readiness hooks** – Save onboarding data in a format the AI prompt layer can consume (global context → templates → per-page overrides). Link the final wizard step to the AI roadmap documented in `MSH_IMAGE_OPTIMIZER_RND.md`.
 
 ## Migration Backlog (Standalone Edition)
 
