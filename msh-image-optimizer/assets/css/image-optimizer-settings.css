@@ -4,29 +4,25 @@
 @import url('typography-variables.css');
 
 /* ============================================
-   SCOPED FONT OVERRIDE
-   Force futura-pt ONLY within .msh-settings-wrap
+   UNIFIED TYPOGRAPHY - MATCH ADMIN PAGE
+   Body text: ff-real-text-pro (secondary)
+   Headings: futura-pt (primary)
    WordPress admin CSS has extremely high specificity
    ============================================ */
 .msh-settings-wrap,
+.msh-settings-wrap * {
+    font-family: var(--font-secondary) !important;  /* ff-real-text-pro for body */
+}
+
 .msh-settings-wrap h1,
 .msh-settings-wrap h2,
 .msh-settings-wrap h3,
 .msh-settings-wrap h4,
 .msh-settings-wrap h5,
 .msh-settings-wrap h6,
-.msh-settings-wrap p,
-.msh-settings-wrap div,
-.msh-settings-wrap span,
-.msh-settings-wrap label,
-.msh-settings-wrap a,
 .msh-settings-wrap button,
-.msh-settings-wrap input,
-.msh-settings-wrap select,
-.msh-settings-wrap textarea,
-.msh-settings-wrap dt,
-.msh-settings-wrap dd {
-    font-family: var(--font-primary) !important;
+.msh-settings-wrap .button {
+    font-family: var(--font-primary) !important;    /* futura-pt for headings/buttons */
 }
 
 /* ============================================
@@ -139,8 +135,14 @@
 }
 
 .msh-settings-wrap {
-    font-family: var(--font-primary) !important;
     color: #35332f;
+}
+
+.msh-settings-wrap p {
+    font-family: var(--font-secondary);
+    font-size: var(--text-base);
+    font-weight: var(--weight-light);
+    line-height: var(--leading-relaxed);
 }
 
 /* Match optimizer page header styling */
