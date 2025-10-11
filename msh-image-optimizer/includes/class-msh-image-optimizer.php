@@ -150,6 +150,8 @@ class MSH_Contextual_Meta_Generator {
     }
 
     public function detect_context($attachment_id, $ignore_manual = false) {
+        $this->hydrate_active_context();
+
         $context = [
             'type' => $this->get_default_context_type(),
             'page_type' => null,
@@ -260,7 +262,11 @@ class MSH_Contextual_Meta_Generator {
         }
 
         $combined_indicator = strtolower(trim(($context['attachment_title'] ?? '') . ' ' . $file_basename));
-        if (!$context['manual'] && $context['type'] === 'clinical' && strpos($combined_indicator, 'icon') !== false) {
+        if (
+            !$context['manual']
+            && in_array($context['type'], ['clinical', 'business'], true)
+            && strpos($combined_indicator, 'icon') !== false
+        ) {
             $context['type'] = 'service-icon';
             $context['service'] = $this->extract_service_type($context['page_title'], $context['tags'], [$combined_indicator]);
         }
@@ -278,19 +284,23 @@ class MSH_Contextual_Meta_Generator {
             if ($context['type'] === 'service-icon') {
                 // Debug disabled for performance
                 // Don't apply any asset type overrides - keep as service-icon
-            } elseif ($asset_type === 'logo' && $context['type'] === 'clinical') {
+            } elseif ($asset_type === 'logo') {
                 $context['type'] = 'business';
                 $context['asset'] = 'logo';
-            } elseif ($asset_type === 'icon' && $context['type'] === 'clinical') {
+            } elseif ($asset_type === 'icon') {
                 $context['type'] = 'service-icon';
-            } elseif ($asset_type === 'frame' && $context['type'] === 'clinical') {
+            } elseif ($asset_type === 'frame') {
                 $context['type'] = 'business';
                 $context['asset'] = 'graphic';
-            } elseif ($asset_type === 'product' && $context['type'] === 'clinical') {
-                $context['type'] = 'equipment';
+            } elseif ($asset_type === 'product') {
+                if ($this->is_healthcare_industry($this->industry)) {
+                    $context['type'] = 'equipment';
+                } else {
+                    $context['type'] = 'business';
+                }
                 $context['asset'] = 'product';
                 $context['product_type'] = $this->extract_product_type($file_basename, $context['attachment_title']);
-            } elseif ($asset_type === 'graphic' && $context['type'] === 'clinical') {
+            } elseif ($asset_type === 'graphic') {
                 $context['type'] = 'business';
                 $context['asset'] = 'graphic';
             }
@@ -778,6 +788,7 @@ class MSH_Contextual_Meta_Generator {
     }
 
     public function generate_meta_fields($attachment_id, array $context) {
+        $this->hydrate_active_context();
         error_log("MSH Meta Generation: Type='{$context['type']}', attachment_id=$attachment_id, title='{$context['attachment_title']}'");
 
         switch ($context['type']) {
@@ -809,6 +820,7 @@ class MSH_Contextual_Meta_Generator {
     }
 
     public function generate_filename_slug($attachment_id, array $context, $extension = null) {
+        $this->hydrate_active_context();
         // Debug disabled for performance
 
 
