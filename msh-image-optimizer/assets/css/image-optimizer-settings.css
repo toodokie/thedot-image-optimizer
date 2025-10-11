@@ -169,10 +169,18 @@
     fill: #8B8883;
 }
 
-/* Fallback for plain h1 if header structure not used */
-.msh-settings-wrap h1 {
-    margin-bottom: 24px;
+/* Global heading styles for settings page - match admin dashboard */
+.msh-settings-wrap h1,
+.msh-settings-wrap h2,
+.msh-settings-wrap h3,
+.msh-settings-wrap h4,
+.msh-settings-wrap h5 {
+    font-family: var(--font-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
     font-size: var(--text-h2);
+    font-weight: var(--weight-normal);
+    color: #35332f;
 }
 
 .msh-settings-card {
@@ -190,15 +198,6 @@
     display: flex;
     flex-direction: column;
     gap: var(--section-gap-xs);
-}
-
-.msh-settings-card header h2 {
-    margin: 0;
-    font-family: var(--font-primary);
-    font-size: var(--text-h2);
-    font-weight: var(--weight-normal);
-    line-height: var(--leading-snug);
-    color: #35332f;
 }
 
 .msh-settings-card header p {

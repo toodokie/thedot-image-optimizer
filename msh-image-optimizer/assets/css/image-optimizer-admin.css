@@ -730,11 +730,6 @@ select.msh-select,
     gap: var(--section-gap-sm);
 }
 
-.msh-onboarding-summary h2 {
-    margin: 0;
-    font-size: clamp(1.3rem, 3vw, 1.6rem);
-}
-
 .msh-onboarding-summary p {
     margin: 0;
     color: #4a4945;
