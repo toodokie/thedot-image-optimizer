@@ -784,6 +784,11 @@ select[name*="context"] option:checked {
     color: #35332f;
 }
 
+.msh-checkbox-field span {
+    margin-top: 8px !important;
+    margin-bottom: 8px !important;
+}
+
 .msh-profile .msh-remove-profile {
     position: absolute;
     top: 24px;
