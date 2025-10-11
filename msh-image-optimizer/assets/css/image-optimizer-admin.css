@@ -674,15 +674,18 @@ select.msh-select,
     padding: var(--section-padding-md);
     margin-bottom: 28px;
     box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap-sm);
 }
 
 .msh-onboarding-summary h2 {
-    margin: 0 0 6px;
+    margin: 0;
     font-size: clamp(1.3rem, 3vw, 1.6rem);
 }
 
 .msh-onboarding-summary p {
-    margin: 0 0 16px;
+    margin: 0;
     color: #4a4945;
     font-size: var(--text-xs);
 }
@@ -1379,7 +1382,7 @@ select.msh-select,
     letter-spacing: 0.1em;
 }
 
-.msh-actions-section > p:first-of-type {
+.msh-actions-section > p {
     margin: 0;
     font-size: 0.95rem;
     line-height: 1.6;

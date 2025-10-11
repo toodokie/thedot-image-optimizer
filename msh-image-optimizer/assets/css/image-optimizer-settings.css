@@ -148,8 +148,14 @@
     box-sizing: border-box;
 }
 
+.msh-settings-card header {
+    display: flex;
+    flex-direction: column;
+    gap: var(--section-gap-xs);
+}
+
 .msh-settings-card header h2 {
-    margin: 0 0 8px;
+    margin: 0;
     font-family: var(--font-primary);
     font-size: var(--text-h2);
     font-weight: var(--weight-normal);
@@ -158,7 +164,7 @@
 }
 
 .msh-settings-card header p {
-    margin: 0 0 20px;
+    margin: 0;
     font-family: var(--font-primary);
     color: #4a4945;
     font-size: var(--text-base);
