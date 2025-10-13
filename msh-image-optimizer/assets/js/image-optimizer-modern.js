@@ -2004,28 +2004,42 @@
         static renderContextDropdown(image) {
             const context = image.context_details || {};
             const contextSource = image.context_source || 'auto';
-            const activeLabel = image.context_active_label || 'Auto-detect';
-            const autoLabel = image.context_auto_label || '';
             const manualContext = image.manual_context || '';
 
-            // Define context choices (matches PHP get_context_choices)
-            const contextChoices = {
+            const defaultChoiceMap = {
                 '': 'Auto-detect (default)',
-                'clinical': 'Clinical / Treatment',
+                'business': 'Business / General',
                 'team': 'Team Member',
-                'testimonial': 'Patient Testimonial',
-                'service-icon': 'Service Icon',
-                'facility': 'Facility / Clinic',
-                'equipment': 'Equipment',
-                'business': 'Business / General'
+                'testimonial': 'Customer Testimonial',
+                'service-icon': 'Icon / Graphic',
+                'facility': 'Workspace / Office',
+                'equipment': 'Product / Equipment',
+                'clinical': 'Service Highlight'
             };
 
-            // Build dropdown options
+            const contextChoiceMap = (window.mshImageOptimizer && window.mshImageOptimizer.contextChoiceMap)
+                ? window.mshImageOptimizer.contextChoiceMap
+                : defaultChoiceMap;
+
+            const choiceList = (window.mshImageOptimizer && Array.isArray(window.mshImageOptimizer.contextChoices))
+                ? window.mshImageOptimizer.contextChoices
+                : Object.entries(contextChoiceMap).map(([value, label]) => ({ value, label }));
+
+            const detectedType = context.type || '';
+            const activeLabel = image.context_active_label
+                || contextChoiceMap[manualContext || detectedType]
+                || contextChoiceMap['']
+                || 'Auto-detect (default)';
+            const autoLabel = image.context_auto_label
+                || (detectedType && contextChoiceMap[detectedType] ? contextChoiceMap[detectedType] : '');
+
             let optionsHTML = '';
-            for (const [value, label] of Object.entries(contextChoices)) {
+            choiceList.forEach(choice => {
+                const value = choice.value;
+                const label = choice.label || contextChoiceMap[value] || (value ? value.toString().split(/[-_]/).map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ') : '');
                 const selected = manualContext === value ? 'selected' : '';
                 optionsHTML += `<option value="${value}" ${selected}>${this.escapeHtml(label)}</option>`;
-            }
+            });
 
             const modeLabel = contextSource === 'manual' ? 'Manual' : 'Auto';
             const modeClass = contextSource === 'manual' ? 'context-mode context-mode--manual' : 'context-mode context-mode--auto';

@@ -6,7 +6,7 @@
 (function($) {
     'use strict';
     
-    const CONTEXT_CHOICES = [
+    const DEFAULT_CONTEXT_CHOICES = [
         { value: '', label: 'Auto-detect (default)' },
         { value: 'clinical', label: 'Clinical / Treatment' },
         { value: 'team', label: 'Team Member' },
@@ -16,6 +16,21 @@
         { value: 'equipment', label: 'Equipment' },
         { value: 'business', label: 'Business / General' }
     ];
+
+    const CONTEXT_CHOICES = (window.mshImageOptimizer && Array.isArray(window.mshImageOptimizer.contextChoices))
+        ? window.mshImageOptimizer.contextChoices
+        : DEFAULT_CONTEXT_CHOICES;
+
+    const CONTEXT_CHOICE_MAP = (function buildContextChoiceMap() {
+        if (window.mshImageOptimizer && window.mshImageOptimizer.contextChoiceMap) {
+            return window.mshImageOptimizer.contextChoiceMap;
+        }
+
+        return CONTEXT_CHOICES.reduce((acc, option) => {
+            acc[option.value] = option.label;
+            return acc;
+        }, {});
+    }());
 
     let imageData = [];
     let isProcessing = false;
@@ -568,8 +583,9 @@
         const editButton = `<button type="button" class="button-link edit-context-inline" aria-label="Edit context" title="Edit context"><span class="dashicons dashicons-edit"></span></button>`;
         const selectedValue = manualContext || '';
         const optionsHtml = CONTEXT_CHOICES.map(choice => {
+            const label = choice.label || CONTEXT_CHOICE_MAP[choice.value] || formatLabel(choice.value);
             const selected = choice.value === selectedValue ? ' selected' : '';
-            return `<option value="${choice.value}"${selected}>${escapeHtml(choice.label)}</option>`;
+            return `<option value="${choice.value}"${selected}>${escapeHtml(label)}</option>`;
         }).join('');
 
         const editorHtml = `
@@ -782,6 +798,10 @@
     function formatLabel(value) {
         if (!value) {
             return '';
+        }
+
+        if (CONTEXT_CHOICE_MAP && CONTEXT_CHOICE_MAP[value]) {
+            return CONTEXT_CHOICE_MAP[value];
         }
 
         return String(value)

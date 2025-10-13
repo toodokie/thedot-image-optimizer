@@ -886,6 +886,10 @@ class MSH_Contextual_Meta_Generator {
         $this->hydrate_active_context();
         error_log("MSH Meta Generation: Type='{$context['type']}', attachment_id=$attachment_id, title='{$context['attachment_title']}'");
 
+        if (!$this->is_healthcare_industry($this->industry) && $context['type'] === 'clinical') {
+            $context['type'] = 'business';
+        }
+
         switch ($context['type']) {
             case 'team':
                 return $this->generate_team_meta($context);
@@ -923,6 +927,9 @@ class MSH_Contextual_Meta_Generator {
         $this->hydrate_active_context();
         // Debug disabled for performance
 
+        if (!$this->is_healthcare_industry($this->industry) && $context['type'] === 'clinical') {
+            $context['type'] = 'business';
+        }
 
         switch ($context['type']) {
             case 'team':
@@ -1027,11 +1034,49 @@ class MSH_Contextual_Meta_Generator {
                     return $this->slugify($brand_keywords . $location_component);
                 }
 
-                $components = array_filter([
-                    $this->business_name !== '' ? $this->slugify($this->business_name) : null,
-                    $this->location_slug !== '' ? $this->location_slug : null,
-                    'branding'
-                ]);
+                $business_keywords = $this->extract_business_slug_keywords($context);
+                $components = array();
+
+                if ($business_keywords !== '') {
+                    $components[] = $business_keywords;
+                }
+
+                if ($this->business_name !== '') {
+                    $components[] = $this->slugify($this->business_name);
+                }
+
+                if ($this->industry_label !== '') {
+                    $components[] = $this->slugify($this->industry_label);
+                }
+
+                if ($this->location_slug !== '') {
+                    $components[] = $this->location_slug;
+                }
+
+                if (!empty($context['asset']) && $context['asset'] === 'graphic') {
+                    $components[] = 'graphic';
+                } elseif (!empty($context['asset']) && $context['asset'] === 'product') {
+                    $components[] = 'product';
+                } else {
+                    $components[] = 'branding';
+                }
+
+                $descriptor_phrase = $this->derive_visual_descriptor($context);
+                if ($descriptor_phrase !== '') {
+                    $components[] = $this->slugify($descriptor_phrase);
+                }
+
+                $components = array_values(array_filter(array_unique($components), 'strlen'));
+
+                if (!$this->is_healthcare_industry($this->industry)) {
+                    $components = array_filter($components, function ($component) {
+                        return !preg_match('/\b(rehabilitation|physiotherapy|therapy|clinical|treatment)\b/', $component);
+                    });
+                }
+
+                if (empty($components)) {
+                    $components[] = 'brand-asset';
+                }
 
                 return $this->slugify(implode('-', $components));
             case 'clinical':
@@ -1625,43 +1670,49 @@ class MSH_Contextual_Meta_Generator {
     private function generate_business_meta(array $context) {
         $industry_label = $this->get_industry_label_or_default();
         $location = $this->location;
+        $descriptor_phrase = $this->derive_visual_descriptor($context);
 
-        $title_parts = array_filter([$this->business_name, $industry_label]);
-        $base_title = implode(' – ', $title_parts);
-        if ($base_title === '') {
-            $base_title = $this->business_name !== '' ? $this->business_name : __('Business Overview', 'msh-image-optimizer');
+        $title_components = array();
+        if ($descriptor_phrase !== '') {
+            $title_components[] = $descriptor_phrase;
+        }
+        if ($this->business_name !== '') {
+            $title_components[] = $this->business_name;
+        }
+        if ($industry_label !== '') {
+            $title_components[] = $industry_label;
         }
 
-        $title = $base_title;
+        $title = implode(' – ', array_filter($title_components));
+        if ($title === '') {
+            $title = $this->business_name !== '' ? $this->business_name : __('Business Overview', 'msh-image-optimizer');
+        }
+
         if ($location !== '') {
             $title .= ' | ' . $location;
         }
 
         if ($this->business_name !== '') {
-            $alt_text = $location !== ''
-                ? sprintf(__('Brand imagery for %1$s in %2$s.', 'msh-image-optimizer'), $this->business_name, $location)
-                : sprintf(__('Brand imagery for %s.', 'msh-image-optimizer'), $this->business_name);
+            $alt_text = $descriptor_phrase !== ''
+                ? sprintf(__('Photo of %1$s for %2$s%3$s.', 'msh-image-optimizer'), $descriptor_phrase, $this->business_name, $this->get_location_phrase(' in '))
+                : ($location !== ''
+                    ? sprintf(__('Brand imagery for %1$s in %2$s.', 'msh-image-optimizer'), $this->business_name, $location)
+                    : sprintf(__('Brand imagery for %s.', 'msh-image-optimizer'), $this->business_name));
         } else {
-            $alt_text = $location !== ''
-                ? sprintf(__('Brand imagery in %s.', 'msh-image-optimizer'), $location)
-                : __('Brand imagery preview.', 'msh-image-optimizer');
+            $alt_text = $descriptor_phrase !== ''
+                ? sprintf(__('Photo of %s.', 'msh-image-optimizer'), $descriptor_phrase)
+                : ($location !== ''
+                    ? sprintf(__('Brand imagery in %s.', 'msh-image-optimizer'), $location)
+                    : __('Brand imagery preview.', 'msh-image-optimizer'));
         }
 
-        $caption_candidates = [
-            $this->normalize_sentence($this->uvp),
-            $this->normalize_sentence($this->pain_points),
-            $this->get_target_audience_sentence(),
-        ];
-
-        $caption = '';
-        foreach ($caption_candidates as $candidate) {
-            if ($candidate !== '') {
-                $caption = $candidate;
-                break;
-            }
-        }
-
-        if ($caption === '') {
+        if ($descriptor_phrase !== '') {
+            $caption = sprintf(
+                __('%1$s — a highlight for %2$s.', 'msh-image-optimizer'),
+                $descriptor_phrase,
+                $this->business_name !== '' ? $this->business_name : __('the business', 'msh-image-optimizer')
+            );
+        } else {
             $caption = $this->business_name !== ''
                 ? sprintf(__('Snapshot from %s.', 'msh-image-optimizer'), $this->business_name)
                 : __('Snapshot from the business.', 'msh-image-optimizer');
@@ -1676,6 +1727,9 @@ class MSH_Contextual_Meta_Generator {
                 $this->get_industry_descriptor(),
                 $this->get_location_phrase(' in ')
             ),
+            $descriptor_phrase !== ''
+                ? sprintf(__('Visual focus: %s.', 'msh-image-optimizer'), $descriptor_phrase)
+                : '',
             $this->normalize_sentence($this->uvp),
             $this->normalize_sentence($this->pain_points),
             $this->get_target_audience_sentence(),
@@ -1842,6 +1896,282 @@ class MSH_Contextual_Meta_Generator {
         return implode('-', array_slice($meaningful_parts, 0, 3));
     }
 
+    private function extract_business_slug_keywords(array $context, $limit = 3) {
+        $candidates = array();
+
+        if (!empty($context['attachment_title'])) {
+            $candidates[] = $context['attachment_title'];
+        }
+
+        if (!empty($context['attachment_slug'])) {
+            $candidates[] = $context['attachment_slug'];
+        }
+
+        if (!empty($context['file_basename'])) {
+            $candidates[] = $context['file_basename'];
+        }
+
+        if (!empty($context['original_filename'])) {
+            $candidates[] = $context['original_filename'];
+        }
+
+        if (!empty($context['page_title'])) {
+            $candidates[] = $context['page_title'];
+        }
+
+        if (!empty($context['tags']) && is_array($context['tags'])) {
+            $candidates = array_merge($candidates, $context['tags']);
+        }
+
+        $stopwords = array(
+            'rehabilitation',
+            'physiotherapy',
+            'rehabilitation-physiotherapy',
+            'physiotherapy-rehabilitation',
+            'therapy',
+            'clinic',
+            'medical',
+            'health',
+            'wellness',
+            'service',
+            'services',
+            'team',
+            'member',
+            'testimonial',
+            'patient',
+            'customer',
+            'client',
+            'business',
+            'branding',
+            'brand',
+            'graphic',
+            'icon',
+            'image',
+            'photo',
+            'picture',
+            'stock',
+            'default',
+            'placeholder',
+            'jpeg',
+            'jpg',
+            'png',
+            'svg',
+            'gif',
+            'rehab',
+            'portfolio',
+            'marketing',
+            'agency',
+            'creative'
+        );
+
+        if (!empty($this->business_name)) {
+            $stopwords = array_merge($stopwords, $this->tokenize_stopwords($this->business_name));
+        }
+
+        if (!empty($this->location)) {
+            $stopwords = array_merge($stopwords, $this->tokenize_stopwords($this->location));
+        }
+
+        if (!empty($this->industry_label)) {
+            $stopwords = array_merge($stopwords, $this->tokenize_stopwords($this->industry_label));
+        }
+
+        $stopwords = array_unique(array_filter($stopwords));
+
+        $keywords = array();
+        foreach ($candidates as $candidate) {
+            if (!is_scalar($candidate) || empty($candidate)) {
+                continue;
+            }
+
+            $slug = strtolower((string) $candidate);
+            $slug = str_replace(['_', '/'], '-', $slug);
+            $slug = preg_replace('/[^a-z0-9\-]+/', '-', $slug);
+            $parts = array_filter(explode('-', $slug));
+
+            foreach ($parts as $part) {
+                $part = trim($part);
+                if ($part === '' || is_numeric($part) || strlen($part) < 3) {
+                    continue;
+                }
+
+                if (in_array($part, $stopwords, true)) {
+                    continue;
+                }
+
+                if (!in_array($part, $keywords, true)) {
+                    $keywords[] = $part;
+                }
+
+                if (count($keywords) >= $limit) {
+                    break 2;
+                }
+            }
+        }
+
+        if (empty($keywords)) {
+            $fallback = array('asset');
+            if (!empty($context['attachment_id'])) {
+                $fallback[] = (string) $context['attachment_id'];
+            }
+            if (!empty($this->location_slug)) {
+                $fallback[] = $this->location_slug;
+            }
+
+            return implode('-', array_filter($fallback));
+        }
+
+        return implode('-', array_slice($keywords, 0, $limit));
+    }
+
+    private function tokenize_stopwords($source) {
+        $tokens = array();
+        $source = strtolower((string) $source);
+        $source = str_replace(['_', '/'], ' ', $source);
+        $source = preg_replace('/[^a-z0-9\s]/', ' ', $source);
+        foreach (preg_split('/\s+/', $source) as $part) {
+            $part = trim($part);
+            if ($part !== '') {
+                $tokens[] = $part;
+            }
+        }
+
+        return $tokens;
+    }
+
+    private function collect_visual_keywords(array $context, $limit = 5) {
+        $sources = array();
+
+        if (!empty($context['attachment_title'])) {
+            $sources[] = $context['attachment_title'];
+        }
+
+        if (!empty($context['page_title'])) {
+            $sources[] = $context['page_title'];
+        }
+
+        if (!empty($context['file_basename'])) {
+            $sources[] = str_replace(['-', '_'], ' ', $context['file_basename']);
+        }
+
+        if (!empty($context['tags']) && is_array($context['tags'])) {
+            foreach ($context['tags'] as $tag) {
+                $sources[] = str_replace(['-', '_'], ' ', $tag);
+            }
+        }
+
+        $stopwords = array(
+            'rehabilitation',
+            'physiotherapy',
+            'treatment',
+            'clinic',
+            'medical',
+            'health',
+            'wellness',
+            'service',
+            'services',
+            'agency',
+            'marketing',
+            'creative',
+            'brand',
+            'branding',
+            'business',
+            'default',
+            'placeholder',
+            'image',
+            'photo',
+            'picture',
+            'stock',
+            'jpg',
+            'jpeg',
+            'png',
+            'svg',
+            'gif',
+            'file',
+            'asset',
+            'main',
+            'street',
+            'health'
+        );
+
+        if (!empty($this->business_name)) {
+            $stopwords = array_merge($stopwords, $this->tokenize_stopwords($this->business_name));
+        }
+
+        if (!empty($this->location)) {
+            $stopwords = array_merge($stopwords, $this->tokenize_stopwords($this->location));
+        }
+
+        $stopwords = array_unique(array_filter($stopwords));
+
+        $keywords = array();
+
+        foreach ($sources as $source) {
+            $clean = strtolower((string) $source);
+            $clean = preg_replace('/[^a-z0-9\s]/', ' ', $clean);
+            $parts = preg_split('/\s+/', $clean);
+
+            foreach ($parts as $part) {
+                $part = trim($part);
+                if ($part === '' || strlen($part) < 3 || is_numeric($part)) {
+                    continue;
+                }
+
+                if (in_array($part, $stopwords, true)) {
+                    continue;
+                }
+
+                if (!in_array($part, $keywords, true)) {
+                    $keywords[] = $part;
+                }
+
+                if (count($keywords) >= $limit) {
+                    break 2;
+                }
+            }
+        }
+
+        return $keywords;
+    }
+
+    private function derive_visual_descriptor(array $context) {
+        $keywords = $this->collect_visual_keywords($context, 4);
+        $descriptor = '';
+
+        if (!empty($keywords)) {
+            $descriptor = implode(' ', array_slice($keywords, 0, 3));
+            $descriptor = ucwords($descriptor);
+        }
+
+        $asset_map = array(
+            'graphic' => __('Brand Graphic', 'msh-image-optimizer'),
+            'product' => __('Product Photo', 'msh-image-optimizer'),
+            'logo' => __('Logo Mark', 'msh-image-optimizer'),
+            'team' => __('Team Portrait', 'msh-image-optimizer'),
+            'facility' => __('Workspace Interior', 'msh-image-optimizer'),
+            'service-icon' => __('Service Icon', 'msh-image-optimizer')
+        );
+
+        if ($descriptor === '' && !empty($context['asset']) && isset($asset_map[$context['asset']])) {
+            $descriptor = $asset_map[$context['asset']];
+        } elseif ($descriptor !== '' && !empty($context['asset']) && isset($asset_map[$context['asset']])) {
+            $suffix = $asset_map[$context['asset']];
+            if (stripos($descriptor, $suffix) === false) {
+                $descriptor = $descriptor . ' ' . $suffix;
+            }
+        }
+
+        if ($descriptor === '' && !empty($context['service'])) {
+            $descriptor = $this->humanize_label($context['service']);
+        }
+
+        if ($descriptor === '' && !empty($context['attachment_id'])) {
+            $descriptor = sprintf(__('Asset %d', 'msh-image-optimizer'), $context['attachment_id']);
+        }
+
+        return $descriptor;
+    }
+
     /**
      * Extract brand/insurance company names from filename
      */
@@ -1893,7 +2223,41 @@ class MSH_Contextual_Meta_Generator {
             }
         }
 
-        return implode('-', array_slice($clean_parts, 0, 2));
+        if (empty($clean_parts)) {
+            return '';
+        }
+
+        $generic_terms = [
+            'rehabilitation',
+            'physiotherapy',
+            'therapy',
+            'treatment',
+            'clinical',
+            'branding',
+            'brand',
+            'business',
+            'default',
+            'placeholder',
+            'image',
+            'photo',
+            'graphic',
+            'asset',
+            'main',
+            'street',
+            'health',
+            'sample',
+            'demo'
+        ];
+
+        $filtered = array_values(array_filter($clean_parts, function ($part) use ($generic_terms) {
+            return !in_array($part, $generic_terms, true);
+        }));
+
+        if (empty($filtered)) {
+            return '';
+        }
+
+        return implode('-', array_slice($filtered, 0, 2));
     }
 
     /**
@@ -2050,6 +2414,8 @@ class MSH_Contextual_Meta_Generator {
 class MSH_Image_Optimizer {
     private static $instance = null;
 
+    const ANALYSIS_CACHE_VERSION = '2';
+
     private $batch_size = 10;
     private $processed_count = 0;
     private $current_attachment_id = null;
@@ -2179,7 +2545,7 @@ class MSH_Image_Optimizer {
         $file_extension = strtolower(pathinfo($source_file, PATHINFO_EXTENSION));
         $is_webp_convertible = in_array($file_extension, ['jpg', 'jpeg', 'png']);
 
-        if ($is_webp_convertible && $webp_status === 'unsupported') {
+        if ($is_webp_convertible && in_array($webp_status, ['unsupported', 'failed'], true)) {
             if (!$meta_time) {
                 return $this->validate_status('metadata_missing');
             }
@@ -2675,7 +3041,21 @@ class MSH_Image_Optimizer {
             // Get or generate suggestion for files that need renaming
             $suggested_filename = get_post_meta($attachment_id, '_msh_suggested_filename', true);
 
-            // Debug disabled for performance
+            $expected_filename_full = '';
+            if (!empty($expected_slug) && !empty($extension)) {
+                $expected_filename_full = $this->ensure_unique_filename($expected_slug, $extension, $attachment_id);
+            }
+
+            if (!empty($suggested_filename) && !empty($expected_filename_full)) {
+                $current_suggested_base = strtolower(pathinfo($suggested_filename, PATHINFO_FILENAME));
+                $expected_suggested_base = strtolower(pathinfo($expected_filename_full, PATHINFO_FILENAME));
+
+                if ($current_suggested_base !== $expected_suggested_base) {
+                    $suggested_filename = $expected_filename_full;
+                    update_post_meta($attachment_id, '_msh_suggested_filename', $suggested_filename);
+                    update_post_meta($attachment_id, 'msh_filename_last_suggested', time());
+                }
+            }
 
             // Generate suggestion if it doesn't exist yet
             if (empty($suggested_filename) && !empty($extension)) {
@@ -2686,7 +3066,11 @@ class MSH_Image_Optimizer {
                     : $this->contextual_meta_generator->generate_filename_slug($attachment_id, $context_info, $extension);
 
                 if (!empty($slug)) {
-                    $suggested_filename = $this->ensure_unique_filename($slug, $extension, $attachment_id);
+                    if (!empty($expected_filename_full) && $slug === $expected_slug) {
+                        $suggested_filename = $expected_filename_full;
+                    } else {
+                        $suggested_filename = $this->ensure_unique_filename($slug, $extension, $attachment_id);
+                    }
                     update_post_meta($attachment_id, '_msh_suggested_filename', $suggested_filename);
                     update_post_meta($attachment_id, 'msh_filename_last_suggested', time());
 
@@ -3246,15 +3630,22 @@ class MSH_Image_Optimizer {
     }
 
     private function get_context_choices() {
+        if (class_exists('MSH_Image_Optimizer_Context_Helper')) {
+            $active_context = MSH_Image_Optimizer_Context_Helper::get_active_context();
+            $industry = isset($active_context['industry']) ? $active_context['industry'] : '';
+
+            return MSH_Image_Optimizer_Context_Helper::get_context_choice_map($industry);
+        }
+
         return [
             '' => __('Auto-detect (default)', 'msh-image-optimizer'),
-            'clinical' => __('Clinical / Treatment', 'msh-image-optimizer'),
+            'business' => __('Business / General', 'msh-image-optimizer'),
             'team' => __('Team Member', 'msh-image-optimizer'),
-            'testimonial' => __('Patient Testimonial', 'msh-image-optimizer'),
-            'service-icon' => __('Service Icon', 'msh-image-optimizer'),
-            'facility' => __('Facility / Clinic', 'msh-image-optimizer'),
-            'equipment' => __('Equipment', 'msh-image-optimizer'),
-            'business' => __('Business / General', 'msh-image-optimizer')
+            'testimonial' => __('Customer Testimonial', 'msh-image-optimizer'),
+            'service-icon' => __('Icon / Graphic', 'msh-image-optimizer'),
+            'facility' => __('Workspace / Office', 'msh-image-optimizer'),
+            'equipment' => __('Product / Equipment', 'msh-image-optimizer'),
+            'clinical' => __('Service Highlight', 'msh-image-optimizer'),
         ];
     }
 
@@ -3579,7 +3970,7 @@ class MSH_Image_Optimizer {
         $force_refresh = isset($_POST['force_refresh']) && $_POST['force_refresh'] === 'true';
 
         // URGENT: Quick cache to stop analysis time waste
-        $cache_key = 'msh_analysis_cache_' . md5('latest_analysis');
+        $cache_key = 'msh_analysis_cache_v' . self::ANALYSIS_CACHE_VERSION . '_' . md5('latest_analysis');
 
         if ($force_refresh) {
             delete_transient($cache_key);
@@ -3604,12 +3995,17 @@ class MSH_Image_Optimizer {
         
         // Debug: First check total images
         global $wpdb;
-        $total_images = $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'");
-        
+        $total_images = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'");
+
         $images = $this->get_published_images();
+
+        if ($total_images === 0) {
+            $total_images = count($images);
+        }
         $analysis_results = [];
         
-        foreach ($images as $image) {
+        try {
+            foreach ($images as $image) {
             // Fix missing file_path for images that don't have _wp_attached_file meta
             if (empty($image['file_path'])) {
                 $attached_file = get_attached_file($image['ID']);
@@ -3623,7 +4019,7 @@ class MSH_Image_Optimizer {
                 }
             }
 
-            $analysis = $this->analyze_single_image($image['ID']);
+                $analysis = $this->analyze_single_image($image['ID']);
             $priority = $this->calculate_healthcare_priority($image);
 
             // Map current_size_bytes to file_size for frontend compatibility
@@ -3633,7 +4029,17 @@ class MSH_Image_Optimizer {
 
             $analysis_results[] = array_merge($image, $analysis, ['priority' => $priority]);
         }
-        
+        } catch (Throwable $throwable) {
+            error_log(sprintf('MSH Analyzer Fatal: ID %d - %s in %s:%d',
+                isset($image['ID']) ? (int) $image['ID'] : 0,
+                $throwable->getMessage(),
+                $throwable->getFile(),
+                $throwable->getLine()
+            ));
+
+            wp_send_json_error($throwable->getMessage());
+        }
+
         // Sort by priority (highest first)
         usort($analysis_results, function($a, $b) {
             return $b['priority'] - $a['priority'];
@@ -3644,6 +4050,7 @@ class MSH_Image_Optimizer {
 
         $response_data = [
             'images' => $analysis_results,
+            'total_images' => intval($total_images),
             'debug' => [
                 'total_images_in_db' => intval($total_images),
                 'published_images_found' => count($images),
@@ -3955,14 +4362,17 @@ class MSH_Image_Optimizer {
                         $webp_result = $this->convert_to_webp($file_path, $webp_path);
                         if ($webp_result) {
                             update_post_meta($attachment_id, 'msh_webp_last_converted', $timestamp);
+                            delete_post_meta($attachment_id, 'msh_webp_status');
                             $result['actions'][] = 'WebP version created';
                             $webp_converted = true;
                         } else {
+                            update_post_meta($attachment_id, 'msh_webp_status', 'failed');
                             $result['actions'][] = 'WebP conversion failed';
                         }
                     } elseif (file_exists($webp_path) && !get_post_meta($attachment_id, 'msh_webp_last_converted', true)) {
                         // WebP exists but timestamp missing - update timestamp
                         update_post_meta($attachment_id, 'msh_webp_last_converted', $timestamp);
+                        delete_post_meta($attachment_id, 'msh_webp_status');
                         $result['actions'][] = 'WebP timestamp updated';
                         $webp_timestamp_updated = true;
                     }

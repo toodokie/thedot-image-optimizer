@@ -109,6 +109,10 @@ class MSH_Image_Optimizer_Admin {
         }
 
         $diagnostics_snapshot = $this->get_diagnostics_snapshot();
+        $active_context_payload = MSH_Image_Optimizer_Context_Helper::get_active_context($profiles);
+        $active_industry = isset($active_context_payload['industry']) ? $active_context_payload['industry'] : '';
+        $context_menu_options = MSH_Image_Optimizer_Context_Helper::get_context_menu_options($active_industry);
+        $context_choice_map = MSH_Image_Optimizer_Context_Helper::get_context_choice_map($active_industry);
 
         $required_onboarding_keys = array('business_name', 'industry', 'business_type', 'target_audience', 'brand_voice', 'uvp');
         $onboarding_complete = true;
@@ -142,6 +146,8 @@ class MSH_Image_Optimizer_Admin {
             'contextProfiles' => $profile_payload,
             'activeProfile' => $active_profile,
             'diagnostics' => $diagnostics_snapshot,
+            'contextChoices' => $context_menu_options,
+            'contextChoiceMap' => $context_choice_map,
             'strings' => array(
                 'analyzing' => __('Analyzing images...', 'msh-image-optimizer'),
                 'optimizing' => __('Optimizing images...', 'msh-image-optimizer'),

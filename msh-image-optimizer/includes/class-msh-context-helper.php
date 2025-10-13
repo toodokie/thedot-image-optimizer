@@ -293,4 +293,78 @@ class MSH_Image_Optimizer_Context_Helper {
             ? $active['context']
             : array();
     }
+
+    /**
+     * Determine if the provided industry slug maps to healthcare.
+     *
+     * @param string $industry Industry identifier.
+     * @return bool
+     */
+    public static function is_healthcare_industry($industry) {
+        if (empty($industry) || !is_string($industry)) {
+            return false;
+        }
+
+        $industry = strtolower(trim($industry));
+        $health_slugs = array('medical', 'dental', 'therapy', 'wellness');
+
+        return in_array($industry, $health_slugs, true);
+    }
+
+    /**
+     * Retrieve context dropdown options tailored to the active industry.
+     *
+     * Each option is returned as an array with `value` and `label` keys so the
+     * order can be preserved in both PHP and JavaScript.
+     *
+     * @param string $industry Industry slug.
+     * @return array[]
+     */
+    public static function get_context_menu_options($industry = '') {
+        $is_healthcare = self::is_healthcare_industry($industry);
+
+        if ($is_healthcare) {
+            return array(
+                array('value' => '', 'label' => __('Auto-detect (default)', 'msh-image-optimizer')),
+                array('value' => 'clinical', 'label' => __('Clinical / Treatment', 'msh-image-optimizer')),
+                array('value' => 'team', 'label' => __('Team Member', 'msh-image-optimizer')),
+                array('value' => 'testimonial', 'label' => __('Patient Testimonial', 'msh-image-optimizer')),
+                array('value' => 'service-icon', 'label' => __('Service Icon', 'msh-image-optimizer')),
+                array('value' => 'facility', 'label' => __('Facility / Clinic', 'msh-image-optimizer')),
+                array('value' => 'equipment', 'label' => __('Equipment', 'msh-image-optimizer')),
+                array('value' => 'business', 'label' => __('Business / General', 'msh-image-optimizer')),
+            );
+        }
+
+        return array(
+            array('value' => '', 'label' => __('Auto-detect (default)', 'msh-image-optimizer')),
+            array('value' => 'business', 'label' => __('Business / General', 'msh-image-optimizer')),
+            array('value' => 'team', 'label' => __('Team Member', 'msh-image-optimizer')),
+            array('value' => 'testimonial', 'label' => __('Customer Testimonial', 'msh-image-optimizer')),
+            array('value' => 'service-icon', 'label' => __('Icon / Graphic', 'msh-image-optimizer')),
+            array('value' => 'facility', 'label' => __('Workspace / Office', 'msh-image-optimizer')),
+            array('value' => 'equipment', 'label' => __('Product / Equipment', 'msh-image-optimizer')),
+            array('value' => 'clinical', 'label' => __('Service Highlight', 'msh-image-optimizer')),
+        );
+    }
+
+    /**
+     * Convenience helper to return an associative map of context choices.
+     *
+     * @param string $industry Industry slug.
+     * @return array<string,string>
+     */
+    public static function get_context_choice_map($industry = '') {
+        $options = self::get_context_menu_options($industry);
+        $map = array();
+
+        foreach ($options as $option) {
+            if (!isset($option['value'], $option['label'])) {
+                continue;
+            }
+            $map[$option['value']] = $option['label'];
+        }
+
+        return $map;
+    }
 }
