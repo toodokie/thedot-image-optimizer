@@ -2498,7 +2498,501 @@ const response = await $.ajax({
 
 ---
 
-**Last Updated**: September 2025
-**Version**: 2025.09.2 (Modern UI + Batch Processing)
+## 📋 Planned Features & Architecture (TODO)
+
+### 1. Descriptor-Based Filename & Metadata Pipeline
+
+**Status**: 🚧 In Development (ETA: 2 hours from Oct 12, 2025 22:00)
+
+**Overview**: Enhanced meta generation system that derives visual descriptors from image context and uses them to build semantic, SEO-optimized filenames and metadata.
+
+**Key Components**:
+- `derive_visual_descriptor()` - Extracts meaningful visual context from attachment metadata
+- `extract_business_slug_keywords()` - Pulls business-relevant terms from context
+- Industry-aware context filtering - Prevents healthcare terms in non-healthcare businesses
+- Enhanced slug generation with visual descriptors, asset types, and business keywords
+
+**Filename Generation Logic**:
+```
+[business-keywords]-[business-name]-[industry]-[location]-[asset-type]-[visual-descriptor]
+```
+
+**Examples**:
+- Before: `rehabilitation-physiotherapy-765.jpg`
+- After: `modern-office-workspace-emberline-creative-marketing-austin-branding.jpg`
+
+**Context Handling**:
+- Healthcare industries (medical, dental, therapy, wellness) → Clinical context available
+- Non-healthcare → Clinical context auto-converted to Business/General
+- Manual context overrides preserved
+
+**Implementation Files** (uncommitted changes):
+- `includes/class-msh-image-optimizer.php` - Core meta generation (+465 lines)
+- `includes/class-msh-context-helper.php` - Industry detection (+74 lines)
+- `admin/image-optimizer-admin.php` - Context menu integration (+6 lines)
+- `assets/js/image-optimizer-admin.js` - Frontend handling
+- `assets/js/image-optimizer-modern.js` - Modern UI integration
+
+**Testing Requirements** (see QA Checklist below)
+
+---
+
+### 2. Privacy-First Analytics System
+
+**Status**: 📝 Documented - TODO Implementation
+
+**Overview**: Local-first analytics tracking with optional anonymous aggregate reporting. Tracks performance metrics (bytes saved, images optimized) without collecting PII.
+
+**Database Schema**:
+
+```sql
+-- Daily aggregates table
+CREATE TABLE wp_io_stats_daily (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    period_date DATE NOT NULL,
+    images_optimized INT UNSIGNED NOT NULL DEFAULT 0,
+    bytes_before BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    bytes_after BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    avg_reduction_pct DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    plugin_version VARCHAR(20) NOT NULL,
+    php_version VARCHAR(20) NOT NULL,
+    wp_version VARCHAR(20) NOT NULL,
+    created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_period (period_date)
+);
+
+-- Optional: Batch-level tracking
+CREATE TABLE wp_io_stats_batches (
+    id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+    batch_id CHAR(36) NOT NULL,
+    started_at DATETIME NOT NULL,
+    finished_at DATETIME NULL,
+    images_optimized INT UNSIGNED NOT NULL DEFAULT 0,
+    bytes_before BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    bytes_after BIGINT UNSIGNED NOT NULL DEFAULT 0,
+    avg_reduction_pct DECIMAL(5,2) NOT NULL DEFAULT 0.00,
+    plugin_version VARCHAR(20) NOT NULL,
+    PRIMARY KEY (id),
+    UNIQUE KEY ux_batch (batch_id)
+);
+```
+
+**Remote Telemetry Payload** (Opt-in Only):
+```json
+{
+  "site_hash": "0b0a6a6f...",
+  "period_start": "2025-10-01",
+  "period_end": "2025-10-31",
+  "images_optimized": 1842,
+  "bytes_saved_total": 3317809152,
+  "avg_reduction_pct": 48.2,
+  "plugin_version": "1.0.0",
+  "php_version": "8.2.12",
+  "wp_version": "6.6.2",
+  "timezone": "America/Toronto"
+}
+```
+
+**What's Never Collected**:
+- ❌ Filenames or media IDs
+- ❌ URLs or domain names
+- ❌ User IDs, emails, or IP addresses
+- ❌ Visitor tracking or page views
+
+**Features**:
+- Local CSV export for client reporting
+- One-way salted site hash (generated from `home_url()` + random salt)
+- "View data" modal showing exact JSON before sending
+- 12-month remote data retention
+- Kill switch: disable and delete telemetry key
+- Daily roll-up with upsert logic for efficient storage
+
+**UI Elements**:
+- Toggle: "Share anonymous performance stats"
+- Buttons: "View data that would be sent", "Export CSV", "Send now"
+- Danger zone: "Disable and delete telemetry key"
+
+**Implementation Notes**:
+- Use `dbDelta()` for installation
+- Gate on plugin version to avoid re-runs
+- Add multisite cleanup helper
+- Hook into existing optimizer batch completion
+- Store options: `io_telemetry_enabled`, `io_telemetry_salt`, `io_last_sent_at`
+- Include `site_locale` or `timezone_offset` in aggregate for adoption patterns
+
+**Adjustments from Original Proposal**:
+- Add per-batch raw numbers in transient for "last run" display
+- Add admin notice on first activation explaining opt-in
+- Link to JSON sample in settings
+
+---
+
+### 3. Secure API Key Management
+
+**Status**: 📝 Documented - TODO Implementation
+
+**Overview**: Feature-flagged, encrypted API key storage with rotation support, masking, and zero-logging policy. Foundation for future AI/telemetry integrations.
+
+**Architecture**:
+- OpenSSL encryption (AES-256-GCM or AES-256-CBC with HMAC)
+- Per-site derived key from `wp-config.php` salt + site URL
+- Two-phase rotation: Save "next" key → Promote to "current"
+- Masked display (shows only last 4 characters)
+- Feature-flagged: `TDC_FEATURE_SECURE_KEYS` in `wp-config.php`
+
+**Storage Format**:
+```php
+[
+  'current' => ['method' => 'aes-256-gcm', 'iv' => '...', 'tag' => '...', 'enc' => '...'],
+  'next' => null,
+  'updated_at' => 1760314736,
+  'rotated_at' => null
+]
+```
+
+**Key Generation**:
+```php
+$key = hash('sha256', TDC_SECRET_SALT . '|' . get_site_url(), true); // 32 bytes
+```
+
+**Masking Function**:
+```php
+function mask($s) {
+    if (!$s) return '';
+    return '****-****-****-' . substr($s, -4);
+}
+```
+
+**Public API**:
+```php
+$key = tdc_get_secure_api_key(); // Returns decrypted current key
+// Never log $key - always mask in UI/errors
+```
+
+**UI Workflow**:
+1. Paste new key in "Next key" field → Save next
+2. Test with new key in dev/staging
+3. Promote next → current (atomic swap)
+4. Old current key is discarded
+5. Clear current/next buttons for emergency rotation
+
+**Security Checklist**:
+- ✅ No keys in git history or codebase
+- ✅ Masked in admin UI (last 4 chars only)
+- ✅ Never logged to error_log or debug.log
+- ✅ Encrypted at rest in wp_options
+- ✅ Derived key never stored (regenerated from salt + URL)
+- ✅ Feature-flagged (disabled by default)
+
+**wp-config.php Requirements**:
+```php
+define('TDC_FEATURE_SECURE_KEYS', true);
+define('TDC_SECRET_SALT', 'generate-a-strong-random-string-here');
+```
+
+**Adjustments from Original Proposal**:
+- Rename `TDC_*` constants to plugin namespace
+- Wrap decrypt in class method for alternative storage (WP Secrets API future)
+- Add filter: `apply_filters('image_optimizer_secure_key_cap', 'manage_options')`
+- Add REST endpoint for masked fingerprint health checks (disabled by default)
+
+---
+
+### 4. Paid Plugin Infrastructure (Micro-Server Architecture)
+
+**Status**: 📝 Documented - TODO Implementation (Q1 2026)
+
+**Overview**: Lightweight, modular licensing and update system using Vercel Edge Functions + Supabase + CDN storage. Enables clean Pro/Agency tier rollout without heavy ops.
+
+**Architecture Components**:
+
+1. **Vercel Edge API** - License validation & update JSON serving (Node runtime with official Supabase client)
+2. **Supabase Postgres** - Licenses, plans, releases, activations
+3. **Cloudflare R2** - Signed ZIP downloads (time-limited URLs)
+4. **Lemon Squeezy** - Payments & webhook license provisioning
+5. **WordPress Updater** - Hooks into native WP update system
+
+**Database Schema**:
+
+```sql
+-- Plans table
+CREATE TABLE plans (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT UNIQUE NOT NULL, -- 'pro', 'agency'
+    name TEXT NOT NULL,
+    activations_limit INT NOT NULL DEFAULT 1
+);
+
+-- Licenses table
+CREATE TABLE licenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    key TEXT UNIQUE NOT NULL,
+    email TEXT NOT NULL,
+    plan_code TEXT NOT NULL REFERENCES plans(code),
+    status TEXT NOT NULL DEFAULT 'active', -- active, expired, revoked
+    expires_at TIMESTAMPTZ,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+-- Activations table (domain binding)
+CREATE TABLE activations (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    license_key TEXT NOT NULL REFERENCES licenses(key),
+    domain TEXT NOT NULL,
+    last_seen_at TIMESTAMPTZ DEFAULT NOW(), -- NEW: for stale domain pruning
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(license_key, domain)
+);
+
+-- Releases table
+CREATE TABLE releases (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    plan_code TEXT NOT NULL REFERENCES plans(code),
+    version TEXT NOT NULL,
+    requires TEXT DEFAULT '6.0',
+    tested TEXT DEFAULT '6.6',
+    filename TEXT NOT NULL, -- 'image-optimizer-pro-1.2.3.zip'
+    changelog TEXT,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+    UNIQUE(plan_code, version)
+);
+```
+
+**Update Endpoint** (`/api/update.ts`):
+- Validates license key + status + expiry
+- Checks activation limits per domain
+- Returns latest release for plan tier
+- Serves signed CDN download URL (Cloudflare R2 signed URLs, 15min expiry)
+
+**Webhook Handler** (`/api/webhooks/lemonsqueezy.ts`):
+- Verifies Lemon Squeezy HMAC signature
+- Handles events: `order_created`, `subscription_created`, `subscription_cancelled`
+- Generates random license keys (48 hex chars)
+- Creates/updates license records
+
+**WordPress Updater** (`class-updater.php`):
+- Hooks: `pre_set_site_transient_update_plugins`, `plugins_api`
+- Pings update endpoint with: license, domain, current_version
+- Displays update in native WP admin UI
+- Downloads via package URL (signed CDN link)
+- Integrates with secure-key module for license storage
+
+**Lemon Squeezy Integration**:
+- Webhook receives order → creates license → emails key
+- Maps product variants to `plan_code` (Pro, Agency)
+- Handles renewals and cancellations
+- Grace period support for expiring licenses
+
+**Deployment Stack**:
+- **API**: Vercel Edge Functions (Node runtime with official Supabase JS client)
+- **Database**: Supabase Postgres
+- **Storage**: Cloudflare R2 with signed URLs
+- **Payments**: Lemon Squeezy (VAT-compliant, worldwide)
+
+**Security Features**:
+- Signed ZIP URLs (time-limited, 15min expiry)
+- HMAC webhook verification
+- License key rotation support
+- Activation limit enforcement
+- Domain binding with `last_seen_at` tracking for stale domain pruning
+
+**Pricing Tiers** (Proposed):
+- **Pro**: $99/year - 2 activations
+- **Agency**: $199/year - 10 activations
+- **Enterprise**: $399/year - Unlimited + priority support
+
+**Implementation Phases**:
+1. Deploy Supabase schema + seed data
+2. Deploy Vercel Edge functions (Node runtime)
+3. Configure Lemon Squeezy webhook
+4. Build WordPress updater component
+5. Test license validation flow
+6. Set up Cloudflare R2 + signed URLs
+7. Launch Pro tier beta
+
+**Adjustments from Original Proposal**:
+- Use official Supabase JS client instead of RPC shim (Node runtime)
+- Add `last_seen_at` column for stale domain cleanup without manual pings
+- Integrate secure-key module for license storage on WP side
+- Use Cloudflare R2 signed URLs (15min expiry) for ZIP delivery
+- Add CLI key activator for headless installs
+- Add anonymous telemetry toggle per license
+- Staged rollouts by plan percentage
+
+**Optional Enhancements**:
+- Admin dashboard for license management
+- Renewal reminder emails (30/7 days before expiry)
+- Support ticket integration
+- Usage analytics per license
+
+---
+
+## 🧪 QA Testing Checklist
+
+**Last Updated**: October 12, 2025
+
+### Pre-Testing Setup
+- [ ] Verify plugin active and symlinked to repo
+- [ ] Check database tables exist (usage index, rename log, etc.)
+- [ ] Confirm business context configured (Settings → Image Optimizer)
+- [ ] Note current plugin version and PHP/WP versions
+
+### Descriptor/Slug Pipeline Testing
+
+**Camera Filenames** (DSC*, IMG_*, DCIM*):
+- [ ] Upload 3 camera images with generic names
+- [ ] Run Analyzer
+- [ ] Verify visual descriptors extracted
+- [ ] Check slug format: `[keywords]-[business]-[industry]-[location]-[descriptor]`
+- [ ] Confirm no healthcare terms for non-healthcare businesses
+
+**Context Handling**:
+- [ ] Test image in Business / General context
+- [ ] Test image in Team Member context
+- [ ] Test image in Testimonial context
+- [ ] Test manual context override
+- [ ] Verify healthcare industry detection (medical, dental, therapy, wellness)
+- [ ] Verify non-healthcare auto-conversion (clinical → business)
+
+**Multi-Page Attachments**:
+- [ ] Image used on homepage + service page
+- [ ] Image used in post + page
+- [ ] Verify priority scoring reflects highest usage
+- [ ] Check context detection for each usage
+
+**Slug Uniqueness**:
+- [ ] Upload 5 similar images (same subject)
+- [ ] Run Analyzer
+- [ ] Confirm slugs are unique (incremental suffixes or variation)
+- [ ] Verify no collisions with existing attachments
+
+### Optimization Cycle Testing
+
+**Standard Workflow**:
+- [ ] Analyze 10 images
+- [ ] Review suggested filenames
+- [ ] Edit 2-3 suggestions inline
+- [ ] Apply suggestions (batch)
+- [ ] Verify content references updated
+- [ ] Check rollback logs created
+- [ ] Confirm no 404 errors on frontend
+
+**Error Handling**:
+- [ ] Test with locked file (filesystem error)
+- [ ] Test with missing attachment post
+- [ ] Test with corrupt image file
+- [ ] Verify graceful error messages
+- [ ] Confirm partial batch completion
+
+**Progress Tracking**:
+- [ ] Monitor live log during optimization
+- [ ] Verify "Every 5 files" progress updates
+- [ ] Check completion beep sound
+- [ ] Review final success message with stats
+
+### Usage Index Testing
+
+**Background Rebuild**:
+- [ ] Trigger Smart Build (attachment change)
+- [ ] Monitor diagnostics panel for progress
+- [ ] Verify queue status (pending → processing → complete)
+- [ ] Check "Last rebuild" timestamp
+- [ ] Confirm attachment IDs listed in modal
+
+**Force Rebuild**:
+- [ ] Click "Force rebuild" button
+- [ ] Monitor background queue
+- [ ] Verify full index regeneration
+- [ ] Check completion message
+
+### Settings & Configuration Testing
+
+**Business Context**:
+- [ ] Edit business name
+- [ ] Change industry (healthcare ↔ non-healthcare)
+- [ ] Update brand voice
+- [ ] Modify location/service area
+- [ ] Save and verify context menu updates
+
+**Context Profiles**:
+- [ ] Create secondary profile
+- [ ] Switch active profile
+- [ ] Verify analyzer uses new context
+- [ ] Delete profile
+- [ ] Confirm fallback to primary
+
+### Regression Validation
+
+**Known Issues Check**:
+- [ ] Legacy "Deep library scan" endpoint (Bad Request: 0) - Use Quick Scan instead
+- [ ] Settings page font loading (Adobe Fonts) - Verify futura-pt loads
+- [ ] Dropdown hover states - Verify no background color change
+- [ ] H2 heading consistency - Check all h2 elements use same font/size
+
+**CSS/UI Validation**:
+- [ ] Admin page typography (futura-pt + ff-real-text-pro)
+- [ ] Settings page typography (matches admin)
+- [ ] Collapsible sections (arrow rotation)
+- [ ] Form input focus states (dark grey #35332f, not blue #2271b1)
+- [ ] Button hover states (lime yellow #daff00)
+
+### Browser Testing
+
+**Desktop**:
+- [ ] Chrome (latest)
+- [ ] Firefox (latest)
+- [ ] Safari (latest)
+- [ ] Edge (latest)
+
+**Mobile**:
+- [ ] iOS Safari
+- [ ] Android Chrome
+- [ ] Responsive design (breakpoints)
+
+---
+
+## 📊 Implementation Roadmap
+
+### Phase 1: Descriptor Pipeline (In Progress)
+- ⏳ Descriptor-based filename generation (ETA: 2 hours from Oct 12, 2025 22:00)
+- ⏳ Industry-aware context filtering
+- ⏳ Enhanced meta generation
+- ⏳ QA testing and refinement
+- **Lead**: Other AI (code changes in progress, uncommitted)
+
+### Phase 2: Analytics Foundation (Documented - TODO)
+- 📝 Database schema design ✅
+- 📝 Local CSV export specification
+- 📝 Remote telemetry (opt-in) specification
+- 📝 Settings UI mockup
+- 🔜 Implementation (post-descriptor merge)
+
+### Phase 3: Secure Key Management (Documented - TODO)
+- 📝 Encryption architecture ✅
+- 📝 Two-phase rotation UI specification
+- 📝 Public API helpers
+- 📝 Feature flagging plan
+- 🔜 Implementation (post-analytics)
+
+### Phase 4: Paid Plugin Infrastructure (Documented - TODO)
+- 📝 Vercel Edge API design ✅
+- 📝 Supabase schema
+- 📝 Lemon Squeezy integration plan
+- 📝 WordPress updater specification
+- 🔜 Beta deployment (Q1 2026)
+
+### Phase 5: AI Integration (Future)
+- 🤖 OpenAI API wrapper
+- 🤖 Credit management system
+- 🤖 Vision API for descriptors
+- 🤖 Duplicate detection AI
+- 🔮 Planning phase (see MSH_IMAGE_OPTIMIZER_RND.md)
+
+---
+
+**Last Updated**: October 12, 2025 23:45
+**Version**: 2025.10.2 (Descriptor Pipeline + Analytics/Security/Licensing Planning)
 **Author**: MSH Development Team
 **License**: Proprietary - Main Street Health

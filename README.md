@@ -4,12 +4,39 @@ A standalone WordPress plugin for comprehensive image optimization, duplicate de
 
 ## Features
 
+### Core Functionality
 - **Smart Image Optimization**: Analyze and optimize published images with WebP conversion, ALT text improvements, and SEO metadata
 - **Duplicate Detection**: Find and remove duplicate images using MD5 hashing, perceptual hashing, and filename matching
 - **Safe Renaming System**: SEO-friendly filename generation with automatic reference tracking and replacement
 - **Usage Index**: Comprehensive tracking of image usage across posts, pages, widgets, and theme options
 - **WebP Delivery**: Automatic WebP format delivery with browser detection
 - **Visual Similarity Scan**: Perceptual hash-based duplicate detection for visually similar images
+
+### Upcoming Features (See [Developer Notes](msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_DEV_NOTES.md#-planned-features--architecture-todo))
+
+**Descriptor-Based Metadata (In Development - ETA: 2 hours)**
+- Enhanced filename generation with visual descriptors and business context
+- Industry-aware context filtering (healthcare vs non-healthcare)
+- Semantic, SEO-optimized slugs: `[keywords]-[business]-[industry]-[location]-[descriptor]`
+- Improved meta titles, alt text, captions, and descriptions
+
+**Privacy-First Analytics (Documented - TODO)**
+- Local performance tracking: bytes saved, images optimized, reduction percentages
+- Optional anonymous aggregate reporting (opt-in only)
+- CSV export for client reporting
+- Zero PII collection: no filenames, URLs, emails, or IP addresses
+
+**Secure API Key Management (Documented - TODO)**
+- Encrypted key storage with OpenSSL (AES-256-GCM)
+- Two-phase rotation: test "next" key before promoting to "current"
+- Masked display (last 4 characters only)
+- Zero-logging policy: keys never appear in logs or error messages
+
+**Paid Plugin Infrastructure (Documented - TODO, Q1 2026)**
+- Lightweight licensing via Vercel Edge Functions + Supabase
+- Pro/Agency tier support with activation limits
+- Native WordPress update system integration
+- Lemon Squeezy payment processing
 
 ## Requirements
 
