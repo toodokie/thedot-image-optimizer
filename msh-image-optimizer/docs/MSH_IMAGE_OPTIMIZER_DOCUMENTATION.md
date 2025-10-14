@@ -116,9 +116,81 @@ Once you are confident your published images are optimized, move to the **Duplic
 
 ---
 
-## 7. Document History
+## 7. Context-aware filenames & metadata
+
+- **Descriptor-first slugs** – Filenames start with a two-word (max) visual descriptor sourced from the attachment title, page title, or tags (`windmill.jpg`, `unicorn-wallpaper.jpg`). Camera-style codes (`dsc200503`, `cep00032`) are filtered before the slug is composed.
+- **Conditional brand & location** – The pipeline appends the business slug only when it adds context (logos, team portraits, product/facility shots, or pages like Contact/About/Team). City slugs appear only when the image is tied to a physical space or explicitly tagged as location-specific. Stock/blog graphics stay lean (`triforce-wallpaper.jpg`), while local hero shots read as `team-portrait-emberline-austin.jpg`.
+- **Conditional brand & location** – The pipeline appends the business slug only when it adds context (logos, team portraits, product/facility shots, or pages like Contact/About/Team). City slugs appear only when the image is tied to a physical space, manually flagged as location-specific, and the business profile is marked as an in-person/local service. Remote/online businesses skip the city suffix by default so stock/blog graphics stay lean (`triforce-wallpaper.jpg`) while local hero shots still read as `team-portrait-emberline-austin.jpg`. If you choose an ambiguous business type (e.g., B2B/B2C/nonprofit), the optimizer falls back to “city provided = local intent” – leave the City/Region blank for fully remote operations.
+- **Location toggle in the analyzer** – Each image row now includes a “Use business location context” checkbox inside the inline context editor. Flip it on when an individual asset (for example, an office tour or team photo) should inherit the city slug even though the profile is otherwise remote.
+- **Length guardrail** – `assemble_slug()` keeps combined slugs under ~50 characters and automatically drops redundant terms (e.g. `logo` is not added twice).
+- **Metadata mirrors the slug** – ALT text, caption, and description reuse the cleaned descriptor. Location and brand wording only appear when they were part of the slug decision, so a generic wallpaper no longer mentions Austin, while a clinic lobby still references the city.
+- **Quick sanity checks**  
+  - `wp eval 'print_r(MSH_Image_Optimizer::get_instance()->analyze_single_image(611));'` → Generic gallery image (no brand/location in the filename).  
+  - `wp eval 'print_r(MSH_Image_Optimizer::get_instance()->analyze_single_image(1027));'` → Logo asset (brand retained, location skipped unless tagged).  
+  - Add a “Contact” or “Team” page title/tag to confirm city suffixes reappear.
+- **Collision handling** – If multiple assets collapse to the same descriptor the optimizer keeps the slug short and WordPress adds the numeric suffix automatically. That is expected for the WordPress theme-test dataset and disappears once real-world titles/tags come into play.
+
+---
+
+## 8. Technical Investigation & Troubleshooting
+
+### File Resolver for Path Mismatches
+
+**Feature:** `MSH_File_Resolver` class (added 2025-10-14)
+
+The plugin includes a resilient file resolver that handles database/filesystem path mismatches commonly caused by:
+- Site migrations (http→https, domain changes)
+- Manual file operations via FTP
+- Failed rename/optimization operations
+- Plugin conflicts modifying files without updating database
+
+**How it works:**
+- When `_wp_attached_file` path doesn't exist, searches for files matching `*-{attachment_id}.{ext}` pattern
+- Validates MIME family (image/* only matches image/*)
+- Checks timestamp sanity (rejects orphaned files older than post creation)
+- Only accepts single exact match (prevents ambiguous results)
+- Logs mismatches when `WP_DEBUG` enabled
+- Read-only (doesn't modify database automatically)
+
+**Testing:**
+```bash
+# Test file resolver on specific attachment
+wp eval "print_r(MSH_Image_Optimizer::get_instance()->analyze_single_image(611));"
+
+# With WP_DEBUG=true, you'll see log output like:
+# [MSH File Resolver] Resolved mismatch for attachment 611:
+# expected "path/to/old-name.jpg" → found "path/to/actual-name.jpg"
+```
+
+### Investigation Documentation
+
+For complete technical details on the file resolver implementation, database investigation findings, and rename verification system analysis:
+
+- **`../../DB_INVESTIGATION_FINDINGS.md`** - Technical deep-dive with:
+  - Database investigation query results
+  - Root cause analysis of verification failures
+  - Meta ID tracking bug explanation
+  - Cache invalidation verification
+  - Code walkthroughs and fix recommendations
+
+- **`../../INVESTIGATION_SUMMARY_FOR_USER.md`** - Executive summary with:
+  - Implementation status and test results
+  - What works vs. what needs long-term fixing
+  - Files created/modified during investigation
+  - Testing checklist and next steps
+
+**Backup Test Data:**
+- `../../test-data-mismatch-state-YYYYMMDD-HHMMSS.sql` - Database exports preserving mismatch states for reproduction testing
+- `../../mismatch-manifest-YYYYMMDD.txt` - Attachment path listings before cleanup
+
+These files document a complete investigation cycle from October 2025 when database/filesystem mismatches were discovered and the file resolver was implemented to handle real-world migration scenarios.
+
+---
+
+## 9. Document History
 
 | Date | Change |
 | --- | --- |
+| 2025-10-14 | Added Technical Investigation section documenting file resolver, path mismatch handling, and references to detailed investigation findings. |
 | 2025-10-09 | Added Quick Start workflow, documented diagnostics snapshot card, and noted deep scan legacy issue. |
 | 2025-10-06 | Re-authored for the streamlined analyzer, auto usage refresh, and updated duplicate workflow. Older technical notes moved to `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md`. |
