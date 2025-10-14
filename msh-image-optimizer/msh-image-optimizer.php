@@ -65,6 +65,7 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-usage-index.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-usage-index-background.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-content-usage-lookup.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-file-resolver.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-perceptual-hash.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-safe-rename-cli.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-qa-cli.php';
