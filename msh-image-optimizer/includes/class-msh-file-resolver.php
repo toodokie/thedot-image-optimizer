@@ -32,6 +32,17 @@ class MSH_File_Resolver {
         $absolute_expected   = $base_dir . $normalized_expected;
 
         if (self::file_exists_case_sensitive($absolute_expected)) {
+            // Log direct match to debug logger if available
+            if (class_exists('MSH_Debug_Logger')) {
+                MSH_Debug_Logger::get_instance()->log_resolver(
+                    $attachment_id,
+                    $normalized_expected,
+                    $normalized_expected,
+                    'direct',
+                    false
+                );
+            }
+
             return [
                 'path'     => $absolute_expected,
                 'mismatch' => false,
@@ -82,6 +93,17 @@ class MSH_File_Resolver {
                 $normalized_expected,
                 str_replace($base_dir, '', $candidate)
             ));
+        }
+
+        // Log to debug logger if available
+        if (class_exists('MSH_Debug_Logger')) {
+            MSH_Debug_Logger::get_instance()->log_resolver(
+                $attachment_id,
+                $normalized_expected,
+                str_replace($base_dir, '', $candidate),
+                'fallback',
+                true
+            );
         }
 
         return [

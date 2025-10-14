@@ -19,6 +19,7 @@ This file contains ongoing research, experimental approaches, performance invest
 5. [Future Research Directions](#future-research-directions)
 6. [Experimental Code Snippets](#experimental-code-snippets)
 7. [Benchmarking Results](#benchmarking-results)
+8. [SEO-Optimized Filename Generation Strategy](#seo-optimized-filename-generation-strategy-october-2025)
 
 ---
 
@@ -116,6 +117,357 @@ class MSH_AI_Credit_Manager {
 **KPIs**: API success rate >95 %, AI response <2 s, 30 % of users trial AI, 50 % conversion from trial to paid, support tickets <5 % of AI runs.
 
 > Refer back to this section when scoping AI development sprints; see `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md` for the condensed checklist/live status.
+
+---
+
+## SEO-Optimized Filename Generation Strategy (October 2025)
+
+> **Status:** Critical Discovery | **Priority:** High | **Date:** October 13, 2025
+> **Problem:** Template-based slug generation causing SEO spam and inflexible architecture
+> **Solution:** Context-aware conditional logic for location/business name inclusion
+
+### Problem Discovery
+
+During QA testing of the descriptor-based filename pipeline (non-AI version), we identified a fundamental design flaw in the slug generation approach that violates SEO best practices and creates long-term scalability issues.
+
+#### Current Template-Based Approach (FLAWED)
+
+**Pattern:**
+```
+[descriptor]-[business_name]-[location]
+```
+
+**Real Examples:**
+- `triforce-wallpaper-emberline-creative-austin.jpg` (49 chars)
+- `unicorn-wallpaper-emberline-creative-austin.jpg` (48 chars)
+- `modern-workspace-emberline-creative-austin.jpg` (46 chars)
+
+**Critical Problems Identified:**
+
+1. ❌ **Location Spam**: "austin" appears in EVERY filename, even for generic stock images (unicorn wallpaper, Zelda triforce)
+2. ❌ **Looks Spammy to Google**: Repetitive location keyword across unrelated assets triggers spam detection algorithms
+3. ❌ **Inflexible Architecture**: What if Emberline opens a Dallas office? All Austin-branded files become incorrect
+4. ❌ **Not Semantically Descriptive**: "triforce-wallpaper-emberline-creative-austin.jpg" - why does a generic Zelda wallpaper need business name + location?
+5. ❌ **Unnecessarily Long Filenames**: 46-49 characters for generic content that could be 18-20 characters
+6. ❌ **Poor User Experience**: Confusing for multi-location businesses, forces manual cleanup
+
+### SEO Research Findings
+
+Based on comprehensive SEO research, we discovered the **correct approach** for location keywords in image filenames:
+
+#### ✅ When to INCLUDE Location
+
+Include location ONLY when the image is contextually tied to a physical place:
+
+- **Physical premises**: Building exteriors, office interiors, clinic rooms
+- **Team members**: Staff photos taken at that specific location
+- **Location-tagged content**: Venue photos, local events, service area imagery
+- **Business schema reference**: Images used in structured data with location context
+
+**Examples:**
+- ✅ `logo-main-street-health-hamilton.jpg` (business identity)
+- ✅ `clinic-interior-hamilton-physiotherapy.jpg` (physical location)
+- ✅ `team-photo-emberline-austin.jpg` (staff at location)
+- ✅ `office-building-exterior-austin.jpg` (premises)
+
+#### ❌ When to SKIP Location
+
+Skip location for content not tied to physical place:
+
+- **Stock photography**: Generic workspace images, concept photos, lifestyle shots
+- **Brand assets**: Logos (unless location-specific), icons, graphics, patterns
+- **Blog post featured images**: Concepts, illustrations, metaphors
+- **Portfolio work**: Client projects, case studies (unless project is location-specific)
+- **Decorative content**: Wallpapers, backgrounds, design elements
+
+**Examples:**
+- ✅ `modern-workspace-interior.jpg` (generic stock photo)
+- ✅ `branding-concept-design.jpg` (conceptual image)
+- ✅ `triforce-wallpaper.jpg` (decorative content)
+- ✅ `creative-strategy-illustration.jpg` (blog concept)
+
+### The Core SEO Logic
+
+**The Rule:** Location keywords should reinforce local relevance for images that represent a specific physical business or place. They should NOT be added mechanically to every asset.
+
+**Why This Matters:**
+1. **Google Image Search**: Helps images rank for local searches ("physiotherapy Hamilton") when appropriate
+2. **Avoids Spam Penalties**: Prevents repetitive keyword stuffing across unrelated assets
+3. **User Intent Alignment**: Filename matches what the image actually represents
+4. **Future-Proof**: Handles multi-location businesses without mass renaming
+5. **Cleaner URLs**: Shorter, more readable filenames (20-40 chars ideal vs 50+ chars)
+
+### Current Implementation Analysis
+
+#### Code Location
+File: `msh-image-optimizer/includes/class-msh-image-optimizer.php`
+Class: `MSH_Contextual_Meta_Generator`
+
+#### Business Case (Lines 1005-1043)
+
+**Current Logic:**
+```php
+case 'business':
+    $original_filename = strtolower($context['original_filename'] ?? '');
+    $brand_keywords = $this->extract_brand_keywords($original_filename);
+    $city_slug = $this->city_slug !== ''
+        ? $this->city_slug
+        : $this->extract_primary_location_token($this->location_slug);
+
+    $descriptor_slug = $this->build_business_descriptor_slug($context);
+
+    // ... brand name logic ...
+
+    $asset_component = $this->get_asset_slug_component($context);
+
+    // ❌ PROBLEM: Always includes ALL components
+    $components = array_filter([$descriptor_slug, $brand_slug, $city_slug, $asset_component], 'strlen');
+    $components = $this->dedupe_slug_components($components);
+
+    // Result: descriptor-brand-city-asset (4 components minimum)
+```
+
+**Issue:** The code ALWAYS adds `$city_slug` to `$components` array. There's no conditional check for whether the image contextually requires location information.
+
+#### Clinical Case (Line 1070)
+
+```php
+if (!empty($extracted_keywords) && $this->is_high_quality_extracted_name($extracted_keywords, $original_filename)) {
+    return $this->slugify($extracted_keywords . '-' . $this->location_slug);
+    //                                              ^^^^^^^^^^^^^^^^^^
+    //                                              Always "austin-texas" (too long!)
+}
+```
+
+**Issue:** Uses `$this->location_slug` ("austin-texas") instead of `$this->city_slug` ("austin"), adding unnecessary length.
+
+### The Right Approach: Context-Aware Conditional Logic
+
+#### Implementation Strategy
+
+**Phase 1: Add Context Detection Method**
+
+Add a new method to `MSH_Contextual_Meta_Generator` class:
+
+```php
+/**
+ * Determine if location should be included in filename slug based on context
+ *
+ * @param array $context Context information (page_title, asset type, etc.)
+ * @param string $asset_type Asset type from context (logo, team, facility, etc.)
+ * @return bool True if location should be included, false otherwise
+ */
+private function should_include_location_in_slug($context, $asset_type) {
+    // Always include for business/location-specific images
+    if (in_array($asset_type, ['logo', 'team', 'location', 'office', 'facility'])) {
+        return true;
+    }
+
+    // Check if page context indicates local relevance
+    $page_title = strtolower($context['page_title'] ?? '');
+    $local_contexts = ['contact', 'about', 'locations', 'team', 'office', 'location'];
+    foreach ($local_contexts as $local) {
+        if (stripos($page_title, $local) !== false) {
+            return true;
+        }
+    }
+
+    // Check if explicitly tagged as location-specific
+    if (!empty($context['location_specific'])) {
+        return true;
+    }
+
+    // Check if attachment title/caption mentions location
+    $attachment_title = strtolower($context['attachment_title'] ?? '');
+    $city_lower = strtolower($this->city);
+    if (!empty($city_lower) && stripos($attachment_title, $city_lower) !== false) {
+        return true;
+    }
+
+    // Default: skip location for generic content
+    return false;
+}
+```
+
+**Phase 2: Add Business Name Conditional Logic**
+
+```php
+/**
+ * Determine if business name should be included based on context
+ *
+ * @param array $context Context information
+ * @param string $descriptor The visual descriptor extracted
+ * @return bool True if business name adds semantic value
+ */
+private function should_include_business_name($context, $descriptor) {
+    $asset_type = $context['asset'] ?? '';
+
+    // Always include for branded assets
+    if (in_array($asset_type, ['logo', 'team', 'product', 'service'])) {
+        return true;
+    }
+
+    // Include if descriptor is generic/ambiguous
+    $generic_descriptors = ['image', 'photo', 'picture', 'graphic', 'content'];
+    if (in_array(strtolower($descriptor), $generic_descriptors)) {
+        return true;
+    }
+
+    // Skip for highly descriptive, specific content
+    // (e.g., "modern-workspace-interior" is already specific)
+    return false;
+}
+```
+
+**Phase 3: Refactor Slug Generation**
+
+**Before (Template-Based - WRONG):**
+```php
+// Always concatenates all components
+$components = array_filter([$descriptor_slug, $brand_slug, $city_slug, $asset_component], 'strlen');
+return $this->slugify(implode('-', $components));
+```
+
+**After (Context-Aware - RIGHT):**
+```php
+// Build components conditionally
+$components = [$descriptor_slug]; // Always start with descriptor
+
+// Only add business name if it adds semantic value
+if ($this->should_include_business_name($context, $descriptor_slug)) {
+    if (!empty($brand_slug)) {
+        $components[] = $brand_slug;
+    }
+}
+
+// Only add location if contextually relevant
+if ($this->should_include_location_in_slug($context, $context['asset'] ?? '')) {
+    // Use city only (not city-region) for brevity
+    $city_slug = $this->city_slug !== ''
+        ? $this->city_slug
+        : $this->extract_primary_location_token($this->location_slug);
+    if (!empty($city_slug)) {
+        $components[] = $city_slug;
+    }
+}
+
+// Add asset type only if it's not redundant with descriptor
+if (!empty($asset_component) && stripos($descriptor_slug, $asset_component) === false) {
+    $components[] = $asset_component;
+}
+
+// Deduplicate and enforce length limits
+$components = $this->dedupe_slug_components($components);
+$base_slug = implode('-', array_slice($components, 0, 4)); // Max 4 components
+
+// Enforce 50-char maximum (SEO best practice: 40-50 chars ideal)
+if (strlen($base_slug) > 50) {
+    // Truncate intelligently: keep descriptor, abbreviate others
+    $base_slug = $this->truncate_slug_intelligently($components, 50);
+}
+
+return $this->slugify($base_slug);
+```
+
+### Before/After Comparison
+
+#### Example 1: Generic Stock Photography
+
+**Current (Spammy):**
+- `triforce-wallpaper-emberline-creative-austin.jpg` (49 chars)
+- `unicorn-wallpaper-emberline-creative-austin.jpg` (48 chars)
+- `modern-workspace-emberline-creative-austin.jpg` (46 chars)
+
+**After (Clean):**
+- `triforce-wallpaper.jpg` (18 chars) ✅
+- `unicorn-wallpaper.jpg` (17 chars) ✅
+- `modern-workspace.jpg` (16 chars) ✅
+
+**Benefit:** 60-65% reduction in filename length, no keyword spam, semantically accurate
+
+#### Example 2: Location-Specific Business Assets
+
+**Current (Correct in this case):**
+- `team-photo-emberline-austin.jpg` (31 chars) ✅
+- `office-interior-emberline-austin.jpg` (37 chars) ✅
+
+**After (Maintained):**
+- `team-photo-emberline-austin.jpg` (31 chars) ✅ (location contextually relevant)
+- `office-interior-emberline-austin.jpg` (37 chars) ✅ (physical location)
+
+**Benefit:** Location kept because image represents physical business presence
+
+### Critical Issues Summary
+
+Based on this analysis, we identified **5 critical issues** in the current descriptor pipeline:
+
+1. ❌ **Hardcoded "hamilton" in code** (lines 12-14) - **STATUS: FIXED** (hydrate_active_context now reads from database)
+2. ❌ **Location spam in all filenames** - **STATUS: ACTIVE BUG** (no conditional logic)
+3. ❌ **Business name in generic images** - **STATUS: ACTIVE BUG** (always included)
+4. ❌ **Camera filenames not filtered** - **STATUS: ACTIVE BUG** (DSC*, DCP*, CEP* patterns leak through)
+5. ❌ **Legacy healthcare keywords** - **STATUS: MINOR** (not critical but needs cleanup for non-healthcare)
+
+### Implementation Priority
+
+**Priority 1: Context-Aware Slug Logic** (2.5 hours)
+- Add `should_include_location_in_slug()` method
+- Add `should_include_business_name()` method
+- Refactor slug assembly in business case (lines 1005-1043)
+- Refactor slug assembly in clinical case (line 1070)
+- Add intelligent truncation method
+- Enforce 50-char maximum
+
+**Priority 2: Strengthen Camera Filtering** (30 minutes)
+- Update camera pattern regex: `/^(dsc|img|dcim|dcp|cep|dscn|dscf|p\d{7})/i`
+- Add to `is_high_quality_extracted_name()` blacklist
+- Test with sample filenames
+
+**Priority 3: Healthcare Keyword Cleanup** (20 minutes)
+- Verify healthcare terms only appear when `is_healthcare_industry()` returns true
+- Remove hardcoded healthcare metadata for non-healthcare context
+
+**Priority 4: Testing & Validation** (1 hour)
+- Run on 37 test attachments
+- Verify no "hamilton" appears (should already be fixed)
+- Verify generic images don't have location/business
+- Verify location-specific images DO have location
+- Verify filenames < 50 chars
+- Verify no keyword repetition
+
+### Filename Length Guidelines
+
+**Target Range:** 20-40 characters (ideal for SEO and readability)
+**Maximum:** 50 characters (hard limit, truncate if exceeded)
+
+**Component Priority:**
+1. **Descriptor** (required): Visual/semantic keyword describing the image
+2. **Business name** (conditional): Only if adds semantic value
+3. **Location** (conditional): Only if image tied to physical place
+4. **Asset type** (optional): Only if not redundant with descriptor
+
+### Strategic Benefits
+
+1. **SEO Compliance**: Follows Google Image Search best practices
+2. **Future-Proof**: Handles multi-location businesses without mass renaming
+3. **Cleaner URLs**: Shorter, more readable, better user experience
+4. **Professional Appearance**: Filenames match industry standards
+5. **Competitive Advantage**: Other WordPress image plugins use template-based approach
+
+### Next Steps
+
+1. Implement `should_include_location_in_slug()` and `should_include_business_name()` methods
+2. Refactor business and clinical case slug generation
+3. Add intelligent truncation for 50-char limit
+4. Update camera filename filtering
+5. Test on existing 37 attachments
+6. Clear browser cache and regenerate suggestions
+7. Validate no "hamilton" appears, location only in relevant files
+8. Document new conditional logic in DEV_NOTES.md
+
+**Cross-Reference:**
+- Implementation details: `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md` (Planned Features section)
+- Code location: `msh-image-optimizer/includes/class-msh-image-optimizer.php` (MSH_Contextual_Meta_Generator class)
+- Testing command: `wp msh qa --rename=<ids> --duplicate`
 
 ---
 

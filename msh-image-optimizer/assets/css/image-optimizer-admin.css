@@ -2984,6 +2984,31 @@ tr.context-updated {
     outline-offset: 2px;
 }
 
+.actions-cell .optimize-single.is-disabled,
+.actions-cell .optimize-single:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #b5b5b5;
+    color: #6f6f6f;
+    background: transparent;
+}
+
+.actions-cell .optimize-single.is-disabled:hover,
+.actions-cell .optimize-single.is-disabled:focus,
+.actions-cell .optimize-single:disabled:hover,
+.actions-cell .optimize-single:disabled:focus {
+    background: transparent;
+    color: #6f6f6f;
+    box-shadow: none;
+}
+
+.actions-cell .optimize-helper {
+    margin-top: 6px;
+    font-size: 0.7rem;
+    color: #1d4ed8;
+    font-family: var(--font-secondary);
+}
+
 /* Issue tags */
 .issue-tags {
     display: flex;

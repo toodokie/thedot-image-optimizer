@@ -14,6 +14,9 @@ class MSH_Safe_Rename_System {
     private $test_mode = false;
     private $last_replacements = 0;
     private $backup_retention = DAY_IN_SECONDS;
+    private $content_lookup_cache_key = 'msh_content_usage_lookup';
+    private $content_lookup_snapshot_option = 'msh_content_lookup_snapshot';
+    private $content_lookup_queue_option = 'msh_content_lookup_queue';
 
     private function __construct() {
         global $wpdb;
@@ -67,6 +70,9 @@ class MSH_Safe_Rename_System {
     public function rename_attachment($attachment_id, $new_filename, $test_mode = false) {
         $this->test_mode = (bool) $test_mode;
         $this->last_replacements = 0;
+        if (!$this->test_mode) {
+            $this->clear_usage_lookup_cache();
+        }
 
         $current_path = get_attached_file($attachment_id);
         if (!$current_path || !file_exists($current_path)) {
@@ -136,6 +142,9 @@ class MSH_Safe_Rename_System {
 
         $this->last_replacements = $replaced;
         $this->update_log($log_id, 'complete', $replaced, null);
+        if (!$this->test_mode) {
+            $this->clear_usage_lookup_cache();
+        }
 
         return [
             'old_url' => $old_url,
@@ -176,6 +185,29 @@ class MSH_Safe_Rename_System {
                 'ID' => $attachment_id,
                 'post_name' => $original_slug,
             ]);
+        }
+
+        if (!$this->test_mode) {
+            $this->clear_usage_lookup_cache();
+        }
+    }
+
+    private function clear_usage_lookup_cache() {
+        delete_transient($this->content_lookup_cache_key);
+        delete_option($this->content_lookup_snapshot_option);
+        delete_option($this->content_lookup_queue_option);
+
+        if (function_exists('wp_clear_scheduled_hook')) {
+            $hook = 'msh_content_usage_lookup_refresh';
+
+            if (class_exists('MSH_Content_Usage_Lookup')) {
+                $lookup = MSH_Content_Usage_Lookup::get_instance();
+                if (method_exists($lookup, 'get_scheduled_hook')) {
+                    $hook = $lookup->get_scheduled_hook();
+                }
+            }
+
+            wp_clear_scheduled_hook($hook);
         }
     }
 

@@ -32,6 +32,18 @@
         }, {});
     }());
 
+    function isLocationSpecific(image, contextOverride) {
+        if (!image && !contextOverride) {
+            return false;
+        }
+
+        const directFlag = image && (image.location_specific === true || image.location_specific === 1 || image.location_specific === '1');
+        const contextDetails = contextOverride || (image && image.context_details) || {};
+        const contextFlag = contextDetails && (contextDetails.location_specific === true || contextDetails.location_specific === 1 || contextDetails.location_specific === '1');
+
+        return !!(directFlag || contextFlag);
+    }
+
     let imageData = [];
     let isProcessing = false;
     let currentBatch = [];
@@ -357,6 +369,7 @@
         const attachmentId = image.ID || image.id || '';
         const manualContext = image.manual_context || '';
         const autoContext = image.auto_context || '';
+        const locationSpecific = isLocationSpecific(image);
 
         // Suggested filename - make it editable with keep current option
         const suggestedFilename = image.suggested_filename || '';
@@ -379,7 +392,7 @@
             currentFilename;
         
         return `
-            <tr class="result-row ${priorityClass}" data-attachment-id="${attachmentId}" data-manual-context="${manualContext}" data-auto-context="${autoContext}" data-priority="${image.priority}" data-issues="${issues.map(i => i.type).join(',')}" data-optimized="${isOptimized}" data-status="${statusInfo.key}">
+            <tr class="result-row ${priorityClass}" data-attachment-id="${attachmentId}" data-manual-context="${manualContext}" data-auto-context="${autoContext}" data-location-specific="${locationSpecific ? '1' : '0'}" data-priority="${image.priority}" data-issues="${issues.map(i => i.type).join(',')}" data-optimized="${isOptimized}" data-status="${statusInfo.key}">
                 <td><input type="checkbox" class="image-checkbox" data-id="${image.ID}" value="${image.ID}"></td>
                 <td>
                     ${thumbnail}
@@ -448,6 +461,7 @@
         const autoContext = image.auto_context || '';
         const activeLabel = image.context_active_label || (context.type ? formatLabel(context.type) : '');
         const autoLabel = image.context_auto_label || (autoContext ? formatLabel(autoContext) : '');
+        const locationSpecific = isLocationSpecific(image, context);
 
         const infoParts = [];
 
@@ -494,6 +508,10 @@
             infoParts.push(`<div><strong>Appears On:</strong> ${escapeHtml(context.page_title)}</div>`);
         }
 
+        if (locationSpecific) {
+            infoParts.push('<div><strong>Location Anchor:</strong> Enabled</div>');
+        }
+
         const metaFields = [
             { key: 'title', label: 'Title' },
             { key: 'alt_text', label: 'ALT' },
@@ -534,6 +552,7 @@
         const source = sourceRaw === 'manual' || sourceRaw === 'auto' ? sourceRaw : 'pending';
         const activeLabel = image.context_active_label || (context.type ? formatLabel(context.type) : (manualContext ? formatLabel(manualContext) : ''));
         const autoLabel = image.context_auto_label || (autoContext ? formatLabel(autoContext) : '');
+        const locationSpecific = isLocationSpecific(image, context);
 
         const sourceLabels = {
             manual: 'Manual override',
@@ -553,6 +572,10 @@
 
         if (source === 'manual' && autoLabel && manualContext !== autoContext) {
             chips.push(`<span class="msh-context-chip auto-note">${escapeHtml(`Auto: ${autoLabel}`)}</span>`);
+        }
+
+        if (locationSpecific) {
+            chips.push('<span class="msh-context-chip location">Location anchored</span>');
         }
 
         const highlightParts = [];
@@ -577,6 +600,10 @@
             highlightParts.push(`Page: ${escapeHtml(context.page_title)}`);
         }
 
+        if (locationSpecific) {
+            highlightParts.push('Business location applied');
+        }
+
         const attachmentId = image.ID || image.id || '';
         const chipsHtml = chips.join(' ');
         const highlightsHtml = highlightParts.length ? `<div class="msh-context-highlights">${highlightParts.join(' • ')}</div>` : '';
@@ -588,12 +615,20 @@
             return `<option value="${choice.value}"${selected}>${escapeHtml(label)}</option>`;
         }).join('');
 
+        const locationToggleHtml = `
+            <label class="context-location-toggle">
+                <input type="checkbox" class="context-location-checkbox"${locationSpecific ? ' checked' : ''}>
+                <span>Use business location context</span>
+            </label>
+        `;
+
         const editorHtml = `
             <div class="context-inline-editor hidden">
                 <label class="screen-reader-text" for="context-inline-${attachmentId}">Image Context</label>
                 <select id="context-inline-${attachmentId}" class="context-inline-select">
                     ${optionsHtml}
                 </select>
+                ${locationToggleHtml}
                 <button type="button" class="button button-small button-primary inline-context-save">Save</button>
                 <button type="button" class="button button-small inline-context-cancel">Cancel</button>
             </div>
@@ -657,17 +692,17 @@
         const attachmentId = $summary.data('attachmentId');
         const record = findImageById(attachmentId);
         const manualValue = record && record.manual_context ? record.manual_context : '';
-        const existingSuggestion = record && record.suggested_filename ? record.suggested_filename : '';
         const existingFilePath = record && record.file_path ? record.file_path : '';
         const existingFileSize = record && record.current_size_mb ? record.current_size_mb : '';
+        const locationSpecific = isLocationSpecific(record);
 
         const $select = $summary.find('.context-inline-select');
         $select.val(manualValue);
+        $summary.find('.context-location-checkbox').prop('checked', locationSpecific);
 
         $summary.addClass('is-editing');
         $summary.find('.context-inline-editor').removeClass('hidden');
 
-        $summary.data('existingSuggestion', existingSuggestion);
         $summary.data('existingFilePath', existingFilePath);
         $summary.data('existingFileSize', existingFileSize);
 
@@ -696,10 +731,11 @@
         const $row = $summary.closest('tr');
         const $select = $summary.find('.context-inline-select');
         const newContext = ($select.val() || '').toString();
+        const $locationCheckbox = $summary.find('.context-location-checkbox');
+        const locationSpecific = $locationCheckbox.length ? $locationCheckbox.is(':checked') : false;
         const wasChecked = $row.find('.image-checkbox').is(':checked');
         const originalStatus = ($row.data('status') || '').toString();
         const originalPriority = parseInt($row.data('priority'), 10);
-        const existingSuggestion = $summary.data('existingSuggestion') || '';
         const existingFilePath = $summary.data('existingFilePath') || '';
         const existingFileSize = $summary.data('existingFileSize') || '';
 
@@ -715,15 +751,13 @@
                 action: 'msh_update_context',
                 attachment_id: attachmentId,
                 context: newContext,
+                location_specific: locationSpecific ? '1' : '0',
                 nonce: mshImageOptimizer.nonce
             }
         }).done(function(response) {
             if (response && response.success && response.data && response.data.image) {
                 const updatedImage = response.data.image;
 
-                if (existingSuggestion) {
-                    updatedImage.suggested_filename = existingSuggestion;
-                }
                 if (existingFilePath) {
                     updatedImage.file_path = existingFilePath;
                 }
@@ -738,6 +772,9 @@
                 if (!Number.isFinite(parseInt(updatedImage.priority, 10)) && Number.isInteger(originalPriority)) {
                     updatedImage.priority = originalPriority;
                 }
+
+                const updatedLocationSpecific = isLocationSpecific(updatedImage);
+                updatedImage.location_specific = updatedLocationSpecific;
 
                 const index = imageData.findIndex((img) => parseInt(img.ID || img.id, 10) === attachmentId);
                 if (index > -1) {

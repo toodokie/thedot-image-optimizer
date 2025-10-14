@@ -356,7 +356,25 @@ class MSH_Backup_Verification_System {
                 WHERE {$id_column} = %d
             ", $row_id));
 
-            $still_contains_old = (strpos($current_value, $old_value) !== false);
+            $still_contains_old = false;
+
+            if ($current_value !== null && $old_value !== '') {
+                $offset = 0;
+                $old_len = strlen($old_value);
+                $new_len = strlen($new_value);
+
+                while (($pos = strpos($current_value, $old_value, $offset)) !== false) {
+                    $segment = substr($current_value, $pos, $new_len);
+
+                    if ($new_len > 0 && $segment === $new_value) {
+                        $offset = $pos + $old_len;
+                        continue;
+                    }
+
+                    $still_contains_old = true;
+                    break;
+                }
+            }
 
             if ($still_contains_old) {
                 $error_count++;

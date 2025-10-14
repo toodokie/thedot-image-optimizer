@@ -49,6 +49,18 @@
         'needs_attention': { label: 'Attention Required', badgeClass: 'status-warning' }
     };
 
+    function isLocationSpecific(image, contextOverride) {
+        if (!image && !contextOverride) {
+            return false;
+        }
+
+        const directFlag = image && (image.location_specific === true || image.location_specific === 1 || image.location_specific === '1');
+        const contextDetails = contextOverride || (image && image.context_details) || {};
+        const contextFlag = contextDetails && (contextDetails.location_specific === true || contextDetails.location_specific === 1 || contextDetails.location_specific === '1');
+
+        return !!(directFlag || contextFlag);
+    }
+
     // =============================================================================
     // STATE MANAGEMENT
     // =============================================================================
@@ -1595,7 +1607,16 @@
             $(document).on('change', '.context-dropdown', function() {
                 const attachmentId = $(this).data('attachment-id');
                 const newContext = $(this).val();
-                UI.updateImageContext(attachmentId, newContext);
+                const locationSpecific = UI.getLocationSpecificState(attachmentId);
+                UI.updateImageContext(attachmentId, newContext, locationSpecific);
+            });
+
+            $(document).on('change', '.context-location-checkbox', function() {
+                const attachmentId = $(this).data('attachment-id');
+                const locationSpecific = $(this).is(':checked');
+                const $dropdown = $(`.context-dropdown[data-attachment-id="${attachmentId}"]`);
+                const currentContext = $dropdown.length ? $dropdown.val() : '';
+                UI.updateImageContext(attachmentId, currentContext, locationSpecific);
             });
 
             // Selection detection working - force update interval removed
@@ -1790,15 +1811,21 @@
             // Update selected count display
             $('#selected-count').text(`${checkedCheckboxes} selected`);
 
-            // Enable/disable bulk action buttons based on selection
-            const hasSelection = checkedCheckboxes > 0;
-            $('#optimize-selected').prop('disabled', !hasSelection);
+            const selectedIds = $('.image-select:visible:checked').map(function() {
+                return parseInt($(this).val(), 10);
+            }).get();
 
-            // Enable/disable priority optimization buttons (always enabled if results exist)
-            const hasResults = totalCheckboxes > 0;
+            const selectedNeedingOptimization = AppState.images.filter(img =>
+                selectedIds.includes(parseInt(img.ID, 10)) && img.optimization_status !== 'optimized'
+            );
+
+            const hasSelectionNeedingOptimization = selectedNeedingOptimization.length > 0;
+            $('#optimize-selected').prop('disabled', !hasSelectionNeedingOptimization);
+
+            const totalNeedingOptimization = AppState.images.filter(img => img.optimization_status !== 'optimized').length;
             const $priorityButtons = $('#optimize-high-priority, #optimize-medium-priority, #optimize-all');
             if ($priorityButtons.length) {
-                $priorityButtons.prop('disabled', !hasResults);
+                $priorityButtons.prop('disabled', totalNeedingOptimization === 0);
             }
         }
 
@@ -1814,6 +1841,12 @@
             const priority = this.getPriorityDetails(image.priority);
             const issuesText = (image.issues || []).map((issue) => issue.label).join(', ');
             const issuesDisplay = issuesText ? issuesText : 'No issues flagged';
+            const needsOptimization = image.optimization_status !== 'optimized';
+            const optimizeButtonClasses = ['button', 'button-small', 'optimize-single'];
+            if (!needsOptimization) {
+                optimizeButtonClasses.push('is-disabled');
+            }
+            const optimizeDisabledAttr = needsOptimization ? '' : 'disabled';
 
             // Generate thumbnail URL from WordPress attachment
             const thumbnailUrl = image.thumbnail_url || `${window.location.origin}/wp-content/uploads/${image.file_path}`;
@@ -1854,9 +1887,10 @@
                         ${this.renderWebPInfo(image)}
                     </td>
                     <td class="actions-cell">
-                        <button class="button button-small optimize-single" data-id="${image.ID}">
+                        <button class="${optimizeButtonClasses.join(' ')}" data-id="${image.ID}" ${optimizeDisabledAttr}>
                             Optimize
                         </button>
+                        ${needsOptimization ? '<div class="optimize-helper">Needs re-optimization</div>' : ''}
                     </td>
                 </tr>
             `;
@@ -2032,6 +2066,8 @@
                 || 'Auto-detect (default)';
             const autoLabel = image.context_auto_label
                 || (detectedType && contextChoiceMap[detectedType] ? contextChoiceMap[detectedType] : '');
+            const locationSpecific = isLocationSpecific(image, context);
+            const locationChip = locationSpecific ? '<span class="context-location-chip">Location anchored</span>' : '';
 
             let optionsHTML = '';
             choiceList.forEach(choice => {
@@ -2050,10 +2086,15 @@
                     <div class="context-header">
                         <span class="context-label">${this.escapeHtml(activeLabel)}</span>
                         ${statusBadge}
+                        ${locationChip}
                     </div>
                     <select class="context-dropdown" data-attachment-id="${image.ID}">
                         ${optionsHTML}
                     </select>
+                    <label class="context-location-toggle">
+                        <input type="checkbox" class="context-location-checkbox" data-attachment-id="${image.ID}" ${locationSpecific ? 'checked' : ''}>
+                        <span>Use business location context</span>
+                    </label>
                     ${autoLabel ? `<div class="context-auto-label">Auto: ${this.escapeHtml(autoLabel)}</div>` : ''}
                 </div>
             `;
@@ -2063,6 +2104,20 @@
             const div = document.createElement('div');
             div.textContent = text;
             return div.innerHTML;
+        }
+
+        static getLocationSpecificState(attachmentId) {
+            const $checkbox = $(`.context-location-checkbox[data-attachment-id="${attachmentId}"]`);
+            if ($checkbox.length) {
+                return $checkbox.is(':checked');
+            }
+
+            const image = AppState.images.find(img => img.ID == attachmentId);
+            if (!image) {
+                return false;
+            }
+
+            return isLocationSpecific(image);
         }
 
         static showMetaEditModal(attachmentId) {
@@ -2304,15 +2359,21 @@
             $editBtn.show();
         }
 
-        static async updateImageContext(attachmentId, newContext) {
+        static async updateImageContext(attachmentId, newContext, locationSpecific = null) {
 
             try {
-                const response = await $.post(mshImageOptimizer.ajaxurl, {
+                const payload = {
                     action: 'msh_update_context',
                     nonce: mshImageOptimizer.nonce,
                     attachment_id: attachmentId,
                     context: newContext
-                });
+                };
+
+                if (locationSpecific !== null) {
+                    payload.location_specific = locationSpecific ? '1' : '0';
+                }
+
+                const response = await $.post(mshImageOptimizer.ajaxurl, payload);
 
                 if (response.success) {
                     UI.updateLog(`Context updated for image ${attachmentId} to: ${newContext || 'Auto-detect'}`);
@@ -2329,6 +2390,15 @@
                         image.context_active_label = updatedImage.context_active_label || 'Auto-detect';
                         image.context_auto_label = updatedImage.context_auto_label || '';
                         image.context_details = updatedImage.context_details || {};
+                        image.location_specific = isLocationSpecific(updatedImage);
+
+                        // Refresh metadata + filename preview so UI reflects the new context immediately
+                        image.generated_meta = updatedImage.generated_meta || {};
+                        image.suggested_filename = updatedImage.suggested_filename || '';
+                        image.filename = updatedImage.file_path || image.file_path || '';
+                        image.optimization_status = updatedImage.optimization_status || image.optimization_status;
+                        image.meta_preview = updatedImage.meta_preview || {};
+                        image.context = updatedImage.context || updatedImage.context_details || image.context || image.context_details || {};
                     }
 
                     // Re-render the specific row to show updated context
