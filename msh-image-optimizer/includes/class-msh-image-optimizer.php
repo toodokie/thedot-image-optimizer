@@ -25,6 +25,7 @@ class MSH_Contextual_Meta_Generator {
     private $active_profile_id = 'primary';
     private $active_profile_label = '';
     private $business_type = '';
+    private $context_signature = '';
 
     private $service_keyword_map = [
         'physiotherapy' => [
@@ -98,6 +99,9 @@ class MSH_Contextual_Meta_Generator {
         $this->active_profile_id = isset($active_profile['id']) ? sanitize_title($active_profile['id']) : 'primary';
         $this->active_profile_label = isset($active_profile['label']) ? $active_profile['label'] : '';
         $this->active_context = $context;
+        $this->context_signature = class_exists('MSH_Image_Optimizer_Context_Helper')
+            ? MSH_Image_Optimizer_Context_Helper::build_context_signature($context)
+            : md5(wp_json_encode($context));
 
         $this->business_name = !empty($context['business_name'])
             ? sanitize_text_field($context['business_name'])
@@ -132,6 +136,26 @@ class MSH_Contextual_Meta_Generator {
         $this->target_audience = isset($context['target_audience']) ? sanitize_text_field($context['target_audience']) : '';
         $this->uvp = isset($context['uvp']) ? sanitize_textarea_field($context['uvp']) : '';
         $this->pain_points = isset($context['pain_points']) ? sanitize_textarea_field($context['pain_points']) : '';
+    }
+
+    private function ensure_fresh_context() {
+        if (!class_exists('MSH_Image_Optimizer_Context_Helper')) {
+            return;
+        }
+
+        $current_signature = MSH_Image_Optimizer_Context_Helper::get_active_context_signature();
+
+        if ($current_signature !== $this->context_signature) {
+            $this->hydrate_active_context();
+        }
+    }
+
+    public function get_context_signature() {
+        if (empty($this->context_signature) && class_exists('MSH_Image_Optimizer_Context_Helper')) {
+            $this->context_signature = MSH_Image_Optimizer_Context_Helper::get_active_context_signature($this->active_context);
+        }
+
+        return $this->context_signature;
     }
 
     private function get_default_context_type() {
@@ -218,10 +242,16 @@ class MSH_Contextual_Meta_Generator {
     }
 
     public function detect_context($attachment_id, $ignore_manual = false) {
+        $this->ensure_fresh_context();
         $this->hydrate_active_context();
 
         $location_specific_raw = get_post_meta($attachment_id, '_msh_location_specific', true);
         $location_specific_flag = in_array(strtolower((string) $location_specific_raw), ['1', 'yes', 'true'], true);
+        $has_explicit_location_meta = $location_specific_raw !== '' && $location_specific_raw !== null;
+
+        if (!$has_explicit_location_meta && $this->should_default_location_context()) {
+            $location_specific_flag = true;
+        }
 
         $context = [
             'type' => $this->get_default_context_type(),
@@ -653,6 +683,7 @@ class MSH_Contextual_Meta_Generator {
     }
 
     public function format_service_label($service) {
+        $this->ensure_fresh_context();
         if (empty($service)) {
             return 'Rehabilitation';
         }
@@ -916,6 +947,7 @@ class MSH_Contextual_Meta_Generator {
     }
 
     public function generate_meta_fields($attachment_id, array $context) {
+        $this->ensure_fresh_context();
         $this->hydrate_active_context();
         $this->log_debug("MSH Meta Generation: Type='{$context['type']}', attachment_id=$attachment_id, title='{$context['attachment_title']}'");
 
@@ -957,6 +989,7 @@ class MSH_Contextual_Meta_Generator {
     }
 
     public function generate_filename_slug($attachment_id, array $context, $extension = null) {
+        $this->ensure_fresh_context();
         $this->hydrate_active_context();
         // Debug disabled for performance
 
@@ -1029,7 +1062,19 @@ class MSH_Contextual_Meta_Generator {
                     $components = array_filter([$product_slug, $this->location_slug]);
                     return $this->slugify(implode('-', $components));
                 }
-                return $this->slugify('rehabilitation-equipment-' . $this->location_slug);
+
+                // Try to extract descriptor from metadata (title, alt, caption)
+                $descriptor_details = $this->build_business_descriptor_details($context);
+                $descriptor_slug = $descriptor_details['slug'];
+
+                if (!empty($descriptor_slug) && $descriptor_slug !== 'brand') {
+                    $location_suffix = $this->location_slug !== '' ? '-' . $this->location_slug : '';
+                    return $this->slugify($descriptor_slug . '-equipment' . $location_suffix);
+                }
+
+                // Final fallback
+                $location_suffix = $this->location_slug !== '' ? '-' . $this->location_slug : '';
+                return $this->slugify('equipment-showcase' . $location_suffix);
             case 'business':
                 $original_filename = strtolower($context['original_filename'] ?? '');
                 $brand_keywords = $this->extract_brand_keywords($original_filename);
@@ -1052,6 +1097,11 @@ class MSH_Contextual_Meta_Generator {
                     ? $this->city_slug
                     : $this->location_slug;
 
+                $location_to_append = '';
+                if ($include_location && $location_component !== '') {
+                    $location_to_append = $location_component;
+                }
+
                 $components = [];
                 if ($descriptor_slug !== '') {
                     $components[] = $descriptor_slug;
@@ -1062,9 +1112,8 @@ class MSH_Contextual_Meta_Generator {
                 if ($asset_component !== '') {
                     $components[] = $asset_component;
                 }
-                if ($include_location && $location_component !== '') {
-                    $components[] = $location_component;
-                }
+
+                $components = $this->sanitize_business_slug_components($components);
 
                 if (empty($components)) {
                     if ($brand_slug !== '') {
@@ -1074,6 +1123,21 @@ class MSH_Contextual_Meta_Generator {
                     } else {
                         $components[] = 'brand';
                     }
+                }
+
+                $components = $this->sanitize_business_slug_components($components);
+
+                $camera_suffix = $this->extract_camera_sequence_suffix(
+                    $context['original_filename'] ?? '',
+                    $context['file_basename'] ?? ''
+                );
+
+                if ($camera_suffix !== '' && !in_array($camera_suffix, $components, true)) {
+                    $components[] = $camera_suffix;
+                }
+
+                if ($location_to_append !== '') {
+                    $components[] = $location_to_append;
                 }
 
                 return $this->assemble_slug($components);
@@ -1872,10 +1936,19 @@ class MSH_Contextual_Meta_Generator {
         $meaningful_parts = [];
 
         // Filter out noise words and keep meaningful terms (don't remove svg - it's meaningful)
-        $noise_words = ['icon', 'image', 'img', 'pic', 'photo', 'vector', 'png', 'jpg'];
+        $noise_words = ['icon', 'image', 'img', 'pic', 'photo', 'vector', 'png', 'jpg', 'alignment'];
 
         foreach ($parts as $part) {
             $part = strtolower(trim($part));
+
+            if (preg_match('/^\d+x\d+$/', $part)) {
+                continue;
+            }
+
+            if (preg_match('/^\d+$/', $part)) {
+                continue;
+            }
+
             if (strlen($part) > 2 && !in_array($part, $noise_words) && !is_numeric($part)) {
                 $meaningful_parts[] = $part;
             }
@@ -2132,9 +2205,9 @@ class MSH_Contextual_Meta_Generator {
             $sources[] = $context['page_title'];
         }
 
-        if (!empty($context['file_basename'])) {
-            $sources[] = str_replace(['-', '_'], ' ', $context['file_basename']);
-        }
+        // REMOVED: file_basename to prevent recursive duplication from current filename
+        // The current filename should never influence the new filename suggestion
+        // Only use metadata (title, alt, caption) and page context
 
         if (!empty($context['tags']) && is_array($context['tags'])) {
             foreach ($context['tags'] as $tag) {
@@ -2204,13 +2277,17 @@ class MSH_Contextual_Meta_Generator {
 
             foreach ($parts as $part) {
                 $part = trim($part);
-                if ($part === '' || strlen($part) < 3 || is_numeric($part)) {
-                    continue;
-                }
+            if ($part === '' || strlen($part) < 3 || is_numeric($part)) {
+                continue;
+            }
 
-                if (in_array($part, $stopwords, true)) {
-                    continue;
-                }
+            if (preg_match('/^\d+x\d+$/', $part)) {
+                continue;
+            }
+
+            if (in_array($part, $stopwords, true)) {
+                continue;
+            }
 
                 if (!in_array($part, $keywords, true)) {
                     $keywords[] = $part;
@@ -2512,6 +2589,36 @@ class MSH_Contextual_Meta_Generator {
         return $result;
     }
 
+    private function dedupe_slug_tokens(array $tokens) {
+        $deduped = [];
+        $roots = [];
+
+        foreach ($tokens as $token) {
+            $token = (string) $token;
+            if ($token === '') {
+                continue;
+            }
+
+            if (preg_match('/^\d+(x\d+)?$/', $token)) {
+                continue;
+            }
+
+            $root = preg_replace('/\d+$/', '', $token);
+            if ($root === '') {
+                $root = $token;
+            }
+
+            if (isset($roots[$root])) {
+                continue;
+            }
+
+            $roots[$root] = true;
+            $deduped[] = $token;
+        }
+
+        return $deduped;
+    }
+
     private function assemble_slug(array $components, $max_length = 50) {
         $components = $this->dedupe_slug_components(array_filter($components, 'strlen'));
 
@@ -2521,9 +2628,20 @@ class MSH_Contextual_Meta_Generator {
 
         $slug = $this->slugify(implode('-', $components));
 
+        if ($slug !== '') {
+            $parts = array_filter(explode('-', $slug), 'strlen');
+            $parts = $this->dedupe_slug_tokens($parts);
+            $slug = implode('-', $parts);
+        }
+
         while (strlen($slug) > $max_length && count($components) > 1) {
             array_pop($components);
             $slug = $this->slugify(implode('-', $components));
+            if ($slug !== '') {
+                $parts = array_filter(explode('-', $slug), 'strlen');
+                $parts = $this->dedupe_slug_tokens($parts);
+                $slug = implode('-', $parts);
+            }
         }
 
         if (strlen($slug) > $max_length) {
@@ -2543,6 +2661,22 @@ class MSH_Contextual_Meta_Generator {
         }
 
         error_log('[MSH Image Optimizer] ' . $message);
+    }
+
+    private function should_default_location_context() {
+        if (!$this->is_in_person_business()) {
+            return false;
+        }
+
+        if ($this->location !== '') {
+            return true;
+        }
+
+        if (!empty($this->active_context['service_area'])) {
+            return true;
+        }
+
+        return false;
     }
 
     private function should_include_location_in_slug(array $context) {
@@ -2731,6 +2865,55 @@ class MSH_Contextual_Meta_Generator {
         }
     }
 
+    private function sanitize_business_slug_components(array $components) {
+        $normalized = [];
+
+        foreach ($components as $component) {
+            $component = $this->slugify((string) $component);
+            if ($component === '') {
+                continue;
+            }
+
+            if ($this->looks_like_camera_filename($component)) {
+                continue;
+            }
+
+            if (preg_match('/^(?:dsc|img|pict|sam|casio)[-_0-9]+$/', $component)) {
+                continue;
+            }
+
+            if (!in_array($component, $normalized, true)) {
+                $normalized[] = $component;
+            }
+        }
+
+        return $normalized;
+    }
+
+    private function extract_camera_sequence_suffix($primary, $fallback = '') {
+        $candidates = [$primary, $fallback];
+
+        foreach ($candidates as $candidate) {
+            $candidate = strtolower((string) $candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            $candidate = preg_replace('/\.(jpg|jpeg|png|gif|svg|webp)$/i', '', $candidate);
+
+            if (!preg_match('/^(?:dsc|dcp|dscn|dscf|img|img_|mvc|pict|dcim|_mg|cimg|lrg_|p\d{7}|cep|cap|casio|sam_)[-_0-9]+$/', $candidate)) {
+                continue;
+            }
+
+            if (preg_match('/(?:^|[_-])(\d{3,})$/', $candidate, $matches)) {
+                $suffix = ltrim($matches[1], '0');
+                return $suffix !== '' ? $suffix : $matches[1];
+            }
+        }
+
+        return '';
+    }
+
     private function extract_primary_location_token($slug) {
         if ($slug === '') {
             return '';
@@ -2750,11 +2933,11 @@ class MSH_Contextual_Meta_Generator {
             return false;
         }
 
-        if (preg_match('/^(dsc|dcp|dscn|dscf|img|img_|mvc|pict|dcim|_mg|cimg|lrg_|p\d{7}|cep|cap|casio|sam_)/', $value)) {
+        if (preg_match('/^(?:dsc|dcp|dscn|dscf|img|img_|mvc|pict|dcim|_mg|cimg|lrg_|p\d{7}|cep|cap|casio|sam_)[-_0-9]*$/', $value)) {
             return true;
         }
 
-        return preg_match('/^[a-z]{2,4}\d{4,}$/', $value) === 1;
+        return preg_match('/^[a-z]{2,4}[-_0-9]*\d{4,}$/', $value) === 1;
     }
 
     /**
@@ -3051,10 +3234,48 @@ class MSH_Image_Optimizer {
             return;
         }
 
+        $metadata_source = get_post_meta($attachment_id, 'msh_metadata_source', true);
+
         delete_post_meta($attachment_id, 'msh_optimized_date');
         delete_post_meta($attachment_id, 'msh_metadata_last_updated');
-        delete_post_meta($attachment_id, 'msh_metadata_source');
+        if ($metadata_source !== 'manual_edit') {
+            delete_post_meta($attachment_id, 'msh_metadata_source');
+            delete_post_meta($attachment_id, 'msh_metadata_context_hash');
+        }
+        delete_post_meta($attachment_id, '_msh_suggested_filename_context');
+        delete_post_meta($attachment_id, '_msh_suggested_filename'); // Clear stale suggestion
         update_post_meta($attachment_id, 'msh_context_needs_refresh', '1');
+    }
+
+    public function mark_all_attachments_for_context_refresh() {
+        global $wpdb;
+
+        $attachment_ids = $wpdb->get_col("
+            SELECT ID
+            FROM {$wpdb->posts}
+            WHERE post_type = 'attachment'
+              AND post_mime_type LIKE 'image/%'
+        ");
+
+        if (empty($attachment_ids)) {
+            return;
+        }
+
+        foreach ($attachment_ids as $attachment_id) {
+            $this->flag_attachment_for_reoptimization((int) $attachment_id);
+        }
+    }
+
+    public function handle_context_signature_change($previous_signature, $new_signature) {
+        $previous_signature = (string) $previous_signature;
+        $new_signature = (string) $new_signature;
+
+        if ($previous_signature === $new_signature) {
+            return;
+        }
+
+        $this->mark_all_attachments_for_context_refresh();
+        $this->clear_analysis_cache();
     }
 
     private function apply_suggested_filename_now($attachment_id, $suggested_filename) {
@@ -3109,10 +3330,12 @@ class MSH_Image_Optimizer {
 
         if (!empty($rename_result['skipped'])) {
             delete_post_meta($attachment_id, '_msh_suggested_filename');
+            delete_post_meta($attachment_id, '_msh_suggested_filename_context');
             return ['status' => 'skipped', 'message' => __('Filename already optimized', 'msh-image-optimizer')];
         }
 
         delete_post_meta($attachment_id, '_msh_suggested_filename');
+        delete_post_meta($attachment_id, '_msh_suggested_filename_context');
 
         $relative_path = get_post_meta($attachment_id, '_wp_attached_file', true);
         $absolute_path = get_attached_file($attachment_id);
@@ -3256,15 +3479,23 @@ class MSH_Image_Optimizer {
             if (!$meta_time) {
                 return $this->validate_status('metadata_missing');
             }
+            // If has metadata but never optimized, needs optimization (rename)
+            if (!$optimized_date) {
+                return $this->validate_status('ready_for_optimization');
+            }
             return $this->validate_status('optimized');
         }
 
-        // For SVG, WebP, and other non-convertible formats, only check metadata
+        // For SVG, WebP, GIF, and other non-convertible formats, check if actually optimized
         if (!$is_webp_convertible) {
             if (!$meta_time) {
                 return $this->validate_status('metadata_missing');
             }
-            return $this->validate_status('optimized'); // These files don't need WebP conversion
+            // If has metadata but never optimized, needs optimization (rename)
+            if (!$optimized_date) {
+                return $this->validate_status('ready_for_optimization');
+            }
+            return $this->validate_status('optimized');
         }
 
         // Check for missing metadata FIRST (before recompression test)
@@ -3277,7 +3508,7 @@ class MSH_Image_Optimizer {
         }
 
         // CHECK: If image has been marked as optimized via msh_optimized_date, consider it optimized
-        // This handles cases where metadata was applied but WebP conversion failed
+        // This is the authoritative flag that the full optimization process completed
         if ($optimized_date && $meta_time) {
             return $this->validate_status('optimized');
         }
@@ -3293,8 +3524,10 @@ class MSH_Image_Optimizer {
             return $this->validate_status('needs_recompression');
         }
 
+        // If has metadata and WebP but no optimized_date, it's ready for optimization
+        // (metadata/WebP were generated but file was never actually optimized/renamed)
         if ($webp_time && $meta_time && $webp_exists) {
-            return $this->validate_status('optimized');
+            return $this->validate_status('ready_for_optimization');
         } elseif ($webp_time && !$webp_exists) {
             return $this->validate_status('webp_missing');
         } elseif ($meta_time && !$webp_time && !$webp_exists) {
@@ -3709,6 +3942,10 @@ class MSH_Image_Optimizer {
         // Determine legacy resizing context and new contextual information
         $legacy_context = $this->determine_image_context($attachment_id);
         $context_info = $this->contextual_meta_generator->detect_context($attachment_id);
+        $current_context_signature = $this->contextual_meta_generator->get_context_signature();
+        $metadata_source = get_post_meta($attachment_id, 'msh_metadata_source', true);
+        $stored_meta_hash = get_post_meta($attachment_id, 'msh_metadata_context_hash', true);
+        $metadata_context_mismatch = ($metadata_source !== 'manual_edit' && !empty($stored_meta_hash) && $stored_meta_hash !== $current_context_signature);
         $manual_context_value = get_post_meta($attachment_id, '_msh_context', true);
         $manual_context_value = is_string($manual_context_value) ? trim($manual_context_value) : '';
         $auto_context_value = get_post_meta($attachment_id, '_msh_auto_context', true);
@@ -3751,13 +3988,23 @@ class MSH_Image_Optimizer {
             // Debug disabled for performance
         }
 
+        $filename_context_mismatch = false;
+
         if ($has_good_name) {
             // Remove any existing suggestion for this already-optimized file
             delete_post_meta($attachment_id, '_msh_suggested_filename');
+            delete_post_meta($attachment_id, '_msh_suggested_filename_context');
             $suggested_filename = ''; // No suggestion needed
         } else {
             // Get or generate suggestion for files that need renaming
             $suggested_filename = get_post_meta($attachment_id, '_msh_suggested_filename', true);
+            $suggested_context_hash = get_post_meta($attachment_id, '_msh_suggested_filename_context', true);
+
+            // Treat missing hash as a mismatch - forces regeneration for old suggestions or after context refresh
+            if (!empty($suggested_filename) && (empty($suggested_context_hash) || $suggested_context_hash !== $current_context_signature)) {
+                $filename_context_mismatch = true;
+                $suggested_filename = '';
+            }
 
             $expected_filename_full = '';
             if (!empty($expected_slug) && !empty($extension)) {
@@ -3768,17 +4015,17 @@ class MSH_Image_Optimizer {
                 $current_suggested_base = strtolower(pathinfo($suggested_filename, PATHINFO_FILENAME));
                 $expected_suggested_base = strtolower(pathinfo($expected_filename_full, PATHINFO_FILENAME));
 
-                if ($current_suggested_base !== $expected_suggested_base) {
+                if ($current_suggested_base !== $expected_suggested_base || $filename_context_mismatch) {
                     $suggested_filename = $expected_filename_full;
                     update_post_meta($attachment_id, '_msh_suggested_filename', $suggested_filename);
                     update_post_meta($attachment_id, 'msh_filename_last_suggested', time());
+                    update_post_meta($attachment_id, '_msh_suggested_filename_context', $current_context_signature);
+                    $filename_context_mismatch = false;
                 }
             }
 
             // Generate suggestion if it doesn't exist yet
             if (empty($suggested_filename) && !empty($extension)) {
-                // Debug disabled for performance
-
                 $slug = !empty($expected_slug)
                     ? $expected_slug
                     : $this->contextual_meta_generator->generate_filename_slug($attachment_id, $context_info, $extension);
@@ -3791,10 +4038,8 @@ class MSH_Image_Optimizer {
                     }
                     update_post_meta($attachment_id, '_msh_suggested_filename', $suggested_filename);
                     update_post_meta($attachment_id, 'msh_filename_last_suggested', time());
-
-                    // Debug disabled for performance
-                } else {
-                    // Debug disabled for performance
+                    update_post_meta($attachment_id, '_msh_suggested_filename_context', $current_context_signature);
+                    $filename_context_mismatch = false;
                 }
             }
         }
@@ -3823,6 +4068,13 @@ class MSH_Image_Optimizer {
             $optimization_potential = $this->calculate_optimization_potential($file_path, $metadata, $legacy_context);
         }
 
+        $can_regenerate_meta = $this->should_regenerate_meta($attachment_id);
+        $context_mismatch = $metadata_context_mismatch && $can_regenerate_meta;
+
+        if ($context_mismatch && $optimization_status === 'optimized') {
+            $optimization_status = 'context_stale';
+        }
+
         return [
             'current_size_bytes' => $file_size,
             'current_size_mb' => round($file_size / 1048576, 2),
@@ -3846,7 +4098,13 @@ class MSH_Image_Optimizer {
             'optimization_status' => $optimization_status,
             'webp_last_converted' => $webp_last_converted,
             'metadata_last_updated' => $metadata_last_updated,
-            'source_last_compressed' => $source_last_compressed
+            'source_last_compressed' => $source_last_compressed,
+            'context_signature' => $current_context_signature,
+            'metadata_context_hash' => $stored_meta_hash,
+            'metadata_context_mismatch' => $metadata_context_mismatch,
+            'filename_context_mismatch' => $filename_context_mismatch,
+            'context_mismatch' => $context_mismatch,
+            'metadata_source' => $metadata_source
         ];
     }
 
@@ -4077,6 +4335,12 @@ class MSH_Image_Optimizer {
 
         // Also check for base name conflicts across different extensions
         $base_conflicts = $this->get_attachments_with_base_name($base_name);
+        $base_conflicts = array_filter(
+            array_map('intval', $base_conflicts),
+            static function ($id) use ($attachment_id) {
+                return $id !== (int) $attachment_id;
+            }
+        );
 
         if (($existing_attachment && $existing_attachment !== $attachment_id) || !empty($base_conflicts)) {
             // Also check if this suggestion is already suggested for another file
@@ -4115,7 +4379,7 @@ class MSH_Image_Optimizer {
         $results = $wpdb->get_col($wpdb->prepare("
             SELECT post_id
             FROM {$wpdb->postmeta}
-            WHERE (meta_key = '_wp_attached_file' OR meta_key = '_msh_suggested_filename')
+            WHERE meta_key IN ('_wp_attached_file', '_msh_suggested_filename', '_msh_suggested_filename_context')
             AND meta_value LIKE %s
         ", $like_pattern));
 
@@ -5140,13 +5404,13 @@ class MSH_Image_Optimizer {
 
         // Always refresh metadata timestamp so status reflects the latest context application
         if (!empty($meta_applied)) {
-            update_post_meta($attachment_id, 'msh_metadata_last_updated', (int) $timestamp);
             delete_post_meta($attachment_id, 'msh_metadata_source');
-            $metadata_timestamp_applied = true;
-        } else {
-            update_post_meta($attachment_id, 'msh_metadata_last_updated', (int) $timestamp);
-            $metadata_timestamp_applied = true;
         }
+
+        update_post_meta($attachment_id, 'msh_metadata_last_updated', (int) $timestamp);
+        update_post_meta($attachment_id, 'msh_metadata_context_hash', $this->contextual_meta_generator->get_context_signature());
+        delete_post_meta($attachment_id, 'msh_context_needs_refresh');
+        $metadata_timestamp_applied = true;
 
         foreach ($meta_skipped as $field) {
             $result['actions'][] = ucfirst(str_replace('_', ' ', $field)) . ' preserved (manual edit)';
@@ -5156,12 +5420,15 @@ class MSH_Image_Optimizer {
         $suggested_filename = '';
         $extension = strtolower(pathinfo($file_path, PATHINFO_EXTENSION));
         $rename_feedback = null;
+        $original_file_path = $file_path;
+        $original_webp_path = preg_replace('/\.(jpg|jpeg|png)$/i', '.webp', $original_file_path);
         if (!empty($extension)) {
             $slug = $this->contextual_meta_generator->generate_filename_slug($attachment_id, $context_details, $extension);
             if (!empty($slug)) {
                 $suggested_filename = $this->ensure_unique_filename($slug, $extension, $attachment_id);
                 update_post_meta($attachment_id, '_msh_suggested_filename', $suggested_filename);
                 update_post_meta($attachment_id, 'msh_filename_last_suggested', (int) $timestamp);
+                update_post_meta($attachment_id, '_msh_suggested_filename_context', $this->contextual_meta_generator->get_context_signature());
                 $result['actions'][] = 'Filename suggestion refreshed';
                 $filename_refreshed = true;
 
@@ -5171,6 +5438,33 @@ class MSH_Image_Optimizer {
                     $result['actions'][] = __('Filename applied', 'msh-image-optimizer');
                     $suggested_filename = '';
                     $file_path = $rename_feedback['absolute_path'];
+
+                    if (in_array($extension, ['jpg', 'jpeg', 'png'], true)) {
+                        $new_webp_path = preg_replace('/\.(jpg|jpeg|png)$/i', '.webp', $file_path);
+                        $webp_adjusted = false;
+
+                        if ($original_webp_path !== $new_webp_path && file_exists($original_webp_path)) {
+                            if (@rename($original_webp_path, $new_webp_path)) {
+                                update_post_meta($attachment_id, 'msh_webp_last_converted', (int) $timestamp);
+                                delete_post_meta($attachment_id, 'msh_webp_status');
+                                $result['actions'][] = __('WebP renamed to match new filename', 'msh-image-optimizer');
+                                $webp_adjusted = true;
+                            }
+                        } elseif (file_exists($new_webp_path)) {
+                            $webp_adjusted = true;
+                        }
+
+                        if (!$webp_adjusted) {
+                            if ($this->convert_to_webp($file_path, $new_webp_path)) {
+                                update_post_meta($attachment_id, 'msh_webp_last_converted', (int) $timestamp);
+                                delete_post_meta($attachment_id, 'msh_webp_status');
+                                $result['actions'][] = __('WebP regenerated after rename', 'msh-image-optimizer');
+                            } else {
+                                update_post_meta($attachment_id, 'msh_webp_status', 'failed');
+                                $result['actions'][] = __('WebP regeneration failed after rename', 'msh-image-optimizer');
+                            }
+                        }
+                    }
                 } elseif ($rename_feedback['status'] === 'skipped') {
                     $result['actions'][] = __('Filename already optimized', 'msh-image-optimizer');
                     $suggested_filename = '';
@@ -5190,6 +5484,7 @@ class MSH_Image_Optimizer {
 
         if ($metadata_timestamp_applied || $webp_converted || $webp_timestamp_updated || $filename_refreshed) {
             delete_post_meta($attachment_id, 'msh_context_needs_refresh');
+            $this->clear_analysis_cache();
         }
 
         $result['status'] = $this->get_optimization_status($attachment_id);
@@ -5266,7 +5561,7 @@ class MSH_Image_Optimizer {
             if ($location_specific_flag) {
                 update_post_meta($attachment_id, '_msh_location_specific', '1');
             } else {
-                delete_post_meta($attachment_id, '_msh_location_specific');
+                update_post_meta($attachment_id, '_msh_location_specific', '0');
             }
         }
 
@@ -5366,7 +5661,7 @@ class MSH_Image_Optimizer {
         // Remove optimization flags to allow re-processing with improved metadata preservation
         $reset_count = $wpdb->query("
             DELETE FROM {$wpdb->postmeta} 
-            WHERE meta_key IN ('msh_optimized_date', '_msh_suggested_filename')
+            WHERE meta_key IN ('msh_optimized_date', '_msh_suggested_filename', '_msh_suggested_filename_context', 'msh_metadata_context_hash')
         ");
         
         wp_send_json_success([
@@ -5777,8 +6072,10 @@ class MSH_Image_Optimizer {
         }
         
         // Save the suggestion with timestamp
+        $current_context_signature = MSH_Image_Optimizer_Context_Helper::get_active_context_signature();
         update_post_meta($image_id, '_msh_suggested_filename', $suggested_filename);
         update_post_meta($image_id, 'msh_filename_last_suggested', (int)time());
+        update_post_meta($image_id, '_msh_suggested_filename_context', $current_context_signature);
         
         wp_send_json_success([
             'message' => 'Filename suggestion saved successfully',
@@ -5812,6 +6109,7 @@ class MSH_Image_Optimizer {
         
         // Remove the suggestion
         delete_post_meta($image_id, '_msh_suggested_filename');
+        delete_post_meta($image_id, '_msh_suggested_filename_context');
         
         wp_send_json_success([
             'message' => 'Filename suggestion removed - current name will be kept',
@@ -5918,6 +6216,7 @@ class MSH_Image_Optimizer {
         // Update metadata timestamp to reflect manual edit
         update_post_meta($image_id, 'msh_metadata_last_updated', (int)time());
         update_post_meta($image_id, 'msh_metadata_source', 'manual_edit');
+        update_post_meta($image_id, 'msh_metadata_context_hash', 'manual_edit');
         
         wp_send_json_success([
             'message' => 'Meta text updated successfully',
@@ -5940,7 +6239,7 @@ class MSH_Image_Optimizer {
         // NUCLEAR OPTION: Remove ALL suggestions to start fresh
         $total_count = $wpdb->query("
             DELETE FROM {$wpdb->postmeta}
-            WHERE meta_key = '_msh_suggested_filename'
+            WHERE meta_key IN ('_msh_suggested_filename', '_msh_suggested_filename_context')
         ");
 
         wp_send_json_success([
@@ -5997,6 +6296,7 @@ class MSH_Image_Optimizer {
             $suggested_filename = $this->ensure_unique_filename($slug, $extension, $attachment_id);
             update_post_meta($attachment_id, '_msh_suggested_filename', $suggested_filename);
             update_post_meta($attachment_id, 'msh_filename_last_suggested', time());
+            update_post_meta($attachment_id, '_msh_suggested_filename_context', $this->contextual_meta_generator->get_context_signature());
 
             // Log for debugging
             $this->log_debug("MSH Auto-Suggestion: Generated '{$suggested_filename}' for new upload '{$current_basename}' (ID: {$attachment_id})");

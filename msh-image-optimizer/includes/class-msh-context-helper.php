@@ -367,4 +367,61 @@ class MSH_Image_Optimizer_Context_Helper {
 
         return $map;
     }
+
+    /**
+     * Build a stable signature for a context payload.
+     *
+     * @param array $context Context array.
+     * @return string
+     */
+    public static function build_context_signature($context) {
+        if (!is_array($context)) {
+            $context = array();
+        }
+
+        $normalized = self::normalize_context_for_hash($context);
+        return md5(wp_json_encode($normalized));
+    }
+
+    /**
+     * Get the active context signature.
+     *
+     * @param array|null $context Optional context data.
+     * @return string
+     */
+    public static function get_active_context_signature($context = null) {
+        if ($context === null) {
+            $context = self::get_active_context();
+        }
+
+        return self::build_context_signature($context);
+    }
+
+    /**
+     * Normalize context for hashing.
+     *
+     * @param mixed $value Value to normalize.
+     * @return mixed
+     */
+    private static function normalize_context_for_hash($value) {
+        if (is_array($value)) {
+            $normalized = array();
+            foreach ($value as $key => $item) {
+                $normalized[$key] = self::normalize_context_for_hash($item);
+            }
+            ksort($normalized);
+            return $normalized;
+        }
+
+        if (is_object($value)) {
+            $normalized = array();
+            foreach (get_object_vars($value) as $key => $item) {
+                $normalized[$key] = self::normalize_context_for_hash($item);
+            }
+            ksort($normalized);
+            return $normalized;
+        }
+
+        return (string) $value;
+    }
 }

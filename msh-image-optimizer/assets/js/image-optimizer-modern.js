@@ -46,6 +46,7 @@
         'needs_recompression': { label: 'Needs Update', badgeClass: 'status-warning' },
         'webp_missing': { label: 'WebP Missing', badgeClass: 'status-warning' },
         'webp_optimized': { label: 'WebP Active', badgeClass: 'status-optimized' },
+        'context_stale': { label: 'Context Updated', badgeClass: 'status-warning' },
         'needs_attention': { label: 'Attention Required', badgeClass: 'status-warning' }
     };
 
@@ -1579,6 +1580,13 @@
                 UI.cancelEditFilenameSuggestion(attachmentId);
             });
 
+            // Edit current filename button
+            $(document).on('click', '.edit-current-filename', function(e) {
+                e.preventDefault();
+                const attachmentId = $(this).data('id');
+                UI.showCurrentFilenameEditor(attachmentId);
+            });
+
             // Selection checkboxes - handle select all and update button text
             $(document).on('change', '.image-select, #select-all, #select-all-header', function() {
 
@@ -1830,9 +1838,9 @@
         }
 
         static renderImageRow(image) {
-            // Determine display status - if WebP exists and optimization complete, show WebP Active
+            // Determine display status - only show WebP Active if file was actually optimized (renamed)
             let displayStatus = image.optimization_status;
-            if (image.webp_exists && image.optimization_status === 'optimized') {
+            if (image.webp_exists && image.optimization_status === 'optimized' && image.optimized_date) {
                 displayStatus = 'webp_optimized';
             }
 
@@ -1842,6 +1850,7 @@
             const issuesText = (image.issues || []).map((issue) => issue.label).join(', ');
             const issuesDisplay = issuesText ? issuesText : 'No issues flagged';
             const needsOptimization = image.optimization_status !== 'optimized';
+            const needsReoptimizationHelper = image.optimization_status === 'context_stale';
             const optimizeButtonClasses = ['button', 'button-small', 'optimize-single'];
             if (!needsOptimization) {
                 optimizeButtonClasses.push('is-disabled');
@@ -1854,6 +1863,13 @@
             const title = image.title || image.post_title || 'No title';
             const altText = image.alt_text || image.post_title || '';
 
+            const showEditIcon = !image.suggested_filename || image.optimized_date;
+            const editButtonMarkup = showEditIcon
+                ? `<button class="button button-link edit-current-filename" data-id="${image.ID}" title="Edit filename">
+                        <img src="${mshImageOptimizer.pluginUrl}/assets/icons/edit.png" alt="Edit" class="edit-icon" />
+                    </button>`
+                : '';
+
             return `
                 <tr class="result-row" data-attachment-id="${image.ID}">
                     <td>
@@ -1864,7 +1880,10 @@
                     </td>
                     <td class="filename-cell">
                         <div class="filename-stack">
-                            <strong class="filename-heading">${filename}</strong>
+                            <div class="current-filename-display">
+                                <strong class="filename-heading">${filename}</strong>
+                                ${editButtonMarkup}
+                            </div>
                             <span class="filename-subheading">${title}</span>
                         </div>
                         ${this.renderFilenameSuggestion(image)}
@@ -1890,7 +1909,7 @@
                         <button class="${optimizeButtonClasses.join(' ')}" data-id="${image.ID}" ${optimizeDisabledAttr}>
                             Optimize
                         </button>
-                        ${needsOptimization ? '<div class="optimize-helper">Needs re-optimization</div>' : ''}
+                        ${needsReoptimizationHelper ? '<div class="optimize-helper">Needs re-optimization</div>' : ''}
                     </td>
                 </tr>
             `;
@@ -1935,7 +1954,8 @@
         }
 
         static renderFilenameSuggestion(image) {
-            if (!image.suggested_filename) {
+            // Don't show suggestion if file has already been optimized (suggestion was applied)
+            if (!image.suggested_filename || image.optimized_date) {
                 return '';
             }
 
@@ -2359,6 +2379,136 @@
             $editBtn.show();
         }
 
+        static showCurrentFilenameEditor(attachmentId) {
+            const $row = $(`.result-row[data-attachment-id="${attachmentId}"]`);
+            const $filenameDisplay = $row.find('.current-filename-display');
+            const $filenameHeading = $filenameDisplay.find('.filename-heading');
+            const $editBtn = $filenameDisplay.find('.edit-current-filename');
+
+            const currentFilename = $filenameHeading.text().trim();
+
+            // Replace display with input + buttons
+            $filenameDisplay.html(`
+                <input type="text" class="current-filename-input" data-id="${attachmentId}" value="${this.escapeHtml(currentFilename)}" style="width: 100%; max-width: 300px;" />
+                <button class="button button-small save-current-filename brand-accent" data-id="${attachmentId}">Save</button>
+                <button class="button button-small cancel-current-filename" data-id="${attachmentId}">Cancel</button>
+            `);
+
+            // Focus the input
+            $filenameDisplay.find('.current-filename-input').focus().select();
+
+            // Add event handlers
+            $filenameDisplay.find('.save-current-filename').on('click', function(e) {
+                e.preventDefault();
+                UI.saveCurrentFilename(attachmentId, currentFilename);
+            });
+
+            $filenameDisplay.find('.cancel-current-filename').on('click', function(e) {
+                e.preventDefault();
+                UI.cancelCurrentFilenameEdit(attachmentId, currentFilename);
+            });
+
+            // Save on Enter, cancel on Escape
+            $filenameDisplay.find('.current-filename-input').on('keydown', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    UI.saveCurrentFilename(attachmentId, currentFilename);
+                } else if (e.key === 'Escape') {
+                    e.preventDefault();
+                    UI.cancelCurrentFilenameEdit(attachmentId, currentFilename);
+                }
+            });
+        }
+
+        static async saveCurrentFilename(attachmentId, originalFilename) {
+            const $input = $(`.current-filename-input[data-id="${attachmentId}"]`);
+            const newFilename = $input.val().trim();
+
+            if (!newFilename) {
+                alert('Filename cannot be empty');
+                return;
+            }
+
+            if (newFilename === originalFilename) {
+                // No change, just cancel
+                this.cancelCurrentFilenameEdit(attachmentId, originalFilename);
+                return;
+            }
+
+            try {
+                // First, save the new filename as a suggestion
+                const saveSuggestionResponse = await $.post(mshImageOptimizer.ajaxurl, {
+                    action: 'msh_save_filename_suggestion',
+                    nonce: mshImageOptimizer.nonce,
+                    image_id: attachmentId,
+                    suggested_filename: newFilename
+                });
+
+                if (!saveSuggestionResponse.success) {
+                    alert('Error saving filename suggestion: ' + (saveSuggestionResponse.data || 'Unknown error'));
+                    this.cancelCurrentFilenameEdit(attachmentId, originalFilename);
+                    return;
+                }
+
+                // Now apply it using the batch endpoint with single image
+                const applyResponse = await $.post(mshImageOptimizer.ajaxurl, {
+                    action: 'msh_apply_filename_suggestions',
+                    nonce: mshImageOptimizer.nonce,
+                    image_ids: [attachmentId],
+                    mode: 'selected',
+                    batch_number: 1,
+                    total_files: 1
+                });
+
+                if (applyResponse.success) {
+                    const results = applyResponse.data.results || [];
+                    const result = results.find(r => r.id == attachmentId);
+
+                    if (result && result.status === 'success') {
+                        UI.updateLog(`Filename updated for image ${attachmentId}: ${newFilename}`);
+
+                        // Update the image in AppState
+                        const image = AppState.images.find(img => img.ID == attachmentId);
+                        if (image) {
+                            const pathParts = (image.file_path || '').split('/');
+                            pathParts[pathParts.length - 1] = newFilename;
+                            image.file_path = pathParts.join('/');
+                            image.filename = newFilename;
+                            image.suggested_filename = ''; // Clear suggestion since it was applied
+                        }
+
+                        // Re-render to show updated filename
+                        UI.renderResults(FilterEngine.getFilteredImages());
+                    } else {
+                        const errorMsg = result ? result.message : 'Unknown error during rename';
+                        const statusInfo = result ? ` (status: ${result.status})` : '';
+                        alert('Error applying filename: ' + errorMsg + statusInfo);
+                        this.cancelCurrentFilenameEdit(attachmentId, originalFilename);
+                    }
+                } else {
+                    alert('Error applying filename: ' + (applyResponse.data || 'Unknown error'));
+                    this.cancelCurrentFilenameEdit(attachmentId, originalFilename);
+                }
+            } catch (error) {
+                alert('Error applying filename. Please try again.');
+                console.error('Apply filename error:', error);
+                this.cancelCurrentFilenameEdit(attachmentId, originalFilename);
+            }
+        }
+
+        static cancelCurrentFilenameEdit(attachmentId, originalFilename) {
+            const $row = $(`.result-row[data-attachment-id="${attachmentId}"]`);
+            const $filenameDisplay = $row.find('.current-filename-display');
+
+            // Restore original display with PNG icon
+            $filenameDisplay.html(`
+                <strong class="filename-heading">${this.escapeHtml(originalFilename)}</strong>
+                <button class="button button-link edit-current-filename" data-id="${attachmentId}" title="Edit filename">
+                    <img src="${mshImageOptimizer.pluginUrl}/assets/icons/edit.png" alt="Edit" class="edit-icon" />
+                </button>
+            `);
+        }
+
         static async updateImageContext(attachmentId, newContext, locationSpecific = null) {
 
             try {
@@ -2395,7 +2545,9 @@
                         // Refresh metadata + filename preview so UI reflects the new context immediately
                         image.generated_meta = updatedImage.generated_meta || {};
                         image.suggested_filename = updatedImage.suggested_filename || '';
-                        image.filename = updatedImage.file_path || image.file_path || '';
+                        image.file_path = updatedImage.file_path || image.file_path || '';
+                        image.filename = updatedImage.filename
+                            || (image.file_path ? image.file_path.split('/').pop() : image.filename);
                         image.optimization_status = updatedImage.optimization_status || image.optimization_status;
                         image.meta_preview = updatedImage.meta_preview || {};
                         image.context = updatedImage.context || updatedImage.context_details || image.context || image.context_details || {};
@@ -2786,9 +2938,15 @@
                 byContext.forEach((ctx) => {
                     const type = ctx.context_type || ctx.type;
                     const count = parseInt(ctx.count, 10) || 0;
-                    if (type === 'content') postsCount = count;
-                    else if (type === 'postmeta') metaCount = count;
-                    else if (type === 'options') optionsCount = count;
+                    // Map database context_type values to display categories
+                    // Support both legacy and current schema values
+                    if (type === 'content') {
+                        postsCount += count;
+                    } else if (type === 'postmeta' || type === 'meta' || type === 'serialized_meta') {
+                        metaCount += count;
+                    } else if (type === 'serialized_option' || type === 'options' || type === 'option') {
+                        optionsCount += count;
+                    }
                 });
 
                 const total = postsCount + metaCount + optionsCount;
@@ -3735,9 +3893,32 @@
                 return;
             }
 
+            if (!Index.loggedMessages) {
+                Index.loggedMessages = {};
+                Index.loggedMessageOrder = [];
+            }
+
             if (Array.isArray(status.messages)) {
                 status.messages.forEach((message) => {
+                    const processedValue = parseInt(status.processed, 10);
+                    const processed = Number.isNaN(processedValue) ? 0 : processedValue;
+                    const completedAt = status.completed_at || '';
+                    const messageKey = `${message}::${completedAt}::${processed}`;
+
+                    if (Index.loggedMessages[messageKey]) {
+                        return;
+                    }
+
                     UI.updateLog(message);
+                    Index.loggedMessages[messageKey] = true;
+                    Index.loggedMessageOrder.push(messageKey);
+
+                    if (Index.loggedMessageOrder.length > 100) {
+                        const removeKey = Index.loggedMessageOrder.shift();
+                        if (removeKey) {
+                            delete Index.loggedMessages[removeKey];
+                        }
+                    }
                 });
             }
 
@@ -3881,6 +4062,8 @@
     }
 
     Index.pollTimer = null;
+    Index.loggedMessages = {};
+    Index.loggedMessageOrder = [];
 
     // =============================================================================
     // INITIALIZATION

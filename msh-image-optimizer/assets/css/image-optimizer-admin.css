@@ -3306,3 +3306,55 @@ tr.context-updated {
     font-weight: 300;
     color: #35332f;
 }
+
+/* Edit Current Filename Button */
+.current-filename-display {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+/* Strong overrides to fight WordPress button styles */
+.edit-current-filename,
+.edit-current-filename:hover,
+.edit-current-filename:focus,
+.edit-current-filename:active {
+    padding: 0 !important;
+    margin: 0 !important;
+    background: none !important;
+    border: none !important;
+    box-shadow: none !important;
+    color: #2271b1 !important;
+    cursor: pointer !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    line-height: 1 !important;
+    text-decoration: none !important;
+    min-height: 0 !important;
+    height: auto !important;
+    width: auto !important;
+    vertical-align: middle !important;
+}
+
+.edit-current-filename {
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.edit-current-filename:hover {
+    opacity: 1 !important;
+}
+
+.edit-current-filename .edit-icon {
+    width: 16px !important;
+    height: 16px !important;
+    display: inline-block !important;
+    vertical-align: middle !important;
+}
+
+.current-filename-input {
+    font-family: monospace;
+    font-size: 14px;
+    padding: 6px 8px;
+}

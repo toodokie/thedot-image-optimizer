@@ -30,13 +30,21 @@ class MSH_Image_Optimizer_Admin {
             // Standard favicon formats - match actual filenames
             $favicon_png = $icons_url . 'Favicon.png';
             $favicon_svg = $icons_url . 'Favicon.svg';
+            $favicon_light_data = $this->generate_light_favicon_data_uri();
 
             // Standard favicon.ico (browsers check this first)
             echo '<link rel="shortcut icon" href="' . esc_url($favicon_png) . '" />' . "\n";
 
             // PNG format (best compatibility and quality for most browsers)
-            echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_png) . '" />' . "\n";
-            echo '<link rel="icon" type="image/png" sizes="16x16" href="' . esc_url($favicon_png) . '" />' . "\n";
+            if ($favicon_light_data) {
+                echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_png) . '" media="(prefers-color-scheme: light)" />' . "\n";
+                echo '<link rel="icon" type="image/png" sizes="16x16" href="' . esc_url($favicon_png) . '" media="(prefers-color-scheme: light)" />' . "\n";
+                echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_light_data) . '" media="(prefers-color-scheme: dark)" />' . "\n";
+                echo '<link rel="icon" type="image/png" sizes="16x16" href="' . esc_url($favicon_light_data) . '" media="(prefers-color-scheme: dark)" />' . "\n";
+            } else {
+                echo '<link rel="icon" type="image/png" sizes="32x32" href="' . esc_url($favicon_png) . '" />' . "\n";
+                echo '<link rel="icon" type="image/png" sizes="16x16" href="' . esc_url($favicon_png) . '" />' . "\n";
+            }
 
             // SVG format (fallback for modern browsers that support it)
             echo '<link rel="icon" type="image/svg+xml" href="' . esc_url($favicon_svg) . '" />' . "\n";
@@ -44,6 +52,42 @@ class MSH_Image_Optimizer_Admin {
             // Apple touch icon for better mobile support
             echo '<link rel="apple-touch-icon" sizes="180x180" href="' . esc_url($favicon_png) . '" />' . "\n";
         }
+    }
+
+    private function generate_light_favicon_data_uri() {
+        if (!function_exists('imagecreatefrompng') || !function_exists('imagepng')) {
+            return null;
+        }
+
+        if (!defined('MSH_IO_PLUGIN_DIR')) {
+            return null;
+        }
+
+        $favicon_path = trailingslashit(MSH_IO_PLUGIN_DIR) . 'assets/icons/Favicon.png';
+        if (!file_exists($favicon_path)) {
+            return null;
+        }
+
+        $image = @imagecreatefrompng($favicon_path);
+        if (!$image) {
+            return null;
+        }
+
+        // Lighten favicon for dark mode
+        imagealphablending($image, true);
+        imagesavealpha($image, true);
+        @imagefilter($image, IMG_FILTER_BRIGHTNESS, 70);
+
+        ob_start();
+        imagepng($image);
+        $png_data = ob_get_clean();
+        imagedestroy($image);
+
+        if (!$png_data) {
+            return null;
+        }
+
+        return 'data:image/png;base64,' . base64_encode($png_data);
     }
     
     /**
@@ -135,6 +179,7 @@ class MSH_Image_Optimizer_Admin {
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('msh_image_optimizer'),
             'cleanup_nonce' => wp_create_nonce('msh_media_cleanup'),
+            'pluginUrl' => untrailingslashit(MSH_IO_PLUGIN_URL),
             'renameEnabled' => get_option('msh_enable_file_rename', '0'),
             'renameToggleNonce' => wp_create_nonce('msh_toggle_file_rename'),
             'indexStats' => $index_summary,
@@ -854,6 +899,8 @@ class MSH_Image_Optimizer_Admin {
             );
         }
 
+        $previous_signature = get_option('msh_context_signature', '');
+
         $raw_context = isset($_POST['context']) ? $_POST['context'] : array();
         if (!is_array($raw_context)) {
             $raw_context = array();
@@ -880,6 +927,14 @@ class MSH_Image_Optimizer_Admin {
         }
 
         update_option('msh_onboarding_context', $sanitized, false);
+        $signature = MSH_Image_Optimizer_Context_Helper::build_context_signature($sanitized);
+        update_option('msh_context_signature', $signature, false);
+        if ($previous_signature !== $signature && class_exists('MSH_Image_Optimizer')) {
+            $optimizer = MSH_Image_Optimizer::get_instance();
+            if ($optimizer && method_exists($optimizer, 'handle_context_signature_change')) {
+                $optimizer->handle_context_signature_change($previous_signature, $signature);
+            }
+        }
 
         $auto_index_queued = false;
         $queue_state = null;
@@ -903,6 +958,7 @@ class MSH_Image_Optimizer_Admin {
                 'context' => $sanitized,
                 'summary' => MSH_Image_Optimizer_Context_Helper::format_summary($sanitized),
                 'message' => __('Setup saved successfully.', 'msh-image-optimizer'),
+                'context_signature' => $signature,
                 'auto_index_queued' => $auto_index_queued,
                 'queue_state' => $queue_state,
                 'index_stats' => $this->get_usage_index_stats(),
@@ -922,15 +978,25 @@ class MSH_Image_Optimizer_Admin {
             );
         }
 
+        $previous_signature = get_option('msh_context_signature', '');
         delete_option('msh_onboarding_context');
 
         $context = MSH_Image_Optimizer_Context_Helper::sanitize_context(array(), false);
+        $signature = MSH_Image_Optimizer_Context_Helper::build_context_signature($context);
+        update_option('msh_context_signature', $signature, false);
+        if ($previous_signature !== $signature && class_exists('MSH_Image_Optimizer')) {
+            $optimizer = MSH_Image_Optimizer::get_instance();
+            if ($optimizer && method_exists($optimizer, 'handle_context_signature_change')) {
+                $optimizer->handle_context_signature_change($previous_signature, $signature);
+            }
+        }
 
         wp_send_json_success(
             array(
                 'context' => $context,
                 'summary' => MSH_Image_Optimizer_Context_Helper::format_summary($context),
-                'message' => __('Context cleared. You can complete the setup whenever you’re ready.', 'msh-image-optimizer')
+                'message' => __('Context cleared. You can complete the setup whenever you’re ready.', 'msh-image-optimizer'),
+                'context_signature' => $signature,
             )
         );
     }
@@ -947,6 +1013,7 @@ class MSH_Image_Optimizer_Admin {
             );
         }
 
+        $previous_signature = get_option('msh_context_signature', '');
         $requested = isset($_POST['profile_id']) ? sanitize_text_field(wp_unslash($_POST['profile_id'])) : 'primary';
         $profiles = MSH_Image_Optimizer_Context_Helper::get_profiles();
 
@@ -978,6 +1045,15 @@ class MSH_Image_Optimizer_Admin {
             );
         }
 
+        $signature = MSH_Image_Optimizer_Context_Helper::build_context_signature($context);
+        update_option('msh_context_signature', $signature, false);
+        if ($previous_signature !== $signature && class_exists('MSH_Image_Optimizer')) {
+            $optimizer = MSH_Image_Optimizer::get_instance();
+            if ($optimizer && method_exists($optimizer, 'handle_context_signature_change')) {
+                $optimizer->handle_context_signature_change($previous_signature, $signature);
+            }
+        }
+
         wp_send_json_success(
             array(
                 'profile_id' => $requested,
@@ -985,7 +1061,8 @@ class MSH_Image_Optimizer_Admin {
                 'summary' => $summary,
                 'label' => $label,
                 'index_stats' => $this->get_usage_index_stats(),
-                'message' => __('Active context updated.', 'msh-image-optimizer')
+                'message' => __('Active context updated.', 'msh-image-optimizer'),
+                'context_signature' => $signature,
             )
         );
     }
