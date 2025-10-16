@@ -14,6 +14,8 @@ class MSH_Contextual_Meta_Generator {
     private $location_slug = '';
     private $city = '';
     private $city_slug = '';
+    private $country = '';
+    private $service_area = '';
     private $active_context = [];
     private $industry = '';
     private $industry_label = '';
@@ -26,6 +28,16 @@ class MSH_Contextual_Meta_Generator {
     private $active_profile_label = '';
     private $business_type = '';
     private $context_signature = '';
+    private $current_industry = '';
+    private $current_season = '';
+    private $industry_value_props = [];
+    private $achievement_markers = '';
+    private $season_cache = null;
+    private $batch_mode = false;
+    private $hemisphere = null;
+    private $batch_season = null;
+    private $season_cache_hits = 0;
+    private $season_cache_misses = 0;
 
     private $service_keyword_map = [
         'physiotherapy' => [
@@ -67,6 +79,11 @@ class MSH_Contextual_Meta_Generator {
             'default' => 'Dedicated first responder rehabilitation programs with duty-ready focus.',
             'assessment' => 'Operational fitness assessments for first responders.',
             'acute' => 'Immediate injury care with expedited recovery pathways.'
+        ],
+        'wellness' => [
+            'default' => 'Holistic wellness therapies. Stress relief and rejuvenation.',
+            'assessment' => 'Personalized wellness assessments and care plans.',
+            'acute' => 'Immediate relaxation therapies focused on tension release.'
         ]
     ];
 
@@ -78,11 +95,15 @@ class MSH_Contextual_Meta_Generator {
         'rehabilitation' => ['rehab', 'recovery', 'rehabilitation'],
         'motor-vehicle-accident' => ['mva', 'motor vehicle', 'collision', 'auto injury', 'car accident'],
         'workplace-injury' => ['wsib', 'workplace', 'work injury', 'return to work', 'occupational'],
-        'first-responder' => ['first responder', 'firefighter', 'paramedic', 'police', 'dispatcher']
+        'first-responder' => ['first responder', 'firefighter', 'paramedic', 'police', 'dispatcher'],
+        'wellness' => ['wellness', 'spa', 'holistic', 'relaxation', 'mindfulness']
     ];
 
     public function __construct() {
         $this->hydrate_active_context();
+        $this->current_season = $this->detect_current_season();
+        $this->load_industry_value_props();
+        add_action('shutdown', array($this, 'log_cache_stats'));
     }
 
     private function hydrate_active_context() {
@@ -109,12 +130,16 @@ class MSH_Contextual_Meta_Generator {
 
         $city = isset($context['city']) ? sanitize_text_field($context['city']) : '';
         $region = isset($context['region']) ? sanitize_text_field($context['region']) : '';
+        $country = isset($context['country']) ? sanitize_text_field($context['country']) : '';
         $service_area = isset($context['service_area']) ? sanitize_text_field($context['service_area']) : '';
+
+        $this->service_area = $service_area;
+        $this->country = $country;
 
         $this->city = $city;
         $this->city_slug = $city !== '' ? $this->slugify($city) : '';
 
-        $location_parts = array_filter([$city, $region], 'strlen');
+        $location_parts = array_filter([$city, $region, $country], 'strlen');
         if (!empty($location_parts)) {
             $this->location = implode(', ', $location_parts);
         } elseif ($service_area !== '') {
@@ -175,9 +200,17 @@ class MSH_Contextual_Meta_Generator {
             return false;
         }
 
-        $health_slugs = array('medical', 'dental', 'therapy', 'wellness');
+        $health_slugs = array('medical', 'dental', 'therapy');
 
         return in_array($industry, $health_slugs, true);
+    }
+
+    private function get_default_healthcare_service($industry) {
+        if ($industry === 'wellness') {
+            return 'wellness';
+        }
+
+        return 'rehabilitation';
     }
 
     private function get_industry_label_or_default() {
@@ -241,6 +274,708 @@ class MSH_Contextual_Meta_Generator {
         return $text;
     }
 
+    /**
+     * Detect current season with caching.
+     *
+     * @return string
+     */
+    private function detect_current_season($force_refresh = false) {
+        if ($this->batch_mode && $this->batch_season !== null && !$force_refresh) {
+            $this->season_cache_hits++;
+            return $this->batch_season;
+        }
+
+        if ($this->season_cache !== null && !$force_refresh) {
+            $this->season_cache_hits++;
+            return $this->season_cache;
+        }
+
+        $cache_key = $this->get_season_cache_key();
+
+        if (!$force_refresh) {
+            $cached = get_transient($cache_key);
+            if ($cached !== false) {
+                $this->season_cache_hits++;
+                $this->season_cache = $cached;
+                if ($this->batch_mode) {
+                    $this->batch_season = $cached;
+                }
+                if (defined('WP_DEBUG') && WP_DEBUG && apply_filters('msh_debug_logging', true)) {
+                    error_log(sprintf('[MSH Image Optimizer] Season cache hit (transient): %s', $cached));
+                }
+                return $cached;
+            }
+        }
+
+        $this->season_cache_misses++;
+
+        $season = $this->calculate_season();
+
+        $season = apply_filters('msh_detected_season', $season, array(
+            'month' => (int) current_time('n'),
+            'hemisphere' => $this->get_hemisphere(),
+            'timezone' => wp_timezone_string(),
+        ));
+
+        $ttl = $this->get_season_cache_ttl();
+        set_transient($cache_key, $season, $ttl);
+
+        $this->season_cache = $season;
+        if ($this->batch_mode) {
+            $this->batch_season = $season;
+        }
+
+        if (defined('WP_DEBUG') && WP_DEBUG && apply_filters('msh_debug_logging', true)) {
+            error_log(sprintf(
+                '[MSH Image Optimizer] Season calculated as %s (hemisphere: %s, TTL: %d)',
+                $season,
+                $this->get_hemisphere(),
+                $ttl
+            ));
+        }
+
+        return $season;
+    }
+
+    private function calculate_season() {
+        $month = (int) current_time('n');
+        $hemisphere = $this->get_hemisphere();
+
+        if ($hemisphere === 'southern') {
+            if ($month >= 3 && $month <= 5) {
+                return 'fall';
+            }
+            if ($month >= 6 && $month <= 8) {
+                return 'winter';
+            }
+            if ($month >= 9 && $month <= 11) {
+                return 'spring';
+            }
+            return 'summer';
+        }
+
+        if ($month >= 3 && $month <= 5) {
+            return 'spring';
+        }
+        if ($month >= 6 && $month <= 8) {
+            return 'summer';
+        }
+        if ($month >= 9 && $month <= 11) {
+            return 'fall';
+        }
+        return 'winter';
+    }
+
+    private function get_hemisphere() {
+        if ($this->hemisphere !== null) {
+            return $this->hemisphere;
+        }
+
+        $timezone_string = wp_timezone_string();
+        if ($timezone_string === '') {
+            $timezone_string = 'UTC';
+        }
+
+        $southern_patterns = array(
+            'Australia/',
+            'Pacific/Auckland',
+            'Pacific/Fiji',
+            'Africa/Johannesburg',
+            'Africa/Cape_Town',
+            'America/Santiago',
+            'America/Buenos_Aires',
+            'America/Sao_Paulo',
+            'Atlantic/Stanley',
+        );
+
+        $detected = 'northern';
+        foreach ($southern_patterns as $pattern) {
+            if (stripos($timezone_string, $pattern) === 0) {
+                $detected = 'southern';
+                break;
+            }
+        }
+
+        $this->hemisphere = apply_filters('msh_detected_hemisphere', $detected, $timezone_string);
+
+        return $this->hemisphere;
+    }
+
+    private function get_season_cache_key() {
+        $key = 'msh_current_season';
+
+        if (function_exists('get_locale')) {
+            $locale = get_locale();
+            if (!empty($locale)) {
+                $key .= '_' . sanitize_key(strtolower((string) $locale));
+            }
+        }
+
+        if (is_multisite()) {
+            $key .= '_' . get_current_blog_id();
+        }
+
+        return apply_filters('msh_season_cache_key', $key, $this->active_profile_id);
+    }
+
+    private function get_season_cache_ttl() {
+        $month = (int) current_time('n');
+        $day = (int) current_time('j');
+        $days_until_change = $this->days_until_season_change($month, $day);
+
+        $ttl = max(HOUR_IN_SECONDS, min($days_until_change * DAY_IN_SECONDS, 90 * DAY_IN_SECONDS));
+
+        return (int) apply_filters('msh_season_cache_ttl', $ttl, $month, $day, $this->get_hemisphere());
+    }
+
+    private function days_until_season_change($month, $day) {
+        $season_changes = array(
+            3 => 21,
+            6 => 21,
+            9 => 23,
+            12 => 21,
+        );
+
+        $timezone = wp_timezone();
+
+        try {
+            $now = new DateTime('now', $timezone);
+        } catch (Exception $e) {
+            $now = new DateTime('now');
+        }
+
+        foreach ($season_changes as $change_month => $change_day) {
+            try {
+                $target = new DateTime(sprintf('%d-%02d-%02d', (int) $now->format('Y'), $change_month, $change_day), $timezone);
+            } catch (Exception $e) {
+                $target = new DateTime(sprintf('%d-%02d-%02d', (int) $now->format('Y'), $change_month, $change_day));
+            }
+
+            if ($now <= $target) {
+                $diff = $now->diff($target);
+                return max(1, (int) $diff->format('%a'));
+            }
+        }
+
+        $next_year = (int) $now->format('Y') + 1;
+        try {
+            $next_target = new DateTime(sprintf('%d-03-21', $next_year), $timezone);
+        } catch (Exception $e) {
+            $next_target = new DateTime(sprintf('%d-03-21', $next_year));
+        }
+
+        $diff = $now->diff($next_target);
+        return max(1, (int) $diff->format('%a'));
+    }
+
+    public function enable_batch_mode() {
+        if ($this->batch_mode) {
+            return;
+        }
+
+        $this->batch_season = $this->get_current_season();
+        $this->batch_mode = true;
+    }
+
+    public function disable_batch_mode() {
+        $this->batch_mode = false;
+        $this->batch_season = null;
+    }
+
+    public function log_cache_stats() {
+        if (!defined('WP_DEBUG') || !WP_DEBUG) {
+            return;
+        }
+
+        if (!apply_filters('msh_debug_logging', true)) {
+            return;
+        }
+
+        if ($this->season_cache_hits === 0 && $this->season_cache_misses === 0) {
+            return;
+        }
+
+        error_log(sprintf(
+            '[MSH Image Optimizer] Season cache stats — hits: %d, misses: %d',
+            $this->season_cache_hits,
+            $this->season_cache_misses
+        ));
+    }
+
+    private function load_industry_value_props() {
+        $this->industry_value_props = [
+            'legal' => __('Free consultation with flexible payment plans.', 'msh-image-optimizer'),
+            'accounting' => __('Maximum refunds with audit protection included.', 'msh-image-optimizer'),
+            'consulting' => __('ROI-focused strategies with measurable outcomes.', 'msh-image-optimizer'),
+            'marketing' => __('Data-driven campaigns with transparent reporting.', 'msh-image-optimizer'),
+            'web_design' => __('Mobile-first websites with fast load times.', 'msh-image-optimizer'),
+            'plumbing' => __('Same-day service with upfront pricing and warranty.', 'msh-image-optimizer'),
+            'hvac' => __('Energy-efficient solutions with financing available.', 'msh-image-optimizer'),
+            'electrical' => __('Code-compliant work backed by safety guarantees.', 'msh-image-optimizer'),
+            'renovation' => __('On-time, on-budget project delivery.', 'msh-image-optimizer'),
+            'medical' => __('Same-week appointments and most insurance accepted.', 'msh-image-optimizer'),
+            'dental' => __('Gentle care with sedation options and modern tech.', 'msh-image-optimizer'),
+            'therapy' => __('Evidence-based treatment in a confidential setting.', 'msh-image-optimizer'),
+            'wellness' => __('Holistic programs with personalized treatment plans.', 'msh-image-optimizer'),
+            'online_store' => __('Fast shipping with hassle-free returns.', 'msh-image-optimizer'),
+            'local_retail' => __('Personalized service from local experts.', 'msh-image-optimizer'),
+            'specialty' => __('Curated selection guided by industry experts.', 'msh-image-optimizer'),
+            'other' => __('Professional service with satisfaction guaranteed.', 'msh-image-optimizer'),
+        ];
+    }
+
+    public function get_current_season($force_refresh = false) {
+        return $this->detect_current_season($force_refresh);
+    }
+
+    public function clear_season_cache() {
+        delete_transient($this->get_season_cache_key());
+        $this->season_cache = null;
+        $this->current_season = $this->detect_current_season(true);
+        $this->batch_season = $this->season_cache;
+        return true;
+    }
+
+    public function set_season($season, $ttl = DAY_IN_SECONDS) {
+        $season = strtolower((string) $season);
+        $valid_seasons = ['winter', 'spring', 'summer', 'fall'];
+        if (!in_array($season, $valid_seasons, true)) {
+            return false;
+        }
+        set_transient($this->get_season_cache_key(), $season, (int) $ttl);
+        $this->season_cache = $season;
+        $this->current_season = $season;
+        $this->batch_season = $season;
+        return true;
+    }
+
+    private function get_temporal_keywords($industry, $season = null) {
+        if (defined('WP_DEBUG') && WP_DEBUG && apply_filters('msh_debug_logging', true)) {
+            error_log(sprintf('[MSH Image Optimizer] get_temporal_keywords() invoked for %s (season: %s)', $industry ?: 'unknown', $season ?: 'auto'));
+        }
+        $season = $season ?? $this->get_current_season();
+        $industry_season = $this->get_industry_season($industry, $season);
+
+        $temporal_map = [
+            'plumbing' => [
+                'winter' => __('frozen pipe repair emergency thawing service', 'msh-image-optimizer'),
+                'spring' => __('sump pump maintenance flood prevention', 'msh-image-optimizer'),
+                'summer' => __('outdoor plumbing irrigation sprinkler repair', 'msh-image-optimizer'),
+                'fall' => __('winterization pipe insulation cold weather prep', 'msh-image-optimizer'),
+            ],
+            'hvac' => [
+                'summer' => __('emergency ac repair cooling system service', 'msh-image-optimizer'),
+                'winter' => __('furnace repair heating system emergency', 'msh-image-optimizer'),
+                'spring' => __('hvac maintenance tune up indoor air quality', 'msh-image-optimizer'),
+                'fall' => __('heating inspection furnace preparation winter', 'msh-image-optimizer'),
+            ],
+            'wellness' => [
+                'spring' => __('detox programs seasonal allergies support', 'msh-image-optimizer'),
+                'summer' => __('hydration therapy cooling spa treatments', 'msh-image-optimizer'),
+                'fall' => __('immunity boost relaxation stress relief', 'msh-image-optimizer'),
+                'winter' => __('warm stone massage winter wellness support', 'msh-image-optimizer'),
+                'default' => __('holistic wellness self care relaxation spa', 'msh-image-optimizer'),
+            ],
+            'accounting' => [
+                'q1_tax_season' => __('tax preparation filing season refunds', 'msh-image-optimizer'),
+                'q2' => __('estimated taxes quarterly bookkeeping', 'msh-image-optimizer'),
+                'q3' => __('financial planning mid year review', 'msh-image-optimizer'),
+                'q4_year_end' => __('year end tax strategy deductions planning', 'msh-image-optimizer'),
+            ],
+            'online_store' => [
+                'black_friday' => __('black friday cyber week deals limited time offers', 'msh-image-optimizer'),
+                'holiday_shopping' => __('holiday gifts fast shipping seasonal bundles', 'msh-image-optimizer'),
+                'back_to_school' => __('back to school essentials supplies', 'msh-image-optimizer'),
+                'default' => __('exclusive online deals fast shipping secure checkout', 'msh-image-optimizer'),
+            ],
+            'local_retail' => [
+                'black_friday' => __('doorcrasher deals limited inventory shop local', 'msh-image-optimizer'),
+                'holiday_shopping' => __('holiday gifts curated local shop small', 'msh-image-optimizer'),
+                'back_to_school' => __('back to school must haves local experts', 'msh-image-optimizer'),
+                'default' => __('shop local boutique selection personalized service', 'msh-image-optimizer'),
+            ],
+        ];
+
+        $keywords = $temporal_map[$industry][$industry_season] ??
+            $temporal_map[$industry][$season] ??
+            $temporal_map[$industry]['default'] ?? '';
+
+        return apply_filters('msh_temporal_keywords', $keywords, $industry, $season);
+    }
+
+    private function get_industry_season($industry, $calendar_season) {
+        $industry = strtolower((string) $industry);
+        $calendar_season = strtolower((string) $calendar_season);
+
+        $season = $calendar_season !== '' ? $calendar_season : 'default';
+
+        if ($industry === 'accounting') {
+            $month = (int) current_time('n');
+            if ($month <= 3) {
+                $season = 'q1_tax_season';
+            } elseif ($month <= 6) {
+                $season = 'q2';
+            } elseif ($month <= 9) {
+                $season = 'q3';
+            } else {
+                $season = 'q4_year_end';
+            }
+        } elseif (in_array($industry, array('online_store', 'local_retail'), true)) {
+            $month = (int) current_time('n');
+            $day = (int) current_time('j');
+
+            if ($month === 11 && $day >= 20) {
+                $season = 'black_friday';
+            } elseif ($month === 12) {
+                $season = 'holiday_shopping';
+            } elseif ($month === 8) {
+                $season = 'back_to_school';
+            } else {
+                $season = 'default';
+            }
+        }
+
+        return apply_filters('msh_industry_season', $season, $industry, $calendar_season);
+    }
+
+    private function get_trust_signals($industry, $context = []) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf('[MSH Image Optimizer] get_trust_signals() invoked for %s', $industry ?: 'unknown'));
+        }
+        $map = [
+            'plumbing' => [
+                __('Licensed & insured plumbers.', 'msh-image-optimizer'),
+                __('24/7 emergency response within 60 minutes.', 'msh-image-optimizer'),
+                __('BBB A+ rated service.', 'msh-image-optimizer'),
+            ],
+            'hvac' => [
+                __('Factory-certified HVAC technicians.', 'msh-image-optimizer'),
+                __('Energy Star partner with financing options.', 'msh-image-optimizer'),
+                __('NATE-certified service team.', 'msh-image-optimizer'),
+            ],
+            'wellness' => [
+                __('Certified wellness practitioners.', 'msh-image-optimizer'),
+                __('Personalized treatment plans.', 'msh-image-optimizer'),
+                __('Thousands of satisfied members.', 'msh-image-optimizer'),
+            ],
+            'medical' => [
+                __('Board-certified physicians.', 'msh-image-optimizer'),
+                __('Accepting new patients.', 'msh-image-optimizer'),
+                __('Most insurance plans accepted.', 'msh-image-optimizer'),
+            ],
+            'dental' => [
+                __('Gentle, comfort-focused dental care.', 'msh-image-optimizer'),
+                __('Sedation options available.', 'msh-image-optimizer'),
+                __('Insurance welcome; payment plans offered.', 'msh-image-optimizer'),
+            ],
+        ];
+
+        $signals = $map[$industry] ?? [
+            __('Experienced professionals.', 'msh-image-optimizer'),
+            __('Locally trusted service.', 'msh-image-optimizer'),
+        ];
+
+        $limit = isset($context['limit']) ? max(1, (int) $context['limit']) : count($signals);
+        $selected = array_slice($signals, 0, $limit);
+
+        return apply_filters('msh_trust_signals', $selected, $industry, $context);
+    }
+
+    private function get_journey_content($industry, $stage, $context = []) {
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf('[MSH Image Optimizer] get_journey_content() invoked for %s (stage: %s)', $industry ?: 'unknown', $stage));
+        }
+        $templates = [
+            'awareness' => [
+                'wellness' => __('Discover holistic wellness solutions tailored to you.', 'msh-image-optimizer'),
+                'plumbing' => __('Learn to spot early plumbing issues before they escalate.', 'msh-image-optimizer'),
+                'hvac' => __('Is your HVAC system ready for the season?', 'msh-image-optimizer'),
+            ],
+            'consideration' => [
+                'wellness' => __('Compare wellness programs designed for lasting balance.', 'msh-image-optimizer'),
+                'plumbing' => __('See why homeowners trust our licensed plumbing team.', 'msh-image-optimizer'),
+                'hvac' => __('Compare HVAC maintenance options that protect your comfort.', 'msh-image-optimizer'),
+            ],
+            'decision' => [
+                'wellness' => __('Book your personalized wellness consultation today.', 'msh-image-optimizer'),
+                'plumbing' => __('Schedule same-day plumbing service with upfront pricing.', 'msh-image-optimizer'),
+                'hvac' => __('Reserve your HVAC tune-up and stay comfortable year-round.', 'msh-image-optimizer'),
+            ],
+            'retention' => [
+                'wellness' => __('Stay consistent with monthly wellness check-ins.', 'msh-image-optimizer'),
+                'plumbing' => __('Join our maintenance program and prevent future issues.', 'msh-image-optimizer'),
+                'hvac' => __('Renew your maintenance plan for priority scheduling.', 'msh-image-optimizer'),
+            ],
+        ];
+
+        $content = $templates[$stage][$industry] ?? '';
+
+        if ($content === '' && isset($templates[$stage]['default'])) {
+            $content = $templates[$stage]['default'];
+        }
+
+        if ($content === '') {
+            $content = __('Trusted professionals delivering reliable service.', 'msh-image-optimizer');
+        }
+
+        if (!empty($context)) {
+            foreach ($context as $key => $value) {
+                $content = str_replace('{' . $key . '}', $value, $content);
+            }
+        }
+
+        return apply_filters('msh_journey_content', $content, $industry, $stage, $context);
+    }
+
+    private function get_achievement_markers($industry = null) {
+        $industry = $industry ?: $this->current_industry;
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf('[MSH Image Optimizer] get_achievement_markers() invoked for %s', $industry ?: 'unknown'));
+        }
+
+        if ($industry !== '') {
+            $custom = get_option('msh_achievement_markers_' . $industry, '');
+            if ($custom !== '') {
+                $this->achievement_markers = $custom;
+                return apply_filters('msh_achievement_markers', $custom, $industry, $this->business_name);
+            }
+        }
+
+        $defaults = [
+            'plumbing' => __('10,000+ satisfied customers across the GTA.', 'msh-image-optimizer'),
+            'hvac' => __('Serving local homes and businesses for over 20 years.', 'msh-image-optimizer'),
+            'wellness' => __('Rated 4.9/5 by wellness members since 2015.', 'msh-image-optimizer'),
+            'medical' => __('Recognised for outstanding patient care in the community.', 'msh-image-optimizer'),
+            'dental' => __('Award-winning dental team with state-of-the-art technology.', 'msh-image-optimizer'),
+            'marketing' => __('Delivering measurable growth for 200+ brands.', 'msh-image-optimizer'),
+            'web_design' => __('Designed and launched 500+ conversion-focused websites.', 'msh-image-optimizer'),
+        ];
+
+        $marker = $defaults[$industry] ?? '';
+        $this->achievement_markers = $marker;
+
+        return apply_filters('msh_achievement_markers', $marker, $industry, $this->business_name);
+    }
+
+    private function get_industry_value_proposition($industry = null) {
+        $industry = $industry ?: $this->current_industry;
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+            error_log(sprintf('[MSH Image Optimizer] get_industry_value_proposition() invoked for %s', $industry ?: 'unknown'));
+        }
+
+        $value = $this->industry_value_props[$industry] ?? '';
+
+        return apply_filters('msh_industry_value_prop', $value, $industry, $this->business_name);
+    }
+
+
+    private function build_industry_description($generic_text, $credentials = '', array $options = []) {
+        $generic = trim((string) $generic_text);
+        $credentials = trim((string) $credentials);
+        $industry = $options['industry'] ?? $this->current_industry;
+
+        $trust_signals = $this->get_trust_signals($industry, ['limit' => 2]);
+
+        if ($this->uvp !== '') {
+            $segments = [$this->normalize_sentence($this->uvp)];
+            if ($credentials !== '') {
+                $segments[] = $this->normalize_sentence($credentials);
+            }
+            if (!empty($trust_signals)) {
+                $segments[] = $this->normalize_sentence($trust_signals[0]);
+            }
+            return trim(implode(' ', $segments));
+        }
+
+        if ($this->pain_points !== '') {
+            $base = $generic !== '' ? $generic : __('Professional services', 'msh-image-optimizer');
+            $segments = [
+                $this->normalize_sentence(sprintf(
+                    __('%1$s specializing in %2$s', 'msh-image-optimizer'),
+                    $base,
+                    $this->pain_points
+                )),
+            ];
+            if ($credentials !== '') {
+                $segments[] = $this->normalize_sentence($credentials);
+            }
+            return trim(implode(' ', $segments));
+        }
+
+        $achievement = $this->get_achievement_markers($industry);
+        if ($achievement !== '') {
+            $segments = [];
+            if ($generic !== '') {
+                $segments[] = $this->normalize_sentence($generic);
+            }
+            $segments[] = $this->normalize_sentence($achievement);
+            if ($credentials !== '') {
+                $segments[] = $this->normalize_sentence($credentials);
+            }
+            return trim(implode(' ', $segments));
+        }
+
+        if ($this->target_audience !== '') {
+            $base = $generic !== '' ? $generic : __('Professional services', 'msh-image-optimizer');
+            $segments = [
+                $this->normalize_sentence(sprintf(
+                    __('%1$s serving %2$s', 'msh-image-optimizer'),
+                    $base,
+                    $this->target_audience
+                )),
+            ];
+            if ($credentials !== '') {
+                $segments[] = $this->normalize_sentence($credentials);
+            }
+            return trim(implode(' ', $segments));
+        }
+
+        $industry_value = $this->get_industry_value_proposition($industry);
+        if ($industry_value !== '') {
+            $segments = [];
+            if ($generic !== '') {
+                $segments[] = $this->normalize_sentence($generic);
+            }
+            $segments[] = $this->normalize_sentence($industry_value);
+            if ($credentials !== '') {
+                $segments[] = $this->normalize_sentence($credentials);
+            }
+            return trim(implode(' ', $segments));
+        }
+
+        $segments = [];
+        if ($generic !== '') {
+            $segments[] = $this->normalize_sentence($generic);
+        }
+        if ($credentials !== '') {
+            $segments[] = $this->normalize_sentence($credentials);
+        }
+        if (!empty($trust_signals)) {
+            $segments[] = $this->normalize_sentence($trust_signals[0]);
+        }
+
+        return trim(implode(' ', array_filter($segments)));
+    }
+
+    private function extract_visual_descriptor(array $context) {
+        $candidates = [
+            $context['attachment_title'] ?? '',
+            $context['page_title'] ?? '',
+            $context['attachment_caption'] ?? ''
+        ];
+
+        if (!empty($context['attachment_slug'])) {
+            $candidates[] = str_replace('-', ' ', (string) $context['attachment_slug']);
+        }
+
+        if (!empty($context['tags']) && is_array($context['tags'])) {
+            $candidates = array_merge($candidates, $context['tags']);
+        }
+
+        foreach ($candidates as $candidate) {
+            $descriptor = $this->sanitize_descriptor($candidate);
+            if ($descriptor !== '' && !$this->is_generic_descriptor($descriptor)) {
+                return $descriptor;
+            }
+        }
+
+        return '';
+    }
+
+    private function sanitize_descriptor($text) {
+        $text = trim(strip_tags((string) $text));
+        if ($text === '') {
+            return '';
+        }
+
+        if ($this->looks_like_camera_filename($text)) {
+            return '';
+        }
+
+        $text = preg_replace('/\b(image|photo|picture|graphic)\b/i', '', $text);
+        $text = preg_replace('/\b\d+x\d+\b/i', '', $text);
+        $text = preg_replace('/\balignment\b/i', '', $text);
+        $text = preg_replace('/\s+/', ' ', $text);
+        $text = trim($text, " \t\n\r\0\x0B-_|'\":");
+
+        if ($text === '') {
+            return '';
+        }
+
+        if ($this->is_generic_descriptor($text)) {
+            return '';
+        }
+
+        if (mb_strlen($text) > 60) {
+            $text = rtrim(mb_substr($text, 0, 57)) . '...';
+        }
+
+        return $text;
+    }
+
+    private function is_generic_descriptor($text) {
+        $value = strtolower(trim((string) $text));
+        if ($value === '') {
+            return true;
+        }
+
+        $normalized = preg_replace('/[\s_\-]+/', ' ', $value);
+        $normalized = trim($normalized, ": '\"");
+
+        $generic_terms = [
+            'home',
+            'services',
+            'service',
+            'about',
+            'contact',
+            'blog',
+            'sample',
+            'default',
+            'resinous',
+            'canola',
+            'canola2',
+            'manhattansummer',
+            'olympus digital camera',
+            'image alignment',
+            'alignment',
+            'classic',
+            'post format: gallery',
+            'post format gallery',
+            'post format',
+            'featured image',
+            'classic gallery',
+            'markup',
+            'markup:'
+        ];
+
+        if (in_array($value, $generic_terms, true) || in_array($normalized, $generic_terms, true)) {
+            return true;
+        }
+
+        if (preg_match('/\b\d+x\d+\b/', $normalized)) {
+            return true;
+        }
+
+        if (preg_match('/^(dsc|img|pict|picture|photo|p\d{7}|dscn|dscf|imgp|dcim)[\s\-_]?\d+/i', $normalized)) {
+            return true;
+        }
+
+        // Catch meaningless test descriptors with numbers
+        if (preg_match('/^(canola|resinous|manhattansummer)\d*$/i', $normalized)) {
+            return true;
+        }
+
+        if (preg_match('/^(image[-_ ]alignment|alignment[-_ ]image)/', $normalized)) {
+            return true;
+        }
+
+        if ($this->looks_like_camera_filename($normalized)) {
+            return true;
+        }
+
+        return false;
+    }
+
     public function detect_context($attachment_id, $ignore_manual = false) {
         $this->ensure_fresh_context();
         $this->hydrate_active_context();
@@ -257,7 +992,7 @@ class MSH_Contextual_Meta_Generator {
             'type' => $this->get_default_context_type(),
             'page_type' => null,
             'page_title' => null,
-            'service' => $this->is_healthcare_industry($this->industry) ? 'rehabilitation' : '',
+            'service' => $this->is_healthcare_industry($this->industry) ? $this->get_default_healthcare_service($this->industry) : '',
             'parent_id' => 0,
             'tags' => [],
             'manual' => false,
@@ -382,6 +1117,9 @@ class MSH_Contextual_Meta_Generator {
                 $context['type'] = 'facility';
             } elseif (in_array('equipment', $media_terms, true)) {
                 $context['type'] = 'equipment';
+            } elseif (in_array('products', $media_terms, true) || in_array('product', $media_terms, true)) {
+                $context['type'] = 'business';
+                $context['asset'] = 'product';
             }
         }
 
@@ -531,6 +1269,10 @@ class MSH_Contextual_Meta_Generator {
                     }
                 }
             }
+        }
+
+        if ($this->is_healthcare_industry($this->industry)) {
+            return $this->get_default_healthcare_service($this->industry);
         }
 
         return 'rehabilitation';
@@ -1077,6 +1819,30 @@ class MSH_Contextual_Meta_Generator {
                 return $this->slugify('equipment-showcase' . $location_suffix);
             case 'business':
                 $original_filename = strtolower($context['original_filename'] ?? '');
+                $original_basename = $original_filename !== ''
+                    ? pathinfo($original_filename, PATHINFO_FILENAME)
+                    : '';
+                $attachment_title = strtolower($context['attachment_title'] ?? '');
+
+                if ($this->should_use_generic_industry_slug($original_basename, $attachment_title)) {
+                    $prefix = $this->get_industry_slug_prefix();
+                    $location_component = $this->city_slug !== ''
+                        ? $this->city_slug
+                        : $this->location_slug;
+
+                    $components = [$prefix];
+                    if ($location_component !== '') {
+                        $components[] = $location_component;
+                    }
+
+                    $attachment_id_component = (string) ($context['attachment_id'] ?? $attachment_id);
+                    if ($attachment_id_component !== '') {
+                        $components[] = $attachment_id_component;
+                    }
+
+                    return $this->slugify(implode('-', array_filter($components)));
+                }
+
                 $brand_keywords = $this->extract_brand_keywords($original_filename);
 
                 $descriptor_details = $this->build_business_descriptor_details($context);
@@ -1225,6 +1991,67 @@ class MSH_Contextual_Meta_Generator {
                 $base_slug = implode('-', array_filter($parts));
                 return $this->slugify($base_slug);
         }
+    }
+
+    private function should_use_generic_industry_slug($filename, $title) {
+        $candidates = [];
+        if ($filename !== '') {
+            $candidates[] = str_replace(['-', '_'], ' ', strtolower($filename));
+        }
+        if ($title !== '') {
+            $candidates[] = strtolower($title);
+        }
+
+        foreach ($candidates as $candidate) {
+            $candidate = trim($candidate);
+            if ($candidate === '') {
+                continue;
+            }
+
+            if ($this->is_generic_descriptor($candidate)) {
+                return true;
+            }
+
+            if (preg_match('/\b\d+x\d+\b/', $candidate)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    private function get_industry_slug_prefix() {
+        $map = [
+            'plumbing' => 'plumbing-services',
+            'hvac' => 'hvac-services',
+            'electrical' => 'electrical-services',
+            'renovation' => 'renovation-services',
+            'legal' => 'legal-services',
+            'accounting' => 'accounting-services',
+            'consulting' => 'consulting-services',
+            'marketing' => 'marketing-services',
+            'web_design' => 'web-design-services',
+        ];
+
+        if (isset($map[$this->industry])) {
+            return $map[$this->industry];
+        }
+
+        if ($this->industry_label !== '') {
+            $label_slug = $this->slugify($this->industry_label);
+            if ($label_slug !== '') {
+                return $label_slug;
+            }
+        }
+
+        if ($this->business_name !== '') {
+            $brand_slug = $this->slugify($this->business_name);
+            if ($brand_slug !== '') {
+                return $brand_slug;
+            }
+        }
+
+        return 'brand';
     }
 
     private function generate_clinical_meta(array $context) {
@@ -1718,7 +2545,7 @@ class MSH_Contextual_Meta_Generator {
                 strtolower($industry_label)
             ),
             $this->normalize_sentence($this->uvp),
-            $this->get_cta_sentence(),
+                $this->get_cta_sentence(),
         ]);
 
         return [
@@ -1729,10 +2556,893 @@ class MSH_Contextual_Meta_Generator {
         ];
     }
 
+    private function generate_plumbing_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Plumbing Specialists', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Plumbing Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Professional plumbing services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Licensed plumbing contractors', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Licensed, insured plumbers serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Licensed, insured plumbing team.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Professional plumbing services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_hvac_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('HVAC Experts', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('HVAC Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Heating and cooling services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Licensed HVAC technicians', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Licensed HVAC contractors serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Licensed HVAC contractors.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Professional heating and cooling services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_electrical_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Electrical Specialists', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Electrical Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Licensed electrical services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Licensed electrical contractors', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Licensed, insured electricians serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Licensed, insured electricians.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Professional electrical services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_renovation_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Renovation Experts', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Renovation Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Renovation and construction services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Licensed general contractors', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Licensed, bonded contractors serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Licensed, bonded contractors.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Professional renovation and construction services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_legal_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Law Firm', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Legal Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Legal representation at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Professional legal services', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Licensed attorneys serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Licensed attorneys providing confidential consultations.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Professional legal services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_accounting_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Accounting Firm', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Accounting Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Accounting and tax services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Comprehensive accounting and tax services', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Certified accounting professionals serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Certified accounting professionals delivering trusted guidance.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Comprehensive accounting and tax services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_consulting_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Consulting Agency', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Business Consulting – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Business consulting services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Strategic business consulting', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Strategic consultants supporting %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Strategic consultants delivering measurable growth.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Strategic business consulting services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_marketing_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Marketing Agency', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Marketing Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Digital marketing services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Full-service marketing agency', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Strategic marketers serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Strategic marketers delivering measurable campaigns.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Full-service marketing and brand strategy', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_web_design_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Web Design Studio', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Web Design Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Web design and development at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Custom web design and development', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Website specialists serving %s', 'msh-image-optimizer'), $service_area_label)
+            : __('Website specialists delivering responsive, high-performing sites.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Custom website design and development services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_online_store_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Online Store', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s', $descriptor, $brand);
+            if ($location_label !== '') {
+                $title_base .= $location_label;
+            }
+            $alt_text = sprintf(
+                __('%1$s available from %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Shop Online – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Online products from %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Premium products with fast shipping', 'msh-image-optimizer');
+        $credentials = __('Fast shipping, secure checkout, satisfaction guaranteed.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Premium products available online', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_local_retail_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Local Retailer', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Local Retail – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Local retail products at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Personalized local shopping experience', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Local store serving %s with curated selections.', 'msh-image-optimizer'), $service_area_label)
+            : __('Local store offering curated selections and personalized service.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Curated local retail products', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_specialty_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Specialty Provider', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Specialty Products – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Specialty products at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Expertly curated specialty items', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Specialty consultants serving %s.', 'msh-image-optimizer'), $service_area_label)
+            : __('Specialty consultants delivering expert product guidance.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Curated specialty products and expert guidance', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_medical_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Medical Practice', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Medical Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Medical services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Comprehensive medical care', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Board-certified physicians serving %s.', 'msh-image-optimizer'), $service_area_label)
+            : __('Board-certified physicians providing trusted care.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Comprehensive medical care and treatment', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_dental_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Dental Clinic', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Dental Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Dental care at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Comprehensive dental care', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Licensed dentists serving %s.', 'msh-image-optimizer'), $service_area_label)
+            : __('Licensed dentists providing family-friendly care.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Comprehensive dental care for the whole family', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_therapy_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Therapy Practice', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Therapy Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Therapy and counseling at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Professional therapy and counseling', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Licensed therapists supporting %s.', 'msh-image-optimizer'), $service_area_label)
+            : __('Licensed therapists providing confidential support.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Professional therapy and counseling services', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_wellness_meta(array $context, $descriptor = '') {
+        $this->current_industry = 'wellness';
+
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Wellness Studio', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        $temporal_keywords = $this->get_temporal_keywords('wellness');
+        $trust_signals = $this->get_trust_signals('wellness');
+        $achievement_marker = $this->get_achievement_markers('wellness');
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+        } else {
+            $title_base = sprintf(__('Wellness Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+        }
+
+        if ($temporal_keywords !== '') {
+            $title_base .= ' | ' . ucwords(explode(' ', $temporal_keywords)[0]);
+        }
+
+        $alt_components = [
+            $descriptor !== '' ? $descriptor : __('Holistic wellness services', 'msh-image-optimizer'),
+            __('at', 'msh-image-optimizer'),
+            $brand,
+            $this->get_location_phrase(' in ')
+        ];
+        $primary_trust = $trust_signals[0] ?? '';
+        if ($primary_trust !== '') {
+            $alt_components[] = '-' . ' ' . $primary_trust;
+        }
+        $alt_text = implode(' ', array_filter(array_map('trim', $alt_components)));
+
+        if ($achievement_marker !== '') {
+            $caption = $achievement_marker;
+        } else {
+            $caption = __('Holistic wellness and self-care services', 'msh-image-optimizer');
+        }
+
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credential_parts = [
+            $service_area_label !== ''
+                ? sprintf(__('Certified wellness practitioners serving %s.', 'msh-image-optimizer'), $service_area_label)
+                : __('Certified wellness practitioners delivering personalized care.', 'msh-image-optimizer')
+        ];
+        if (!empty($trust_signals)) {
+            $credential_parts[] = implode(' ', array_slice($trust_signals, 0, 2));
+        }
+        $credentials = trim(implode(' ', array_filter($credential_parts)));
+
+        $generic_summary = __('Holistic wellness and self-care services tailored to your goals.', 'msh-image-optimizer');
+        if ($temporal_keywords !== '') {
+            $generic_summary .= ' ' . $this->normalize_sentence(sprintf(
+                __('Currently focusing on %s.', 'msh-image-optimizer'),
+                $temporal_keywords
+            ));
+        }
+
+        $description = $this->build_industry_description(
+            $generic_summary,
+            $credentials,
+            [
+                'industry' => 'wellness',
+            ]
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
+    private function generate_other_meta(array $context, $descriptor = '') {
+        if ($descriptor === '' || $this->is_generic_descriptor($descriptor)) {
+            $descriptor = $this->extract_visual_descriptor($context);
+        }
+
+        if ($this->is_generic_descriptor($descriptor)) {
+            $descriptor = '';
+        }
+
+        $brand = $this->business_name !== '' ? $this->business_name : __('Professional Services', 'msh-image-optimizer');
+        $location_label = $this->location !== '' ? ' | ' . $this->location : '';
+
+        if ($descriptor !== '') {
+            $title_base = sprintf('%s – %s%s', $descriptor, $brand, $location_label);
+            $alt_text = sprintf(
+                __('%1$s at %2$s%3$s.', 'msh-image-optimizer'),
+                $descriptor,
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        } else {
+            $title_base = sprintf(__('Professional Services – %1$s%2$s', 'msh-image-optimizer'), $brand, $location_label);
+            $alt_text = sprintf(
+                __('Professional services at %1$s%2$s.', 'msh-image-optimizer'),
+                $brand,
+                $this->get_location_phrase(' in ')
+            );
+        }
+
+        $caption = __('Professional services tailored to your needs', 'msh-image-optimizer');
+        $service_area_label = $this->service_area !== '' ? $this->service_area : $this->location;
+        $credentials = $service_area_label !== ''
+            ? sprintf(__('Specialists supporting %s.', 'msh-image-optimizer'), $service_area_label)
+            : __('Specialists delivering personalized service.', 'msh-image-optimizer');
+
+        $description = $this->build_industry_description(
+            __('Professional services tailored to your needs', 'msh-image-optimizer'),
+            $credentials
+        );
+
+        return [
+            'title' => $this->clean_text($this->ensure_unique_title($title_base, $context['attachment_id'] ?? 0)),
+            'alt_text' => $this->clean_text($alt_text),
+            'caption' => $this->clean_text($caption),
+            'description' => $this->clean_text($description)
+        ];
+    }
+
     private function generate_business_meta(array $context) {
+        $industry_generators = [
+            'plumbing' => 'generate_plumbing_meta',
+            'hvac' => 'generate_hvac_meta',
+            'electrical' => 'generate_electrical_meta',
+            'renovation' => 'generate_renovation_meta',
+            'legal' => 'generate_legal_meta',
+            'accounting' => 'generate_accounting_meta',
+            'consulting' => 'generate_consulting_meta',
+            'marketing' => 'generate_marketing_meta',
+            'web_design' => 'generate_web_design_meta',
+            'online_store' => 'generate_online_store_meta',
+            'local_retail' => 'generate_local_retail_meta',
+            'specialty' => 'generate_specialty_meta',
+            'medical' => 'generate_medical_meta',
+            'dental' => 'generate_dental_meta',
+            'therapy' => 'generate_therapy_meta',
+            'wellness' => 'generate_wellness_meta',
+            'other' => 'generate_other_meta',
+        ];
+
+        if (isset($industry_generators[$this->industry])) {
+            $method = $industry_generators[$this->industry];
+            if (method_exists($this, $method)) {
+                return $this->{$method}($context);
+            }
+        }
+
         $descriptor = $this->build_business_descriptor_details($context);
         $descriptor_label = $descriptor['label'];
         $descriptor_slug = $descriptor['slug'];
+
+        if ($this->is_generic_descriptor($descriptor_label)) {
+            $descriptor_label = '';
+        }
+        if ($this->is_generic_descriptor($descriptor_slug)) {
+            $descriptor_slug = '';
+        }
 
         $include_brand = $this->should_include_business_name($context, $descriptor_slug);
         $include_location = $this->should_include_location_in_slug($context);
@@ -2255,7 +3965,8 @@ class MSH_Contextual_Meta_Generator {
             'mobile',
             'featured',
             'alignment',
-            'markup'
+            'markup',
+            'classic'
         );
 
         if (!empty($this->business_name)) {
@@ -2353,7 +4064,7 @@ class MSH_Contextual_Meta_Generator {
             $filters = array_merge($filters, $this->tokenize_stopwords($this->location));
         }
 
-        $filters = array_unique(array_filter($filters));
+        $filters = array_unique(array_filter(array_map('strtolower', $filters)));
 
         $filtered_keywords = [];
         foreach ($keywords as $keyword) {
@@ -2362,15 +4073,30 @@ class MSH_Contextual_Meta_Generator {
                 continue;
             }
 
+            $normalized = strtolower($keyword);
+
             if ($this->looks_like_camera_filename($keyword)) {
                 continue;
             }
 
-            if (in_array($keyword, $filters, true)) {
+            if (in_array($normalized, $filters, true)) {
                 continue;
             }
 
-            $filtered_keywords[] = $keyword;
+            if ($this->is_generic_descriptor($keyword)) {
+                continue;
+            }
+
+            $sanitized = $this->sanitize_descriptor($keyword);
+            if ($sanitized === '') {
+                continue;
+            }
+
+            if ($this->is_generic_descriptor($sanitized)) {
+                continue;
+            }
+
+            $filtered_keywords[] = $sanitized;
         }
 
         $filtered_keywords = array_values($filtered_keywords);
@@ -2412,53 +4138,69 @@ class MSH_Contextual_Meta_Generator {
     }
 
     private function derive_business_descriptor_fallback_label(array $context) {
+        $label = '';
+
         if (!empty($context['asset'])) {
             switch ($context['asset']) {
                 case 'logo':
-                    return __('Brand Logo', 'msh-image-optimizer');
+                    $label = __('Brand Logo', 'msh-image-optimizer');
+                    break;
                 case 'team':
-                    return __('Team Portrait', 'msh-image-optimizer');
+                    $label = __('Team Portrait', 'msh-image-optimizer');
+                    break;
                 case 'facility':
-                    return __('Workspace Interior', 'msh-image-optimizer');
+                    $label = __('Workspace Interior', 'msh-image-optimizer');
+                    break;
                 case 'product':
-                    return __('Product Showcase', 'msh-image-optimizer');
+                    $label = __('Product Showcase', 'msh-image-optimizer');
+                    break;
                 case 'graphic':
-                    return __('Brand Graphic', 'msh-image-optimizer');
+                    $label = __('Brand Graphic', 'msh-image-optimizer');
+                    break;
                 case 'service-icon':
-                    return __('Service Icon', 'msh-image-optimizer');
+                    $label = __('Service Icon', 'msh-image-optimizer');
+                    break;
             }
         }
 
-        if (!empty($context['tags']) && is_array($context['tags'])) {
+        if ($label === '' && !empty($context['tags']) && is_array($context['tags'])) {
             $lower_tags = array_map('strtolower', $context['tags']);
             if (in_array('classic', $lower_tags, true)) {
-                return __('Classic Gallery', 'msh-image-optimizer');
+                $label = __('Classic Gallery', 'msh-image-optimizer');
             }
 
-            if (in_array('post-formats', $lower_tags, true)) {
-                return __('Creative Gallery', 'msh-image-optimizer');
+            if ($label === '' && in_array('post-formats', $lower_tags, true)) {
+                $label = __('Creative Gallery', 'msh-image-optimizer');
             }
 
-            if (in_array('team', $lower_tags, true)) {
-                return __('Team Portrait', 'msh-image-optimizer');
+            if ($label === '' && in_array('team', $lower_tags, true)) {
+                $label = __('Team Portrait', 'msh-image-optimizer');
             }
         }
 
-        $page_title = strtolower($context['page_title'] ?? '');
-        if (strpos($page_title, 'gallery') !== false || strpos($page_title, 'portfolio') !== false) {
-            return __('Brand Gallery', 'msh-image-optimizer');
+        if ($label === '') {
+            $page_title = strtolower($context['page_title'] ?? '');
+            if (strpos($page_title, 'gallery') !== false || strpos($page_title, 'portfolio') !== false) {
+                $label = __('Brand Gallery', 'msh-image-optimizer');
+            }
         }
 
-        $attachment_title = strtolower($context['attachment_title'] ?? '');
-        if (strpos($attachment_title, 'slider') !== false) {
-            return __('Brand Slider', 'msh-image-optimizer');
+        if ($label === '') {
+            $attachment_title = strtolower($context['attachment_title'] ?? '');
+            if (strpos($attachment_title, 'slider') !== false) {
+                $label = __('Brand Slider', 'msh-image-optimizer');
+            }
         }
 
-        if ($this->business_name !== '') {
-            return sprintf(__('%s Brand', 'msh-image-optimizer'), $this->business_name);
+        if ($label === '' && $this->business_name !== '') {
+            $label = sprintf(__('%s Brand', 'msh-image-optimizer'), $this->business_name);
         }
 
-        return __('Brand Imagery', 'msh-image-optimizer');
+        if ($label === '' || $this->is_generic_descriptor($label)) {
+            $label = __('Brand Imagery', 'msh-image-optimizer');
+        }
+
+        return $label;
     }
 
     private function derive_visual_descriptor(array $context) {
@@ -3390,6 +5132,7 @@ class MSH_Image_Optimizer {
         add_action('wp_ajax_msh_verify_webp_status', array($this, 'ajax_verify_webp_status'));
         add_action('wp_ajax_msh_get_attachment_count', array($this, 'ajax_get_attachment_count'));
         add_action('wp_ajax_msh_get_remaining_count', array($this, 'ajax_get_remaining_count'));
+        add_action('init', array($this, 'prime_season_cache'));
 
         $this->contextual_meta_generator = new MSH_Contextual_Meta_Generator();
 
@@ -3398,6 +5141,14 @@ class MSH_Image_Optimizer {
 
         add_filter('attachment_fields_to_edit', array($this, 'add_context_attachment_field'), 10, 2);
         add_filter('attachment_fields_to_save', array($this, 'save_context_attachment_field'), 10, 2);
+    }
+
+    public function prime_season_cache() {
+        if (!($this->contextual_meta_generator instanceof MSH_Contextual_Meta_Generator)) {
+            $this->contextual_meta_generator = new MSH_Contextual_Meta_Generator();
+        }
+
+        $this->contextual_meta_generator->get_current_season();
     }
 
     /**
@@ -5105,6 +6856,13 @@ class MSH_Image_Optimizer {
         
         $image_ids = $_POST['image_ids'] ?? [];
         $results = [];
+
+        $generator = $this->contextual_meta_generator;
+        $batch_capable = is_object($generator) && method_exists($generator, 'enable_batch_mode');
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->enable_batch_mode();
+        }
         
         foreach ($image_ids as $attachment_id) {
             $result = $this->optimize_single_image(intval($attachment_id));
@@ -5112,6 +6870,10 @@ class MSH_Image_Optimizer {
                 'id' => $attachment_id,
                 'result' => $result
             ];
+        }
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->disable_batch_mode();
         }
 
         if (!empty($image_ids)) {
@@ -5140,12 +6902,23 @@ class MSH_Image_Optimizer {
         $image_ids = array_column($high_priority_images, 'ID');
         $results = [];
 
+        $generator = $this->contextual_meta_generator;
+        $batch_capable = is_object($generator) && method_exists($generator, 'enable_batch_mode');
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->enable_batch_mode();
+        }
+
         foreach ($image_ids as $attachment_id) {
             $result = $this->optimize_single_image(intval($attachment_id));
             $results[] = [
                 'id' => $attachment_id,
                 'result' => $result
             ];
+        }
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->disable_batch_mode();
         }
 
         // Clear analysis cache after optimization
@@ -5182,12 +6955,23 @@ class MSH_Image_Optimizer {
         $image_ids = array_column($medium_priority_images, 'ID');
         $results = [];
 
+        $generator = $this->contextual_meta_generator;
+        $batch_capable = is_object($generator) && method_exists($generator, 'enable_batch_mode');
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->enable_batch_mode();
+        }
+
         foreach ($image_ids as $attachment_id) {
             $result = $this->optimize_single_image(intval($attachment_id));
             $results[] = [
                 'id' => $attachment_id,
                 'result' => $result
             ];
+        }
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->disable_batch_mode();
         }
 
         // Clear analysis cache after optimization
@@ -5225,12 +7009,23 @@ class MSH_Image_Optimizer {
         $image_ids = array_column($unoptimized_images, 'ID');
         $results = [];
 
+        $generator = $this->contextual_meta_generator;
+        $batch_capable = is_object($generator) && method_exists($generator, 'enable_batch_mode');
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->enable_batch_mode();
+        }
+
         foreach ($image_ids as $attachment_id) {
             $result = $this->optimize_single_image(intval($attachment_id));
             $results[] = [
                 'id' => $attachment_id,
                 'result' => $result
             ];
+        }
+
+        if ($batch_capable && !empty($image_ids)) {
+            $generator->disable_batch_mode();
         }
 
         // Clear analysis cache after optimization
@@ -6840,6 +8635,13 @@ class MSH_Image_Optimizer {
             'skipped' => []
         ];
 
+        $generator = $this->contextual_meta_generator;
+        $batch_capable = is_object($generator) && method_exists($generator, 'enable_batch_mode');
+
+        if ($batch_capable && !empty($attachment_ids)) {
+            $generator->enable_batch_mode();
+        }
+
         foreach ($attachment_ids as $attachment_id) {
             $attachment_id = intval($attachment_id);
             if ($attachment_id <= 0) {
@@ -6880,6 +8682,10 @@ class MSH_Image_Optimizer {
             $summary['processed']++;
         }
 
+        if ($batch_capable && !empty($attachment_ids)) {
+            $generator->disable_batch_mode();
+        }
+
         if ($summary['processed'] > 0) {
             update_option('msh_last_cli_optimization', current_time('mysql'));
         }
@@ -6899,6 +8705,10 @@ class MSH_Image_Optimizer {
 
         return preg_replace('/\.(jpg|jpeg|png)$/i', '.webp', $file_path);
     }
+}
+
+if (defined('WP_CLI') && WP_CLI && !class_exists('MSH_CLI')) {
+    require_once __DIR__ . '/class-msh-cli.php';
 }
 
 // Initialize the optimizer
