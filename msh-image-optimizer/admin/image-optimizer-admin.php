@@ -548,103 +548,6 @@ class MSH_Image_Optimizer_Admin {
                     </div>
                 </div>
 
-                <!-- AI Metadata Regeneration Card -->
-                <div class="msh-ai-regen-section" id="ai-regen-dashboard">
-                    <details class="ai-regen-card" open>
-                        <summary class="ai-regen-header">
-                            <h2><?php _e('AI Metadata Regeneration', 'msh-image-optimizer'); ?></h2>
-                            <p class="ai-regen-subtitle"><?php _e('Bulk regenerate metadata using AI for existing images', 'msh-image-optimizer'); ?></p>
-                        </summary>
-                        <div class="ai-regen-content">
-                            <div class="ai-regen-stats-row">
-                                <div class="ai-stat-box">
-                                    <span class="ai-stat-label"><?php _e('Credits Available', 'msh-image-optimizer'); ?></span>
-                                    <span class="ai-stat-value" id="ai-credits-available">-</span>
-                                    <span class="ai-stat-sublabel" id="ai-plan-tier">-</span>
-                                </div>
-                                <div class="ai-stat-box">
-                                    <span class="ai-stat-label"><?php _e('Last Run', 'msh-image-optimizer'); ?></span>
-                                    <span class="ai-stat-value" id="ai-last-run">Never</span>
-                                    <span class="ai-stat-sublabel" id="ai-last-run-summary">-</span>
-                                </div>
-                                <div class="ai-stat-box">
-                                    <span class="ai-stat-label"><?php _e('This Month', 'msh-image-optimizer'); ?></span>
-                                    <span class="ai-stat-value" id="ai-credits-used-month">-</span>
-                                    <span class="ai-stat-sublabel"><?php _e('credits used', 'msh-image-optimizer'); ?></span>
-                                </div>
-                            </div>
-
-                            <p class="ai-regen-description">
-                                <?php _e('Regenerate metadata (title, alt text, caption, description) for existing images using AI vision analysis. Credits are consumed per image processed.', 'msh-image-optimizer'); ?>
-                            </p>
-
-                            <div class="ai-regen-actions">
-                                <button id="start-ai-regeneration" class="button button-dot-primary">
-                                    <?php _e('Start AI Regeneration', 'msh-image-optimizer'); ?>
-                                </button>
-                                <a href="<?php echo esc_url(admin_url('options-general.php?page=msh-image-optimizer-settings&tab=ai')); ?>" class="button button-dot-secondary">
-                                    <?php _e('AI Settings', 'msh-image-optimizer'); ?>
-                                </a>
-                            </div>
-
-                            <!-- Live Progress Widget (shown during job execution) -->
-                            <div id="ai-regen-progress-widget" class="ai-regen-progress-widget" style="display: none;">
-                                <div class="ai-progress-header">
-                                    <h3><?php _e('Regeneration in Progress', 'msh-image-optimizer'); ?></h3>
-                                    <span class="ai-progress-status" id="ai-job-status">Running</span>
-                                </div>
-
-                                <div class="ai-progress-bar-container">
-                                    <div class="ai-progress-bar">
-                                        <div class="ai-progress-fill" id="ai-progress-fill" style="width: 0%"></div>
-                                    </div>
-                                    <span class="ai-progress-text" id="ai-progress-text">0%</span>
-                                </div>
-
-                                <div class="ai-progress-stats">
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Processed:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-processed-count">0 / 0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Success:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-success-count">0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Skipped:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-skipped-count">0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Failed:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-failed-count">0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Credits Used:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-credits-consumed">0</span>
-                                    </div>
-                                </div>
-
-                                <div class="ai-progress-log">
-                                    <h4><?php _e('Recent Updates:', 'msh-image-optimizer'); ?></h4>
-                                    <ul id="ai-progress-log-list"></ul>
-                                </div>
-
-                                <div class="ai-progress-controls">
-                                    <button id="ai-pause-job" class="button button-dot-secondary">
-                                        <?php _e('Pause', 'msh-image-optimizer'); ?>
-                                    </button>
-                                    <button id="ai-resume-job" class="button button-dot-secondary" style="display: none;">
-                                        <?php _e('Resume', 'msh-image-optimizer'); ?>
-                                    </button>
-                                    <button id="ai-cancel-job" class="button button-dot-secondary">
-                                        <?php _e('Cancel', 'msh-image-optimizer'); ?>
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </details>
-                </div>
-
                 <!-- AI Regeneration Confirmation Modal -->
                 <div id="ai-regen-modal" class="ai-regen-modal" style="display: none;">
                     <div class="ai-modal-overlay"></div>
@@ -828,6 +731,106 @@ class MSH_Image_Optimizer_Admin {
                             </div>
                         </div>
                     </div>
+
+                    <!-- AI Metadata Regeneration (Advanced) -->
+                    <div class="msh-ai-regen-section-inline" id="ai-regen-dashboard">
+                        <div class="ai-regen-advanced-header">
+                            <h3><?php _e('AI Metadata Regeneration (Advanced)', 'msh-image-optimizer'); ?></h3>
+                        </div>
+                        <div class="ai-regen-inline-content">
+                            <p class="ai-regen-help-text">
+                                <?php _e('Use AI to bulk-regenerate metadata for existing images. This analyzes images with OpenAI Vision and overwrites metadata.', 'msh-image-optimizer'); ?>
+                            </p>
+                            <div class="ai-when-to-use">
+                                <strong>⚠️ <?php _e('When to use this:', 'msh-image-optimizer'); ?></strong>
+                                <ul>
+                                    <li><?php _e('You have old images with poor/missing metadata', 'msh-image-optimizer'); ?></li>
+                                    <li><?php _e('You want to bulk-update metadata for your entire library', 'msh-image-optimizer'); ?></li>
+                                    <li><?php _e('You\'ve changed business context and need fresh SEO content', 'msh-image-optimizer'); ?></li>
+                                </ul>
+                            </div>
+                            <div class="ai-regen-stats-inline">
+                                <div class="ai-stat-inline">
+                                    <span class="ai-stat-inline-label"><?php _e('Credits:', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-stat-inline-value" id="ai-credits-available">-</span>
+                                    <span class="ai-stat-inline-sublabel" id="ai-plan-tier">-</span>
+                                </div>
+                                <div class="ai-stat-inline">
+                                    <span class="ai-stat-inline-label"><?php _e('Last Run:', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-stat-inline-value" id="ai-last-run">Never</span>
+                                </div>
+                                <div class="ai-stat-inline">
+                                    <span class="ai-stat-inline-label"><?php _e('This Month:', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-stat-inline-value" id="ai-credits-used-month">-</span>
+                                    <span class="ai-stat-inline-sublabel"><?php _e('credits used', 'msh-image-optimizer'); ?></span>
+                                </div>
+                            </div>
+                            <div class="ai-regen-actions-inline">
+                                <button id="start-ai-regeneration" class="button button-dot-primary">
+                                    <?php _e('Regenerate Metadata with AI', 'msh-image-optimizer'); ?>
+                                </button>
+                                <a href="<?php echo esc_url(admin_url('options-general.php?page=msh-image-optimizer-settings&tab=ai')); ?>" class="button button-dot-secondary">
+                                    <?php _e('AI Settings', 'msh-image-optimizer'); ?>
+                                </a>
+                            </div>
+
+                            <!-- Live Progress Widget (shown during job execution) -->
+                            <div id="ai-regen-progress-widget" class="ai-regen-progress-widget" style="display: none;">
+                                <div class="ai-progress-header">
+                                    <h3><?php _e('Regeneration in Progress', 'msh-image-optimizer'); ?></h3>
+                                    <span class="ai-progress-status" id="ai-job-status">Running</span>
+                                </div>
+
+                                <div class="ai-progress-bar-container">
+                                    <div class="ai-progress-bar">
+                                        <div class="ai-progress-fill" id="ai-progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="ai-progress-text" id="ai-progress-text">0%</span>
+                                </div>
+
+                                <div class="ai-progress-stats">
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Processed:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-processed-count">0 / 0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Success:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-success-count">0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Skipped:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-skipped-count">0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Failed:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-failed-count">0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Credits Used:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-credits-consumed">0</span>
+                                    </div>
+                                </div>
+
+                                <div class="ai-progress-log">
+                                    <h4><?php _e('Recent Updates:', 'msh-image-optimizer'); ?></h4>
+                                    <ul id="ai-progress-log-list"></ul>
+                                </div>
+
+                                <div class="ai-progress-controls">
+                                    <button id="ai-pause-job" class="button button-dot-secondary">
+                                        <?php _e('Pause', 'msh-image-optimizer'); ?>
+                                    </button>
+                                    <button id="ai-resume-job" class="button button-dot-secondary" style="display: none;">
+                                        <?php _e('Resume', 'msh-image-optimizer'); ?>
+                                    </button>
+                                    <button id="ai-cancel-job" class="button button-dot-secondary">
+                                        <?php _e('Cancel', 'msh-image-optimizer'); ?>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="action-buttons step-actions">
                         <button id="analyze-images" class="button button-dot-primary">
                             <?php _e('Analyze Published Images', 'msh-image-optimizer'); ?>
