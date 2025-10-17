@@ -5871,11 +5871,14 @@
                         CONFIG.diagnostics.last_analyzer_run = new Date().toISOString();
                         UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
                     } else {
-                        alert('Failed to analyze images: ' + (response.data?.message || 'Unknown error'));
+                        console.error('AI Regeneration failed:', response);
+                        const errorMsg = response.data?.message || response.message || 'Unknown error - check console';
+                        alert('Failed to analyze images: ' + errorMsg);
                     }
                 },
-                error: () => {
-                    alert('Network error during analysis. Please try again.');
+                error: (xhr, status, error) => {
+                    console.error('AI Regeneration network error:', xhr.responseText);
+                    alert('Network error during analysis: ' + error);
                 }
             });
         },
