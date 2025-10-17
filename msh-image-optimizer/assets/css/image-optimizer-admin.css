@@ -3731,6 +3731,7 @@ tr.context-updated {
     margin-right: 10px;
     margin-top: 2px;
     flex-shrink: 0;
+    accent-color: #35332f;
 }
 
 .ai-radio-group label > span:first-of-type,
