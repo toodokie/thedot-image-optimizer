@@ -126,6 +126,13 @@ Now that OpenAI integration is working, you can:
    - Bulk action for multiple images
    - Background processing with progress bar
 
+5. **Add credit metering safeguards (Phase 3)**
+   - Persist `msh_ai_credit_balance` / `msh_ai_credit_last_reset`
+   - Return `credits_remaining` from `MSH_AI_Service::determine_access_state()`
+   - Decrement bundled credits inside `maybe_generate_metadata()`
+   - Monthly refresh via cron based on plan tier mapping
+   - Surface balance/status in the dashboard widget
+
 ## Debug Files Created
 
 For testing and troubleshooting:

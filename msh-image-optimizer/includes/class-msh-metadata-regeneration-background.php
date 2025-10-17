@@ -357,7 +357,7 @@ class MSH_Metadata_Regeneration_Background {
      * AJAX: Start regeneration job.
      */
     public function ajax_start_regeneration() {
-        check_ajax_referer('msh_ai_regeneration', 'nonce');
+        check_ajax_referer('msh_image_optimizer', 'nonce');
 
         if (!current_user_can('upload_files')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
@@ -387,7 +387,7 @@ class MSH_Metadata_Regeneration_Background {
      * AJAX: Pause regeneration job.
      */
     public function ajax_pause_regeneration() {
-        check_ajax_referer('msh_ai_regeneration', 'nonce');
+        check_ajax_referer('msh_image_optimizer', 'nonce');
 
         if (!current_user_can('upload_files')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
@@ -409,7 +409,7 @@ class MSH_Metadata_Regeneration_Background {
      * AJAX: Resume regeneration job.
      */
     public function ajax_resume_regeneration() {
-        check_ajax_referer('msh_ai_regeneration', 'nonce');
+        check_ajax_referer('msh_image_optimizer', 'nonce');
 
         if (!current_user_can('upload_files')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
@@ -432,7 +432,7 @@ class MSH_Metadata_Regeneration_Background {
      * AJAX: Cancel regeneration job.
      */
     public function ajax_cancel_regeneration() {
-        check_ajax_referer('msh_ai_regeneration', 'nonce');
+        check_ajax_referer('msh_image_optimizer', 'nonce');
 
         if (!current_user_can('upload_files')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
@@ -458,7 +458,7 @@ class MSH_Metadata_Regeneration_Background {
      * AJAX: Get regeneration status.
      */
     public function ajax_get_status() {
-        check_ajax_referer('msh_ai_regeneration', 'nonce');
+        check_ajax_referer('msh_image_optimizer', 'nonce');
 
         if (!current_user_can('upload_files')) {
             wp_send_json_error(['message' => 'Insufficient permissions']);
