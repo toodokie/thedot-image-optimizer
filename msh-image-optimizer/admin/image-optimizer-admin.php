@@ -774,60 +774,7 @@ class MSH_Image_Optimizer_Admin {
                                 </a>
                             </div>
 
-                            <!-- Live Progress Widget (shown during job execution) -->
-                            <div id="ai-regen-progress-widget" class="ai-regen-progress-widget" style="display: none;">
-                                <div class="ai-progress-header">
-                                    <h3><?php _e('Regeneration in Progress', 'msh-image-optimizer'); ?></h3>
-                                    <span class="ai-progress-status" id="ai-job-status">Running</span>
-                                </div>
-
-                                <div class="ai-progress-bar-container">
-                                    <div class="ai-progress-bar">
-                                        <div class="ai-progress-fill" id="ai-progress-fill" style="width: 0%"></div>
-                                    </div>
-                                    <span class="ai-progress-text" id="ai-progress-text">0%</span>
-                                </div>
-
-                                <div class="ai-progress-stats">
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Processed:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-processed-count">0 / 0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Success:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-success-count">0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Skipped:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-skipped-count">0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Failed:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-failed-count">0</span>
-                                    </div>
-                                    <div class="ai-progress-stat">
-                                        <span class="ai-progress-stat-label"><?php _e('Credits Used:', 'msh-image-optimizer'); ?></span>
-                                        <span class="ai-progress-stat-value" id="ai-credits-consumed">0</span>
-                                    </div>
-                                </div>
-
-                                <div class="ai-progress-log">
-                                    <h4><?php _e('Recent Updates:', 'msh-image-optimizer'); ?></h4>
-                                    <ul id="ai-progress-log-list"></ul>
-                                </div>
-
-                                <div class="ai-progress-controls">
-                                    <button id="ai-pause-job" class="button button-dot-secondary">
-                                        <?php _e('Pause', 'msh-image-optimizer'); ?>
-                                    </button>
-                                    <button id="ai-resume-job" class="button button-dot-secondary" style="display: none;">
-                                        <?php _e('Resume', 'msh-image-optimizer'); ?>
-                                    </button>
-                                    <button id="ai-cancel-job" class="button button-dot-secondary">
-                                        <?php _e('Cancel', 'msh-image-optimizer'); ?>
-                                    </button>
-                                </div>
-                            </div>
+                            <!-- Progress shown in existing analyze modal -->
                         </div>
                     </div>
 

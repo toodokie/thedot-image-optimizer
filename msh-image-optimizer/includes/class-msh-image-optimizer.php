@@ -5756,6 +5756,67 @@ class MSH_Image_Optimizer {
     }
 
     /**
+     * Get images for AI regeneration based on scope
+     */
+    private function get_images_for_ai_regeneration($scope, $mode, $fields) {
+        global $wpdb;
+
+        // Get attachment IDs based on scope
+        switch ($scope) {
+            case 'all':
+                $attachment_ids = $wpdb->get_col(
+                    "SELECT ID FROM {$wpdb->posts}
+                    WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+                );
+                break;
+
+            case 'published':
+                // Use existing published images logic
+                $published = $this->get_published_images();
+                $attachment_ids = array_column($published, 'ID');
+                break;
+
+            case 'missing':
+                $attachment_ids = $wpdb->get_col(
+                    "SELECT p.ID FROM {$wpdb->posts} p
+                    LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
+                    WHERE p.post_type = 'attachment'
+                    AND p.post_mime_type LIKE 'image/%'
+                    AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)"
+                );
+                break;
+
+            default:
+                return [];
+        }
+
+        // Get full image data for these IDs
+        $images = [];
+        foreach ($attachment_ids as $id) {
+            $attachment = get_post($id);
+            if (!$attachment) continue;
+
+            $file_path = get_post_meta($id, '_wp_attached_file', true);
+            $alt_text = get_post_meta($id, '_wp_attachment_image_alt', true);
+
+            $images[] = [
+                'ID' => $id,
+                'post_title' => $attachment->post_title,
+                'post_name' => $attachment->post_name,
+                'post_mime_type' => $attachment->post_mime_type,
+                'file_path' => $file_path,
+                'alt_text' => $alt_text,
+                'used_in' => [], // AI regeneration doesn't need usage data
+                'ai_regeneration' => true, // Flag to force AI
+                'ai_mode' => $mode,
+                'ai_fields' => $fields
+            ];
+        }
+
+        return $images;
+    }
+
+    /**
      * Calculate healthcare-specific priority for image optimization
      */
     private function calculate_healthcare_priority($image) {
@@ -6901,6 +6962,17 @@ class MSH_Image_Optimizer {
         // Check for force refresh parameter
         $force_refresh = isset($_POST['force_refresh']) && $_POST['force_refresh'] === 'true';
 
+        // Check for AI regeneration params
+        $ai_scope = isset($_POST['ai_scope']) ? sanitize_text_field($_POST['ai_scope']) : null;
+        $ai_mode = isset($_POST['ai_mode']) ? sanitize_text_field($_POST['ai_mode']) : 'fill-empty';
+        $ai_fields = isset($_POST['ai_fields']) && is_array($_POST['ai_fields']) ? array_map('sanitize_text_field', $_POST['ai_fields']) : [];
+        $is_ai_regeneration = !empty($ai_scope);
+
+        // Skip cache for AI regeneration
+        if ($is_ai_regeneration) {
+            $force_refresh = true;
+        }
+
         // URGENT: Quick cache to stop analysis time waste
         $cache_key = 'msh_analysis_cache_v' . self::ANALYSIS_CACHE_VERSION . '_' . md5('latest_analysis');
 
@@ -6924,12 +6996,18 @@ class MSH_Image_Optimizer {
 
         $start_time = microtime(true);
         $this->log_debug('MSH: Starting fresh analysis (no valid cache found)');
-        
+
         // Debug: First check total images
         global $wpdb;
         $total_images = (int) $wpdb->get_var("SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'");
 
-        $images = $this->get_published_images();
+        // Get images based on AI regeneration scope or normal published analysis
+        if ($is_ai_regeneration) {
+            $images = $this->get_images_for_ai_regeneration($ai_scope, $ai_mode, $ai_fields);
+            $this->log_debug("MSH: AI Regeneration mode - scope: $ai_scope, found " . count($images) . " images");
+        } else {
+            $images = $this->get_published_images();
+        }
 
         if ($total_images === 0) {
             $total_images = count($images);

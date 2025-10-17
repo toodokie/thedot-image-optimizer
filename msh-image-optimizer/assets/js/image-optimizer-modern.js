@@ -5829,39 +5829,53 @@
                 return;
             }
 
-            $('#ai-modal-start').prop('disabled', true).text('Starting...');
+            // Close modal
+            $('#ai-regen-modal').fadeOut(200);
+
+            // Call existing analyze with AI regeneration params
+            UI.updateLog('Starting AI regeneration analysis...');
 
             $.ajax({
                 url: mshImageOptimizer.ajaxurl,
                 type: 'POST',
                 data: {
-                    action: 'msh_start_ai_regeneration',
+                    action: 'msh_analyze_images',
                     nonce: mshImageOptimizer.nonce,
-                    scope: scope,
-                    mode: mode,
-                    fields: fields
+                    force_refresh: 'true',
+                    ai_scope: scope,
+                    ai_mode: mode,
+                    ai_fields: fields
                 },
                 success: (response) => {
                     if (response.success) {
-                        // Close modal
-                        $('#ai-regen-modal').fadeOut(200);
+                        // Use existing analyze result handling
+                        AppState.images = response.data.images || [];
 
-                        // Show progress widget
-                        $('#ai-regen-progress-widget').slideDown(300);
+                        UI.updateLog(`AI analysis complete: Found ${AppState.images.length} images`);
 
-                        // Start polling for status
-                        this.startPolling();
+                        const needsOptimization = AppState.images.filter(img =>
+                            img.optimization_status !== 'optimized'
+                        ).length;
 
-                        // Log initial message
-                        this.addProgressLog('Job started: processing ' + response.data.total + ' images');
+                        if (needsOptimization > 0) {
+                            UI.updateLog(`${needsOptimization} image(s) have AI-generated suggestions ready to apply.`);
+                        }
+
+                        // Use existing filter/display logic
+                        FilterEngine.apply();
+
+                        // Play completion sound
+                        UI.playCompletionSound();
+
+                        // Update diagnostics
+                        CONFIG.diagnostics.last_analyzer_run = new Date().toISOString();
+                        UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
                     } else {
-                        alert('Failed to start regeneration: ' + (response.data.message || 'Unknown error'));
-                        $('#ai-modal-start').prop('disabled', false).text('Start Regeneration');
+                        alert('Failed to analyze images: ' + (response.data?.message || 'Unknown error'));
                     }
                 },
                 error: () => {
-                    alert('Network error while starting regeneration. Please try again.');
-                    $('#ai-modal-start').prop('disabled', false).text('Start Regeneration');
+                    alert('Network error during analysis. Please try again.');
                 }
             });
         },
