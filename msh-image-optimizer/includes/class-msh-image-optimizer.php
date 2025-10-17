@@ -5279,7 +5279,6 @@ class MSH_Image_Optimizer {
         add_action('wp_ajax_msh_remove_filename_suggestion', array($this, 'ajax_remove_filename_suggestion'));
         add_action('wp_ajax_msh_accept_filename_suggestion', array($this, 'ajax_accept_filename_suggestion'));
         add_action('wp_ajax_msh_toggle_file_rename', array($this, 'ajax_toggle_file_rename'));
-        add_action('wp_ajax_msh_toggle_ai_mode', array($this, 'ajax_toggle_ai_mode'));
         add_action('wp_ajax_msh_reject_filename_suggestion', array($this, 'ajax_reject_filename_suggestion'));
         add_action('wp_ajax_msh_preview_meta_text', array($this, 'ajax_preview_meta_text'));
         add_action('wp_ajax_msh_save_edited_meta', array($this, 'ajax_save_edited_meta'));
@@ -7014,9 +7013,19 @@ class MSH_Image_Optimizer {
             $total_images = count($images);
         }
         $analysis_results = [];
-        
+        $current_index = 0;
+        $total_to_process = count($images);
+
+        // For AI regeneration with many images, increase timeout
+        if ($is_ai_regeneration && $total_to_process > 10) {
+            set_time_limit(3600); // 1 hour
+            $this->log_debug("MSH: AI Regeneration - Extended timeout for {$total_to_process} images");
+        }
+
         try {
             foreach ($images as $image) {
+            $current_index++;
+
             // Fix missing file_path for images that don't have _wp_attached_file meta
             if (empty($image['file_path'])) {
                 $attached_file = get_attached_file($image['ID']);
@@ -7029,6 +7038,12 @@ class MSH_Image_Optimizer {
                     }
                 }
             }
+
+                // Log progress for AI regeneration
+                if ($is_ai_regeneration && $current_index % 5 === 0) {
+                    $percent = round(($current_index / $total_to_process) * 100);
+                    $this->log_debug("MSH: AI Regeneration progress: {$current_index}/{$total_to_process} ({$percent}%) - Processing attachment {$image['ID']}");
+                }
 
                 $analysis = $this->analyze_single_image($image['ID']);
             $priority = $this->calculate_healthcare_priority($image);
@@ -8622,26 +8637,6 @@ class MSH_Image_Optimizer {
 
         wp_send_json_success([
             'enabled' => $enabled
-        ]);
-    }
-
-    public function ajax_toggle_ai_mode() {
-        check_ajax_referer('msh_toggle_ai_mode', 'nonce');
-
-        if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => __('Unauthorized.', 'msh-image-optimizer')], 403);
-        }
-
-        $mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : 'manual';
-        $allowed_modes = array('manual', 'assist', 'hybrid');
-        if (!in_array($mode, $allowed_modes, true)) {
-            $mode = 'manual';
-        }
-
-        update_option('msh_ai_mode', $mode);
-
-        wp_send_json_success([
-            'mode' => $mode
         ]);
     }
 

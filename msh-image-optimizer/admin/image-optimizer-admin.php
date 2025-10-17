@@ -763,10 +763,13 @@ class MSH_Image_Optimizer_Admin {
                     </div>
 
                     <!-- AI Metadata Regeneration (Advanced) -->
-                    <div class="msh-ai-regen-section-inline" id="ai-regen-dashboard">
-                        <div class="ai-regen-advanced-header">
-                            <h3><?php _e('AI Metadata Regeneration (Advanced)', 'msh-image-optimizer'); ?></h3>
-                        </div>
+                    <details class="msh-ai-regen-section-inline" id="ai-regen-dashboard">
+                        <summary class="ai-regen-summary">
+                            <div>
+                                <h3><?php _e('AI Metadata Regeneration (Advanced)', 'msh-image-optimizer'); ?></h3>
+                                <p class="ai-regen-summary-helper"><?php _e('Use this when you want AI-generated suggestions to appear in the results table before applying.', 'msh-image-optimizer'); ?></p>
+                            </div>
+                        </summary>
                         <div class="ai-regen-inline-content">
                             <p class="ai-regen-help-text">
                                 <?php _e('Use AI to bulk-regenerate metadata for existing images. This analyzes images with OpenAI Vision and overwrites metadata.', 'msh-image-optimizer'); ?>
@@ -806,7 +809,7 @@ class MSH_Image_Optimizer_Admin {
 
                             <!-- Progress shown in existing analyze modal -->
                         </div>
-                    </div>
+                    </details>
 
                     <div class="action-buttons step-actions">
                         <button id="analyze-images" class="button button-dot-primary">

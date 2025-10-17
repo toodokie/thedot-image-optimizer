@@ -5878,6 +5878,9 @@
             // Close modal
             $('#ai-regen-modal').fadeOut(200);
 
+            // Show progress overlay
+            this.showProgressOverlay();
+
             // Call existing analyze with AI regeneration params
             UI.updateLog('Starting AI regeneration analysis...');
 
@@ -5893,6 +5896,8 @@
                     ai_fields: fields
                 },
                 success: (response) => {
+                    this.hideProgressOverlay();
+
                     if (response.success) {
                         // Use existing analyze result handling
                         AppState.images = response.data.images || [];
@@ -5923,10 +5928,64 @@
                     }
                 },
                 error: (xhr, status, error) => {
+                    this.hideProgressOverlay();
                     console.error('AI Regeneration network error:', xhr.responseText);
                     alert('Network error during analysis: ' + error);
                 }
             });
+        },
+
+        showProgressOverlay() {
+            const overlay = $('<div id="ai-progress-overlay" style="position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 999999; display: flex; align-items: center; justify-content: center;">' +
+                '<div style="background: white; padding: 30px 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; max-width: 400px;">' +
+                    '<div style="font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #333;">Processing AI Regeneration</div>' +
+                    '<div style="width: 100%; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 15px;">' +
+                        '<div id="ai-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s ease; animation: pulse 1.5s ease-in-out infinite;"></div>' +
+                    '</div>' +
+                    '<div id="ai-progress-text" style="font-size: 14px; color: #666; margin-bottom: 10px;">Analyzing images with AI...</div>' +
+                    '<div style="font-size: 12px; color: #999;">This may take a few minutes</div>' +
+                '</div>' +
+            '</div>');
+
+            // Add pulse animation
+            $('<style>@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.7; } }</style>').appendTo('head');
+
+            $('body').append(overlay);
+
+            // Start progress simulation
+            this.simulateProgress();
+        },
+
+        hideProgressOverlay() {
+            $('#ai-progress-overlay').fadeOut(300, function() {
+                $(this).remove();
+            });
+            if (this.progressTimer) {
+                clearInterval(this.progressTimer);
+            }
+        },
+
+        simulateProgress() {
+            let progress = 0;
+            const $bar = $('#ai-progress-bar');
+            const $text = $('#ai-progress-text');
+
+            this.progressTimer = setInterval(() => {
+                progress += Math.random() * 3;
+                if (progress > 95) progress = 95; // Cap at 95% until real completion
+
+                $bar.css('width', progress + '%');
+
+                if (progress < 30) {
+                    $text.text('Starting AI analysis...');
+                } else if (progress < 60) {
+                    $text.text('Generating metadata...');
+                } else if (progress < 90) {
+                    $text.text('Processing images...');
+                } else {
+                    $text.text('Almost done...');
+                }
+            }, 500);
         },
 
         checkForActiveJob() {
