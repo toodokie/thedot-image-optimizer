@@ -557,7 +557,7 @@ class MSH_Image_Optimizer_Settings {
 
         $ai_features_sanitized = array();
         if (isset($options_raw['ai_features']) && is_array($options_raw['ai_features'])) {
-            $allowed_features = array('meta', 'vision', 'duplicate');
+            $allowed_features = array('meta', 'vision', 'filename', 'duplicate');
             foreach ($options_raw['ai_features'] as $feature) {
                 $feature = sanitize_text_field($feature);
                 if (in_array($feature, $allowed_features, true)) {
