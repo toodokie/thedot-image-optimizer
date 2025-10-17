@@ -5940,7 +5940,7 @@
                 '<div style="background: white; padding: 30px 40px; border-radius: 8px; box-shadow: 0 4px 20px rgba(0,0,0,0.3); text-align: center; max-width: 400px;">' +
                     '<div style="font-size: 18px; font-weight: 600; margin-bottom: 20px; color: #333;">Processing AI Regeneration</div>' +
                     '<div style="width: 100%; height: 6px; background: #e0e0e0; border-radius: 3px; overflow: hidden; margin-bottom: 15px;">' +
-                        '<div id="ai-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #4CAF50, #45a049); transition: width 0.3s ease; animation: pulse 1.5s ease-in-out infinite;"></div>' +
+                        '<div id="ai-progress-bar" style="width: 0%; height: 100%; background: linear-gradient(90deg, #FFC107, #FFB300); transition: width 0.3s ease; animation: pulse 1.5s ease-in-out infinite;"></div>' +
                     '</div>' +
                     '<div id="ai-progress-text" style="font-size: 14px; color: #666; margin-bottom: 10px;">Analyzing images with AI...</div>' +
                     '<div style="font-size: 12px; color: #999;">This may take a few minutes</div>' +
