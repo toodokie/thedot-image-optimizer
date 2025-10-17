@@ -5927,7 +5927,7 @@ class MSH_Image_Optimizer {
         $active_context_slug = $manual_context_value !== ''
             ? $manual_context_value
             : ($context_info['type'] ?? $auto_context_value);
-        $generated_meta = $this->contextual_meta_generator->generate_meta_fields($attachment_id, $context_info);
+        $generated_meta = $this->contextual_meta_generator->generate_meta_fields($attachment_id, $context_info, $ai_options);
 
         // Check if file already has SEO-optimized name FIRST
         $current_file = $file_path; // Use the correct variable name
