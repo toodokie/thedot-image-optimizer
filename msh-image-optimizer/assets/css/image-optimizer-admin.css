@@ -3722,8 +3722,8 @@ tr.context-updated {
 
 .ai-radio-group label:has(input:checked),
 .ai-checkbox-group label:has(input:checked) {
-    background: #e8f4fd;
-    border-color: #2196f3;
+    background: #faf9f6;
+    border-color: #a4a898;
 }
 
 .ai-radio-group input[type="radio"],

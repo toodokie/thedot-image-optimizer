@@ -363,9 +363,25 @@ class MSH_Metadata_Regeneration_Background {
             wp_send_json_error(['message' => 'Insufficient permissions']);
         }
 
+        // Support both direct IDs and scope-based selection
         $attachment_ids = isset($_POST['attachment_ids']) ? array_map('intval', $_POST['attachment_ids']) : [];
+        $scope = isset($_POST['scope']) ? sanitize_text_field($_POST['scope']) : '';
         $mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : 'fill-empty';
         $fields = isset($_POST['fields']) && is_array($_POST['fields']) ? array_map('sanitize_text_field', $_POST['fields']) : ['title', 'alt_text', 'caption', 'description'];
+
+        // If scope is provided, resolve to attachment IDs
+        if (!empty($scope) && empty($attachment_ids)) {
+            $attachment_ids = $this->get_attachments_by_scope($scope);
+
+            // Filter by mode if fill-empty
+            if ($mode === 'fill-empty') {
+                $attachment_ids = $this->filter_missing_metadata($attachment_ids, $fields);
+            }
+        }
+
+        if (empty($attachment_ids)) {
+            wp_send_json_error(['message' => 'No images selected for regeneration.']);
+        }
 
         $options = [
             'mode' => $mode,
@@ -528,6 +544,110 @@ class MSH_Metadata_Regeneration_Background {
         if (!wp_next_scheduled(self::CRON_HOOK)) {
             wp_schedule_single_event(time() + $delay_seconds, self::CRON_HOOK);
         }
+    }
+
+    /**
+     * Get attachment IDs by scope.
+     *
+     * @param string $scope Scope: 'all', 'published', or 'missing'.
+     * @return array Attachment IDs.
+     */
+    private function get_attachments_by_scope($scope) {
+        global $wpdb;
+
+        switch ($scope) {
+            case 'published':
+                $ids = $wpdb->get_col(
+                    "SELECT DISTINCT attachment_id
+                    FROM {$wpdb->prefix}msh_image_usage_index
+                    WHERE attachment_id IN (
+                        SELECT ID FROM {$wpdb->posts}
+                        WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
+                    )"
+                );
+                break;
+
+            case 'missing':
+                $ids = $wpdb->get_col(
+                    "SELECT p.ID FROM {$wpdb->posts} p
+                    LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
+                    WHERE p.post_type = 'attachment'
+                    AND p.post_mime_type LIKE 'image/%'
+                    AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)"
+                );
+                break;
+
+            case 'all':
+            default:
+                $ids = $wpdb->get_col(
+                    "SELECT ID FROM {$wpdb->posts}
+                    WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+                );
+                break;
+        }
+
+        return array_map('intval', $ids);
+    }
+
+    /**
+     * Filter attachments to only those missing specified metadata fields.
+     *
+     * @param array $attachment_ids Attachment IDs to filter.
+     * @param array $fields Fields to check.
+     * @return array Filtered attachment IDs.
+     */
+    private function filter_missing_metadata($attachment_ids, $fields) {
+        if (empty($attachment_ids)) {
+            return [];
+        }
+
+        $filtered = [];
+
+        foreach ($attachment_ids as $attachment_id) {
+            $has_missing = false;
+
+            foreach ($fields as $field) {
+                switch ($field) {
+                    case 'title':
+                        $title = get_the_title($attachment_id);
+                        if (empty($title) || $title === 'Auto Draft') {
+                            $has_missing = true;
+                        }
+                        break;
+
+                    case 'alt_text':
+                        $alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+                        if (empty($alt)) {
+                            $has_missing = true;
+                        }
+                        break;
+
+                    case 'caption':
+                        $caption = wp_get_attachment_caption($attachment_id);
+                        if (empty($caption)) {
+                            $has_missing = true;
+                        }
+                        break;
+
+                    case 'description':
+                        $post = get_post($attachment_id);
+                        if (empty($post->post_content)) {
+                            $has_missing = true;
+                        }
+                        break;
+                }
+
+                if ($has_missing) {
+                    break;
+                }
+            }
+
+            if ($has_missing) {
+                $filtered[] = $attachment_id;
+            }
+        }
+
+        return $filtered;
     }
 }
 
