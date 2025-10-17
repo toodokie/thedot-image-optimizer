@@ -39,6 +39,26 @@ class MSH_Contextual_Meta_Generator {
     private $season_cache_hits = 0;
     private $season_cache_misses = 0;
 
+    private $industry_service_defaults = [
+        'legal' => 'legal',
+        'accounting' => 'accounting',
+        'consulting' => 'consulting',
+        'marketing' => 'marketing',
+        'web_design' => 'web-design',
+        'plumbing' => 'plumbing',
+        'hvac' => 'hvac',
+        'electrical' => 'electrical',
+        'renovation' => 'renovation',
+        'medical' => 'medical',
+        'dental' => 'dental',
+        'therapy' => 'therapy',
+        'wellness' => 'wellness',
+        'online_store' => 'ecommerce',
+        'local_retail' => 'retail',
+        'specialty' => 'specialty',
+        'other' => 'services',
+    ];
+
     private $service_keyword_map = [
         'physiotherapy' => [
             'default' => 'WSIB approved. MVA recovery. First responder programs.',
@@ -84,6 +104,73 @@ class MSH_Contextual_Meta_Generator {
             'default' => 'Holistic wellness therapies. Stress relief and rejuvenation.',
             'assessment' => 'Personalized wellness assessments and care plans.',
             'acute' => 'Immediate relaxation therapies focused on tension release.'
+        ],
+        'legal' => [
+            'default' => 'Licensed attorneys. Confidential consultations. Case evaluation available.',
+            'consultation' => 'Free case evaluation. Experienced legal counsel. Client-focused representation.',
+            'litigation' => 'Courtroom experience. Proven trial record. Aggressive legal advocacy.'
+        ],
+        'accounting' => [
+            'default' => 'Certified accountants. Tax planning. Financial reporting.',
+            'advisory' => 'Financial advisory. Forecasting. Growth strategies.'
+        ],
+        'consulting' => [
+            'default' => 'Strategic consulting. Data-informed decisions. Measurable outcomes.',
+            'operations' => 'Process optimization. Efficiency gains. Change management.'
+        ],
+        'marketing' => [
+            'default' => 'Full-funnel marketing. Campaign optimization. Revenue growth.',
+            'digital' => 'Digital campaigns. SEO and paid media. Conversion optimization.'
+        ],
+        'web-design' => [
+            'default' => 'Conversion-focused web design. UX optimization. Performance tuned.',
+            'development' => 'Custom development. Responsive builds. Accessible experiences.'
+        ],
+        'plumbing' => [
+            'default' => 'Emergency plumbing. Licensed technicians. Upfront pricing.',
+            'maintenance' => 'Preventative maintenance. Drain cleaning. Water heater care.'
+        ],
+        'hvac' => [
+            'default' => 'Heating and cooling experts. Energy-efficient solutions. 24/7 service.',
+            'maintenance' => 'Seasonal tune-ups. Indoor air quality. System inspections.'
+        ],
+        'electrical' => [
+            'default' => 'Licensed electricians. Code-compliant work. Safety inspections.',
+            'commercial' => 'Commercial electrical projects. Panel upgrades. Lighting design.'
+        ],
+        'renovation' => [
+            'default' => 'Renovation specialists. Quality craftsmanship. On-time delivery.',
+            'remodel' => 'Home remodels. Space planning. Custom finishes.'
+        ],
+        'medical' => [
+            'default' => 'Patient-focused medical care. Comprehensive treatment plans. Insurance accepted.',
+            'clinic' => 'Primary care clinic. Preventative medicine. Compassionate providers.'
+        ],
+        'dental' => [
+            'default' => 'Comprehensive dental care. Patient comfort. Modern technology.',
+            'cosmetic' => 'Cosmetic dentistry. Smile design. Whitening and veneers.'
+        ],
+        'therapy' => [
+            'default' => 'Licensed therapists. Confidential counseling. Personalized care.',
+            'group' => 'Group therapy. Family counseling. Supportive sessions.'
+        ],
+        'ecommerce' => [
+            'default' => 'Online store. Fast shipping. Secure checkout.',
+            'product' => 'Quality products. Customer reviews. Easy returns.'
+        ],
+        'retail' => [
+            'default' => 'Local retail experience. Personalized service. Community focused.',
+            'boutique' => 'Curated selection. Gift-ready finds. Friendly staff.'
+        ],
+        'specialty' => [
+            'default' => 'Specialty products. Expert curation. Premium quality.',
+            'custom' => 'Custom orders. Personalized guidance. Exclusive items.'
+        ],
+        'services' => [
+            'default' => 'Professional services. Client-focused. Quality outcomes.'
+        ],
+        'general' => [
+            'default' => 'Professional services. Trusted experts. Reliable results.'
         ]
     ];
 
@@ -96,7 +183,24 @@ class MSH_Contextual_Meta_Generator {
         'motor-vehicle-accident' => ['mva', 'motor vehicle', 'collision', 'auto injury', 'car accident'],
         'workplace-injury' => ['wsib', 'workplace', 'work injury', 'return to work', 'occupational'],
         'first-responder' => ['first responder', 'firefighter', 'paramedic', 'police', 'dispatcher'],
-        'wellness' => ['wellness', 'spa', 'holistic', 'relaxation', 'mindfulness']
+        'wellness' => ['wellness', 'spa', 'holistic', 'relaxation', 'mindfulness'],
+        'legal' => ['legal', 'law', 'attorney', 'lawyer', 'litigation', 'legal services'],
+        'accounting' => ['accounting', 'bookkeeping', 'tax', 'cpa', 'financial statements'],
+        'consulting' => ['consulting', 'consultant', 'strategy', 'advisory'],
+        'marketing' => ['marketing', 'campaign', 'branding', 'digital marketing'],
+        'web-design' => ['web design', 'website', 'ux', 'ui', 'development'],
+        'plumbing' => ['plumbing', 'plumber', 'pipe', 'drain', 'leak'],
+        'hvac' => ['hvac', 'heating', 'cooling', 'air conditioning', 'furnace'],
+        'electrical' => ['electrical', 'electrician', 'wiring', 'panel', 'lighting'],
+        'renovation' => ['renovation', 'remodel', 'construction', 'builder', 'contractor'],
+        'medical' => ['medical', 'clinic', 'physician', 'doctor', 'healthcare'],
+        'dental' => ['dental', 'dentist', 'orthodontic', 'oral health'],
+        'therapy' => ['therapy', 'therapist', 'counseling', 'mental health', 'psychotherapy'],
+        'ecommerce' => ['online store', 'ecommerce', 'shop', 'product'],
+        'retail' => ['retail', 'boutique', 'storefront', 'local shop'],
+        'specialty' => ['specialty', 'premium', 'exclusive', 'curated', 'artisan'],
+        'services' => ['service', 'professional', 'consulting', 'solutions'],
+        'general' => ['service', 'professional']
     ];
 
     public function __construct() {
@@ -205,12 +309,13 @@ class MSH_Contextual_Meta_Generator {
         return in_array($industry, $health_slugs, true);
     }
 
-    private function get_default_healthcare_service($industry) {
-        if ($industry === 'wellness') {
-            return 'wellness';
+    private function get_default_service_slug($industry) {
+        $industry = strtolower((string) $industry);
+        if (isset($this->industry_service_defaults[$industry])) {
+            return $this->industry_service_defaults[$industry];
         }
 
-        return 'rehabilitation';
+        return 'general';
     }
 
     private function get_industry_label_or_default() {
@@ -893,7 +998,7 @@ class MSH_Contextual_Meta_Generator {
         }
 
         $text = preg_replace('/\b(image|photo|picture|graphic)\b/i', '', $text);
-        $text = preg_replace('/\b\d+x\d+\b/i', '', $text);
+        $text = preg_replace('/[-_]?\d+x\d+[-_]?/i', '', $text);
         $text = preg_replace('/\balignment\b/i', '', $text);
         $text = preg_replace('/\s+/', ' ', $text);
         $text = trim($text, " \t\n\r\0\x0B-_|'\":");
@@ -992,7 +1097,7 @@ class MSH_Contextual_Meta_Generator {
             'type' => $this->get_default_context_type(),
             'page_type' => null,
             'page_title' => null,
-            'service' => $this->is_healthcare_industry($this->industry) ? $this->get_default_healthcare_service($this->industry) : '',
+            'service' => $this->get_default_service_slug($this->industry),
             'parent_id' => 0,
             'tags' => [],
             'manual' => false,
@@ -1271,11 +1376,7 @@ class MSH_Contextual_Meta_Generator {
             }
         }
 
-        if ($this->is_healthcare_industry($this->industry)) {
-            return $this->get_default_healthcare_service($this->industry);
-        }
-
-        return 'rehabilitation';
+        return $this->get_default_service_slug($this->industry);
     }
 
     private function find_featured_usage($attachment_id) {
@@ -1333,7 +1434,10 @@ class MSH_Contextual_Meta_Generator {
             return;
         }
 
-        $combined = trim($title_lower . ' ' . $file_basename);
+        // Strip dimension patterns from both title and basename to avoid false detection
+        $sanitized_title = preg_replace('/[-_]?\d+x\d+[-_]?/i', '', $title_lower);
+        $sanitized_basename = !empty($context['attachment_slug']) ? $context['attachment_slug'] : $file_basename;
+        $combined = trim($sanitized_title . ' ' . $sanitized_basename);
 
         if ($context['type'] !== 'team' && $this->text_contains_any($combined, ['team', 'staff', 'doctor', 'dr-', 'physiotherapist', 'therapist', 'rmt', 'chiropractor'])) {
             $context['type'] = 'team';
@@ -1389,6 +1493,12 @@ class MSH_Contextual_Meta_Generator {
             return $this->is_healthcare_industry($this->industry) ? 'Patient' : 'Client';
         }
 
+        $lower = strtolower($text);
+        $has_generic_number = preg_match('/\d{2,}/', $lower) || preg_match('/\d+x\d+/', $lower);
+        if ($has_generic_number || $this->is_generic_descriptor($lower) || strlen(trim($lower)) <= 2 || preg_match('/^(team|staff)([\s_-]*\d+|$)/', $lower)) {
+            return '';
+        }
+
         $normalized = ucwords(strtolower($text));
         if (empty($normalized)) {
             return $this->is_healthcare_industry($this->industry) ? 'Patient' : 'Client';
@@ -1427,13 +1537,19 @@ class MSH_Contextual_Meta_Generator {
     public function format_service_label($service) {
         $this->ensure_fresh_context();
         if (empty($service)) {
-            return 'Rehabilitation';
+            $service = $this->get_default_service_slug($this->industry);
+        }
+
+        if (empty($service)) {
+            return __('Services', 'msh-image-optimizer');
         }
 
         $label = str_replace(['-', '_'], ' ', strtolower($service));
         $label = preg_replace('/\s+/', ' ', $label);
 
-        return ucwords(trim($label));
+        $formatted = ucwords(trim($label));
+
+        return $formatted !== '' ? $formatted : __('Services', 'msh-image-optimizer');
     }
 
     private function merge_slug_fragments($base, $extra) {
@@ -1695,6 +1811,12 @@ class MSH_Contextual_Meta_Generator {
 
         if (!$this->is_healthcare_industry($this->industry) && $context['type'] === 'clinical') {
             $context['type'] = 'business';
+        }
+
+        $ai_meta = MSH_AI_Service::get_instance()->maybe_generate_metadata($attachment_id, $context, $this);
+        if (is_array($ai_meta) && !empty($ai_meta)) {
+            $this->log_debug('MSH Meta Generation: AI metadata returned, skipping heuristic generator.');
+            return $ai_meta;
         }
 
         switch ($context['type']) {
@@ -2108,9 +2230,24 @@ class MSH_Contextual_Meta_Generator {
     }
 
     private function get_service_keyword_line($service, $variant) {
-        $service = strtolower($service);
-        $variants = $this->service_keyword_map[$service] ?? $this->service_keyword_map['rehabilitation'];
-        return $variants[$variant] ?? $variants['default'];
+        $service = strtolower((string) $service);
+
+        if (!isset($this->service_keyword_map[$service])) {
+            $default_service = $this->get_default_service_slug($this->industry);
+            if (!empty($default_service) && isset($this->service_keyword_map[$default_service])) {
+                $service = $default_service;
+            } else {
+                $service = 'general';
+            }
+        }
+
+        $variants = $this->service_keyword_map[$service];
+        if (!isset($variants[$variant])) {
+            $default = $variants['default'] ?? ($this->service_keyword_map['general']['default'] ?? '');
+            return $default;
+        }
+
+        return $variants[$variant];
     }
 
     private function generate_team_meta(array $context) {
@@ -4925,6 +5062,8 @@ class MSH_Contextual_Meta_Generator {
 
     private function slugify($text) {
         $text = strtolower($text);
+        // Strip dimension patterns before slugifying
+        $text = preg_replace('/[-_]?\d+x\d+[-_]?/i', '', $text);
         $text = preg_replace('/[^a-z0-9]+/', '-', $text);
         return trim($text, '-');
     }

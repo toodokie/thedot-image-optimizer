@@ -416,6 +416,9 @@ class MSH_Image_Optimizer_Admin {
                                 <label for="msh_location_region"><?php _e('Province / Region', 'msh-image-optimizer'); ?></label>
                                 <input type="text" id="msh_location_region" name="region" class="msh-input" placeholder="<?php esc_attr_e('e.g., Ontario', 'msh-image-optimizer'); ?>" />
 
+                                <label for="msh_location_country"><?php _e('Country', 'msh-image-optimizer'); ?></label>
+                                <input type="text" id="msh_location_country" name="country" class="msh-input" placeholder="<?php esc_attr_e('e.g., Canada', 'msh-image-optimizer'); ?>" />
+
                                 <label for="msh_service_area"><?php _e('Service area', 'msh-image-optimizer'); ?></label>
                                 <input type="text" id="msh_service_area" name="service_area" class="msh-input" placeholder="<?php esc_attr_e('e.g., Greater Toronto Area, Nationwide, Remote', 'msh-image-optimizer'); ?>" />
 

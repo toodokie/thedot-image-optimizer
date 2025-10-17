@@ -11,6 +11,299 @@ This document defines metadata generation templates for all 17 industries offere
 
 ---
 
+## Implementation Notes (October 16, 2025)
+
+### ✅ Currently Implemented
+- All five industry phases are active in `msh-image-optimizer/includes/class-msh-image-optimizer.php`.
+- `generate_business_meta()` routes metadata creation based on the active onboarding industry.
+- Shared helpers:
+  - `extract_visual_descriptor()` filters camera/demo strings before returning descriptors.
+  - `sanitize_descriptor()` removes generic terms, punctuation, and enforces length limits.
+  - `build_industry_description()` cascades **UVP → Pain Points → Achievement markers → Target Audience → Industry value proposition → Generic fallback** with credential copy.
+- Slug fallbacks emit industry-aware prefixes (e.g., `legal-services-toronto-1234.jpg`) when filenames are generic.
+- Descriptor filtering normalises WordPress demo data (`canola2`, `image alignment`, `post format`, etc.) so metadata falls back cleanly.
+
+### 📊 Testing & Validation
+- **Baseline Non-AI Test Results**: See [BASELINE_NON_AI_TEST_RESULTS.md](BASELINE_NON_AI_TEST_RESULTS.md) for comprehensive legal industry testing with 8 test images, edge cases, and quality analysis (v1.2.0)
+
+### 🚧 In Progress / Extensible Today
+- Stub helpers now exist for temporal keywords, trust signals, journey-stage copy, achievement markers, and industry value propositions. By default they return empty strings/arrays but expose filters (`msh_temporal_keywords`, `msh_trust_signals`, `msh_journey_content`, `msh_achievement_markers`, `msh_industry_value_prop`) so partners can extend behaviour immediately.
+- Documentation clearly labels these helpers as opt-in extensions until full logic ships.
+
+### 🗺️ Planned Enhancements
+- `$options` parameter on generators to accept season/journey/category overrides.
+- Admin UI + storage for editable trust signals and achievement markers.
+- Automatic seasonal detection feeding analyzer output.
+- Analytics/A-B testing layer for metadata optimisation.
+
+Use the sections below as the authoritative copy source. Treat roadmap features as forward-looking unless code references confirm implementation.
+
+### Current vs Planned Matrix
+
+| Feature | Current State (v1.2.0) | Planned Enhancement |
+| --- | --- | --- |
+| Industry generators | ✅ All 17 implemented | – |
+| Descriptor sanitisation | ✅ Filters demo/camera strings | ML keyword scoring |
+| Metadata cascade | ✅ UVP → Pain Points → Achievement → Audience → Value Prop → Generic | Analytics-driven auto optimisation |
+| Slug fallbacks | ✅ Industry-aware prefixes | Geo-aware variants |
+| Temporal keywords | 🚧 Stub + `msh_temporal_keywords` filter | Seasonal defaults + admin UI |
+| Trust signals | 🚧 Stub + `msh_trust_signals` filter | Editable trust-signal library |
+| Journey content | 🚧 Stub + `msh_journey_content` filter | Automatic journey detection |
+| Achievement markers | 🚧 Defaults + `msh_achievement_markers` filter | Admin UI + analytics integration |
+| Industry value props | 🚧 Default map + `msh_industry_value_prop` filter | Editable per-site messaging |
+| `$options` parameter | 🚫 Not yet | Season/journey/category overrides |
+
+**Available filters/hooks today**
+- `msh_temporal_keywords`
+- `msh_trust_signals`
+- `msh_journey_content`
+- `msh_achievement_markers`
+- `msh_industry_value_prop`
+
+Use these hooks to inject custom behaviour until core UI/logic ships.
+
+---
+
+## Implementation Architecture
+
+### Generator Function Signature
+
+**All industry metadata generators MUST follow this signature pattern:**
+
+```php
+private function generate_{industry}_meta(array $context, $descriptor = '') {
+    // $descriptor is optional and enables future Tier 2 extraction:
+    // - Empty string (default) → extract from context or use generic
+    // - Specific term → use it directly (when we add extraction logic)
+
+    // If descriptor not provided, try to extract from context
+    if ($descriptor === '') {
+        $descriptor = $this->extract_visual_descriptor($context);
+    }
+
+    // Build metadata using descriptor + onboarding data cascading fallbacks
+    // ...
+}
+```
+
+**Benefits:**
+- ✅ Future-proof for Tier 2 extraction without refactoring call sites
+- ✅ Easy to test with explicit descriptors
+- ✅ Backwards compatible (default = extract from context)
+- ✅ Consistent pattern across all 17 industries
+
+---
+
+### Cascading Fallback Pattern
+
+**When building descriptions, use this fallback chain:**
+
+**Current Cascade Logic (Implemented)**
+
+```php
+private function build_industry_description($generic_text, $credentials = '', array $options = []) {
+    // Priority 1: UVP (most specific, user-written)
+    if ($this->uvp !== '') { ... }
+
+    // Priority 2: Pain Points (specific problems we solve)
+    if ($this->pain_points !== '') { ... }
+
+    // Priority 3: Achievement markers (if available)
+    $achievement = $this->get_achievement_markers($industry);
+    if ($achievement !== '') { ... }
+
+    // Priority 4: Target Audience (who we serve)
+    if ($this->target_audience !== '') { ... }
+
+    // Priority 5: Industry value proposition (default statement)
+    $industry_value = $this->get_industry_value_proposition($industry);
+    if ($industry_value !== '') { ... }
+
+    // Priority 6: Generic fallback (includes trust signals if present)
+    return implode(' ', ...);
+}
+```
+
+### Fallback Examples
+
+**Scenario 1: Full Onboarding (Best Case)**
+```
+UVP: "Fast, reliable emergency plumbing with upfront pricing and 24/7 availability"
+Result: "Fast, reliable emergency plumbing with upfront pricing and 24/7 availability. Licensed, insured plumbers serving Greater Toronto Area."
+```
+✅ Uses UVP (most specific)
+
+**Scenario 2: UVP Blank**
+```
+UVP: (blank)
+Pain Points: "Emergency repairs, drain cleaning, water heater replacement"
+Result: "Professional plumbing services specializing in emergency repairs, drain cleaning, water heater replacement. Licensed, insured plumbers serving Greater Toronto Area."
+```
+✅ Falls back to Pain Points
+
+**Scenario 3: UVP + Pain Points Blank**
+```
+UVP: (blank)
+Pain Points: (blank)
+Target Audience: "Homeowners and property managers"
+Result: "Professional plumbing services serving homeowners and property managers. Licensed, insured plumbers serving Greater Toronto Area."
+```
+✅ Falls back to Target Audience
+
+**Scenario 4: Minimal Onboarding (Worst Case)**
+```
+UVP: (blank)
+Pain Points: (blank)
+Target Audience: (blank)
+Result: "Professional plumbing services. Licensed, insured plumbers serving Greater Toronto Area."
+```
+✅ Generic fallback still professional
+
+---
+
+### Helper Functions Required
+
+All generators depend on these helper functions:
+
+#### 1. build_industry_description()
+
+```php
+/**
+ * Build description with cascading fallbacks from onboarding data
+ *
+ * @param string $generic_text Base description text
+ * @param string $credentials Industry credentials/trust markers
+ * @return string Final description
+ */
+private function build_industry_description($generic_text, $credentials) {
+    if ($this->uvp !== '') {
+        $desc = $this->normalize_sentence($this->uvp);
+        if ($credentials !== '') {
+            $desc .= ' ' . $this->normalize_sentence($credentials);
+        }
+        return trim($desc);
+    }
+
+    if ($this->pain_points !== '') {
+        $base = $generic_text !== '' ? $generic_text : __('Professional services', 'msh-image-optimizer');
+        $desc = $this->normalize_sentence(sprintf(
+            __('%1$s specializing in %2$s', 'msh-image-optimizer'),
+            $base,
+            $this->pain_points
+        ));
+        if ($credentials !== '') {
+            $desc .= ' ' . $this->normalize_sentence($credentials);
+        }
+        return trim($desc);
+    }
+
+    if ($this->target_audience !== '') {
+        $base = $generic_text !== '' ? $generic_text : __('Professional services', 'msh-image-optimizer');
+        $desc = $this->normalize_sentence(sprintf(
+            __('%1$s serving %2$s', 'msh-image-optimizer'),
+            $base,
+            $this->target_audience
+        ));
+        if ($credentials !== '') {
+            $desc .= ' ' . $this->normalize_sentence($credentials);
+        }
+        return trim($desc);
+    }
+
+    $parts = [];
+    if ($generic_text !== '') {
+        $parts[] = $this->normalize_sentence($generic_text);
+    }
+    if ($credentials !== '') {
+        $parts[] = $this->normalize_sentence($credentials);
+    }
+
+    return trim(implode(' ', $parts));
+}
+```
+
+#### 2. extract_visual_descriptor()
+
+```php
+/**
+ * Extract visual descriptor from context (image title, page context, etc.)
+ * Future-proof for Tier 2 extraction enhancements
+ *
+ * @param array $context Image context
+ * @return string Descriptor or empty string
+ */
+private function extract_visual_descriptor($context) {
+    $candidates = [
+        $context['attachment_title'] ?? '',
+        $context['page_title'] ?? '',
+        $context['attachment_caption'] ?? '',
+    ];
+
+    if (!empty($context['attachment_slug'])) {
+        $candidates[] = str_replace('-', ' ', (string) $context['attachment_slug']);
+    }
+
+    if (!empty($context['tags']) && is_array($context['tags'])) {
+        $candidates = array_merge($candidates, $context['tags']);
+    }
+
+    foreach ($candidates as $candidate) {
+        $candidate = $this->sanitize_descriptor($candidate);
+        if ($candidate !== '' && !$this->is_generic_descriptor($candidate)) {
+            return $candidate;
+        }
+    }
+
+    return '';
+}
+```
+
+#### 3. sanitize_descriptor()
+
+```php
+/**
+ * Sanitize descriptor text for use in metadata
+ *
+ * @param string $text Raw descriptor text
+ * @return string Sanitized descriptor
+ */
+private function sanitize_descriptor($text) {
+    $text = trim(strip_tags((string) $text));
+    if ($text === '' || $this->looks_like_camera_filename($text)) {
+        return '';
+    }
+
+    $text = preg_replace('/\b(image|photo|picture|graphic)\b/i', '', $text);
+    $text = preg_replace('/\b\d+x\d+\b/i', '', $text);
+    $text = preg_replace('/\balignment\b/i', '', $text);
+    $text = preg_replace('/\s+/', ' ', $text);
+    $text = trim($text, " \t\n\r\0\x0B-_|'\":");
+
+    if ($text === '' || $this->is_generic_descriptor($text)) {
+        return '';
+    }
+
+    if (mb_strlen($text) > 60) {
+        $text = rtrim(mb_substr($text, 0, 57)) . '...';
+    }
+
+    return $text;
+}
+```
+
+---
+
+### Generator Pattern (Implemented)
+
+- Optional `$descriptor` parameter allows future Tier‑2 extraction; all generators call `extract_visual_descriptor()` when the provided descriptor is blank or generic.
+- Titles and ALT text include the descriptor when present, otherwise they default to the industry service label (e.g., “HVAC Services – …”, “Accounting Services – …”).
+- Captions are industry-specific (“Licensed HVAC technicians”, “Professional legal services”, etc.) and match the wording below.
+- Descriptions are produced by `build_industry_description()` with industry-specific generic text and credential lines so UVP → Pain Points → Target Audience → generic fallback is consistent.
+- Industry-specific slug prefixes are defined in `get_industry_slug_prefix()`; when a filename/title is generic we emit slugs like `legal-services-toronto-1234.jpg`.
+- Healthcare industries (medical, dental, therapy, wellness) share the same helpers but use patient-focused credentials, while retail/e-commerce generators reference product experience copy.
+
+The sections that follow remain the canonical wording for captions, credentials, and common services used in the generators.
+
 ## 1. Legal Services (`legal`)
 
 ### Service Keywords
@@ -757,24 +1050,24 @@ All templates support these dynamic variables from onboarding context:
 
 ### Code Structure
 
-Each industry needs:
+Each industry requires the following wiring (already completed for the initial release; repeat if you add new ones):
 
-1. **Keyword Map Entry** (in `$service_keyword_map` array)
-2. **Generator Function** (`generate_{industry}_meta()`)
-3. **Slug Generator** (in `generate_filename_slug()` switch)
-4. **Customer Term Mapping** (in `get_industry_customer_term()`)
+1. **Keyword Map Entry** (in `$service_keyword_map` array) – only needed when adding new keyword groups.
+2. **Generator Function** (`generate_{industry}_meta()`).
+3. **Slug Prefix** (expand `get_industry_slug_prefix()` for deterministic slugs).
+4. **Dispatcher Entry** (add to `generate_business_meta()` switch/map).
+5. **Customer Term Mapping** (if customer label differs from default).
 
-### Priority Order
+### Implementation Status
 
-Implement in this order:
-
-1. **Phase 1:** Home services (plumbing, HVAC, electrical, renovation) - 4 industries
-2. **Phase 2:** Professional services (legal, accounting, consulting, marketing, web_design) - 5 industries
-3. **Phase 3:** Retail/E-commerce (online_store, local_retail, specialty) - 3 industries
-4. **Phase 4:** Healthcare (already done) - medical, dental, therapy, wellness - 4 industries
-5. **Phase 5:** Generic fallback (other) - 1 industry
-
-Total: 17 industries
+| Phase | Industries | Status | Notes |
+| --- | --- | --- | --- |
+| Phase 1 | Plumbing, HVAC, Electrical, Renovation | ✅ Implemented |
+| Phase 2 | Legal, Accounting, Consulting, Marketing, Web Design | ✅ Implemented |
+| Phase 3 | Online Store, Local Retail, Specialty | ✅ Implemented |
+| Phase 4 | Medical, Dental, Therapy, Wellness | ✅ Implemented |
+| Phase 5 | Other (generic fallback) | ✅ Implemented |
+| Cross-cutting | Slug prefixes, descriptor sanitization, fallback helpers | ✅ Implemented |
 
 ---
 
@@ -787,10 +1080,38 @@ For each industry, test:
 - [ ] Product/equipment photo metadata
 - [ ] General business photo metadata
 - [ ] Testimonial photo metadata
-- [ ] Filename slug generation
-- [ ] No healthcare terms leak into non-healthcare industries
+- [ ] Filename slug generation (generic filenames → `industry-services-<city>-<id>`)
+- [ ] Professional services wording uses correct credential copy (legal/accounting/consulting/marketing/web design)
+- [ ] Retail/e-commerce wording references shipping/curated language
+- [ ] Wellness/healthcare wording only appears for medical/dental/therapy/wellness industries
 - [ ] Location logic works correctly
-- [ ] UVP and onboarding data properly inserted
+- [ ] UVP / Pain Points / Audience fallbacks behave as expected
+
+---
+
+## Industry Snapshot (Current Implementation)
+
+| Industry | Generator Function | Slug Prefix | Credential Copy Highlights |
+| --- | --- | --- | --- |
+| Legal | `generate_legal_meta()` | `legal-services` | “Licensed attorneys … confidential consultations.” |
+| Accounting | `generate_accounting_meta()` | `accounting-services` | “Certified accounting professionals …” |
+| Consulting | `generate_consulting_meta()` | `consulting-services` | “Strategic consultants delivering measurable growth.” |
+| Marketing | `generate_marketing_meta()` | `marketing-services` | “Strategic marketers … measurable campaigns.” |
+| Web Design | `generate_web_design_meta()` | `web-design-services` | “Website specialists delivering responsive, high-performing sites.” |
+| Plumbing | `generate_plumbing_meta()` | `plumbing-services` | “Licensed, insured plumbers …” |
+| HVAC | `generate_hvac_meta()` | `hvac-services` | “Licensed HVAC contractors …” |
+| Electrical | `generate_electrical_meta()` | `electrical-services` | “Licensed, insured electricians …” |
+| Renovation | `generate_renovation_meta()` | `renovation-services` | “Licensed, bonded contractors …” |
+| Online Store | `generate_online_store_meta()` | Industry/brand fallback | “Fast shipping, secure checkout, satisfaction guaranteed.” |
+| Local Retail | `generate_local_retail_meta()` | Industry/brand fallback | “Curated local retail products, personalized service.” |
+| Specialty | `generate_specialty_meta()` | Industry/brand fallback | “Curated specialty products, expert guidance.” |
+| Medical | `generate_medical_meta()` | Industry/brand fallback | “Board-certified physicians providing comprehensive care.” |
+| Dental | `generate_dental_meta()` | Industry/brand fallback | “Licensed dentists providing comprehensive dental care.” |
+| Therapy | `generate_therapy_meta()` | Industry/brand fallback | “Licensed therapists providing confidential support.” |
+| Wellness | `generate_wellness_meta()` | Industry/brand fallback | “Certified wellness practitioners delivering personalized care.” |
+| Other | `generate_other_meta()` | Brand/industry fallback | “Professional services tailored to your needs.” |
+
+Slug prefixes automatically fall back to the industry label or business name when a preset is unavailable.
 
 ---
 
@@ -811,4 +1132,4 @@ When adding new industries:
 
 **Document Created:** October 15, 2025
 **Last Updated:** October 15, 2025
-**Status:** Ready for Implementation
+**Status:** ✅ Implementation complete; use this document to guide future additions

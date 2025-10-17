@@ -111,7 +111,7 @@ class MSH_Image_Optimizer_Settings {
         $diagnostics = $this->get_diagnostics_snapshot();
         $ai_mode = get_option('msh_ai_mode', 'manual');
         $ai_api_key = get_option('msh_ai_api_key', '');
-        $ai_features = get_option('msh_ai_enabled_features', array());
+        $ai_features = get_option('msh_ai_features', array());
         if (!is_array($ai_features)) {
             $ai_features = array();
         }
@@ -244,6 +244,12 @@ class MSH_Image_Optimizer_Settings {
                             'primary[region]',
                             __('Province / Region', 'msh-image-optimizer'),
                             $primary_context['region']
+                        ); ?>
+
+                        <?php $this->render_text_input(
+                            'primary[country]',
+                            __('Country', 'msh-image-optimizer'),
+                            $primary_context['country']
                         ); ?>
 
                         <?php $this->render_text_input(
@@ -537,7 +543,7 @@ class MSH_Image_Optimizer_Settings {
                 }
             }
         }
-        update_option('msh_ai_enabled_features', $ai_features_sanitized, false);
+        update_option('msh_ai_features', $ai_features_sanitized, false);
 
         $pending_active_profile = isset($options_raw['active_profile']) ? sanitize_text_field($options_raw['active_profile']) : 'primary';
         $available_profiles = MSH_Image_Optimizer_Context_Helper::get_profiles();
@@ -873,6 +879,7 @@ class MSH_Image_Optimizer_Settings {
                     <?php $this->render_select_input("profiles[{$index}][context][cta_preference]", __('Call-to-action style', 'msh-image-optimizer'), $labels['cta_preference'], isset($context['cta_preference']) ? $context['cta_preference'] : ''); ?>
                     <?php $this->render_text_input("profiles[{$index}][context][city]", __('City', 'msh-image-optimizer'), isset($context['city']) ? $context['city'] : ''); ?>
                     <?php $this->render_text_input("profiles[{$index}][context][region]", __('Province / Region', 'msh-image-optimizer'), isset($context['region']) ? $context['region'] : ''); ?>
+                    <?php $this->render_text_input("profiles[{$index}][context][country]", __('Country', 'msh-image-optimizer'), isset($context['country']) ? $context['country'] : ''); ?>
                     <?php $this->render_text_input("profiles[{$index}][context][service_area]", __('Service area', 'msh-image-optimizer'), isset($context['service_area']) ? $context['service_area'] : ''); ?>
 
                     <div class="msh-settings-field msh-settings-checkbox">
@@ -918,6 +925,7 @@ class MSH_Image_Optimizer_Settings {
                     'cta_preference' => '',
                     'city' => '',
                     'region' => '',
+                    'country' => '',
                     'service_area' => '',
                     'ai_interest' => false,
                     'updated_at' => 0,

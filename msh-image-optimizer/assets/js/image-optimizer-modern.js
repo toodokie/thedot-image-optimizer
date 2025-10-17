@@ -870,14 +870,13 @@
                 locationParts.push(context.city);
             }
             if (context.region) {
-                if (locationParts.length) {
-                    locationParts[locationParts.length - 1] = `${locationParts[locationParts.length - 1]}, ${context.region}`;
-                } else {
-                    locationParts.push(context.region);
-                }
+                locationParts.push(context.region);
+            }
+            if (context.country) {
+                locationParts.push(context.country);
             }
 
-            let location = locationParts.join(' ');
+            let location = locationParts.join(', ');
             if (context.service_area) {
                 const serviceLabel = this.strings.onboardingSummaryServiceArea
                     ? this.strings.onboardingSummaryServiceArea.replace('%s', context.service_area)

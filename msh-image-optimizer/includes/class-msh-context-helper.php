@@ -34,6 +34,7 @@ class MSH_Image_Optimizer_Context_Helper {
             'cta_preference' => isset($context['cta_preference']) ? sanitize_text_field($context['cta_preference']) : '',
             'city' => isset($context['city']) ? sanitize_text_field($context['city']) : '',
             'region' => isset($context['region']) ? sanitize_text_field($context['region']) : '',
+            'country' => isset($context['country']) ? sanitize_text_field($context['country']) : '',
             'service_area' => isset($context['service_area']) ? sanitize_text_field($context['service_area']) : '',
             'ai_interest' => !empty($context['ai_interest']),
         );
@@ -73,6 +74,7 @@ class MSH_Image_Optimizer_Context_Helper {
             'business_type' => array(
                 'local_service' => __('Local Service Provider', 'msh-image-optimizer'),
                 'online_service' => __('Online Service Provider', 'msh-image-optimizer'),
+                'professional' => __('Professional Services', 'msh-image-optimizer'),
                 'ecommerce' => __('E-commerce', 'msh-image-optimizer'),
                 'saas' => __('SaaS / Software', 'msh-image-optimizer'),
                 'b2b' => __('B2B Services', 'msh-image-optimizer'),
@@ -166,14 +168,14 @@ class MSH_Image_Optimizer_Context_Helper {
         }
 
         if (!empty($context['region'])) {
-            if (!empty($parts)) {
-                $parts[count($parts) - 1] .= ', ' . $context['region'];
-            } else {
-                $parts[] = $context['region'];
-            }
+            $parts[] = $context['region'];
         }
 
-        $location = implode(' ', $parts);
+        if (!empty($context['country'])) {
+            $parts[] = $context['country'];
+        }
+
+        $location = implode(', ', array_filter($parts));
 
         if (!empty($context['service_area'])) {
             $service_area = !empty($strings['onboardingSummaryServiceArea'])

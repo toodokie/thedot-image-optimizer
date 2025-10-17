@@ -20,6 +20,7 @@ This file contains ongoing research, experimental approaches, performance invest
 6. [Experimental Code Snippets](#experimental-code-snippets)
 7. [Benchmarking Results](#benchmarking-results)
 8. [SEO-Optimized Filename Generation Strategy](#seo-optimized-filename-generation-strategy-october-2025)
+9. [Generative Engine Optimization (GEO) Strategy](#generative-engine-optimization-geo-strategy) - **NEW: October 2025**
 
 ---
 
@@ -1906,3 +1907,343 @@ class MSH_Platform_Integration {
 ```
 
 **Status**: ❌ **These critical WordPress/Elementor specifics are NOT fully covered in our current RND document or implementation. They should be added to ensure complete platform compatibility.**
+
+---
+
+## Generative Engine Optimization (GEO) Strategy
+
+> **Added:** October 15, 2025 (Revised with evidence-based analysis)
+> **Context:** Adobe launched LLM Optimizer (October 14, 2025) for enterprise GEO optimization
+> **Reality Check:** GEO is emerging, metadata matters, but **proven SEO value is our core strength**
+
+### Overview
+
+**What is GEO?**
+Generative Engine Optimization is the discipline of optimizing content for visibility and citations in AI assistants (ChatGPT, Claude, Perplexity, Gemini) and agentic browsers.
+
+**Honest Assessment for MSH Image Optimizer:**
+- ✅ **Proven value:** Our metadata improves traditional SEO (Google Image Search) - 15+ years of evidence
+- ⚠️ **Correlated value:** Research shows metadata is part of quality signal bundle that correlates with LLM citations
+- ❌ **Speculative value:** Unknown if image metadata alone drives text query citations for SMBs
+- ✅ **Emerging value:** Visual AI search (ChatGPT Vision, Lens) does read embedded image metadata
+
+**Research Basis:**
+- Kumar & Palkhouski (2025): GEO-16 study found metadata + structured data correlates with citations
+- Caveat: Observational study on enterprise B2B sites, not controlled experiment on SMBs
+- Adobe claims 200% visibility increase - but on high-authority domains with bundle of changes
+
+### Key GEO Principles for Image Optimization
+
+**1. LLMs Read Everything (Not Just Alt Text)**
+```
+Traditional SEO reads:
+  - Alt text
+  - Filename
+
+GEO reads:
+  - Filename
+  - Alt text
+  - Caption
+  - Description
+  - EXIF/IPTC embedded metadata
+  - Schema.org ImageObject markup
+  - Page context
+  - Business entity data
+```
+
+**2. Natural Language > Keywords**
+```
+SEO Approach:
+  "HVAC Toronto heating cooling furnace"
+
+GEO Approach:
+  "Licensed HVAC contractor providing furnace repair, installation,
+   and 24/7 emergency service in Toronto, North York, Scarborough,
+   and Etobicoke. Upfront pricing, same-day service."
+```
+
+**Why:** LLMs answer questions, not keyword searches. Metadata should provide answer-worthy content.
+
+**3. Entity Disambiguation is Critical**
+```
+Without Disambiguation:
+  Business: "Arctic Comfort"
+  LLM doesn't know: Hotel? Insulation? HVAC? Which city?
+
+With Disambiguation:
+  Business: "Arctic Comfort Systems - HVAC Contractor | Toronto, Ontario"
+  LLM knows: HVAC business in Toronto, Ontario, Canada
+```
+
+**Our Current Implementation:**
+- ✅ All metadata includes business name + location + industry
+- ✅ Service area explicitly stated in descriptions
+- ✅ Industry credentials embedded ("Licensed HVAC contractors")
+
+**4. Structured Data Increases Citation Confidence** (Research-Backed)
+
+GEO-16 study found structured data (Schema.org) correlates with higher citation rates.
+
+**Current State:** We generate great metadata but don't output Schema.org ImageObject markup
+**Opportunity:** Adding Schema.org = alignment with quality signals, proven SEO best practice
+
+**5. Visual Descriptors Enable AI Image Search**
+
+When users upload images to ChatGPT Vision or use Google Lens, the AI reads:
+- EXIF Creator field
+- IPTC Caption/Description
+- GPS coordinates (if embedded)
+
+**Current State:** We set WordPress metadata but don't embed EXIF/IPTC into image files
+**Opportunity:** Embedded metadata travels with images (social sharing, downloads)
+
+### MSH Image Optimizer: Current GEO Capabilities
+
+**✅ What We Already Do:**
+
+1. **Semantic Metadata Generation**
+   - Context-aware descriptions using UVP, pain points, target audience
+   - Industry-specific vocabulary (17 industries)
+   - Natural language patterns
+   - See: [generate_hvac_meta()](class-msh-image-optimizer.php#L1863-L1905)
+
+2. **Question-Optimized Descriptions**
+   - Cascading fallback: UVP → Pain Points → Target Audience → Generic
+   - Includes service variants, credentials, service area
+   - See: [build_industry_description()](class-msh-image-optimizer.php#L247-L277)
+
+3. **SEO-Optimized Filenames (Also GEO-Friendly)**
+   - Descriptive slugs: `furnace-repair-arctic-comfort-toronto.jpg`
+   - Extracts keywords from page context, title, caption, tags
+   - See: [SEO-Optimized Filename Generation Strategy](#seo-optimized-filename-generation-strategy-october-2025)
+
+4. **Entity Signals**
+   - Business name, location, service area in all metadata
+   - Industry credentials ("Licensed HVAC contractors")
+   - Geographic specificity ("Greater Toronto Area")
+
+**❌ What We Need to Add (30% Gap to Adobe LLM Optimizer):**
+
+1. **Schema.org ImageObject Output**
+   - JSON-LD markup linking images to business entity
+   - Effort: 🟢 Low (2-3 hours)
+   - Impact: 🔥 High
+
+2. **EXIF/IPTC Metadata Embedding**
+   - Write metadata directly into image files
+   - Effort: 🔴 High (requires image manipulation library)
+   - Impact: 🔥 Medium-High
+
+3. **AI Referral Tracking**
+   - Detect traffic from ChatGPT, Claude, Perplexity, Gemini
+   - Dashboard showing "AI Traffic vs Organic"
+   - Effort: 🟡 Medium (4-6 hours)
+   - Impact: 🔥 High (ROI proof)
+
+4. **Citation Monitoring**
+   - Query LLMs with test questions, check if business is cited
+   - Track citation rate over time
+   - Effort: 🔴 High (requires LLM API integration)
+   - Impact: 🔥 Medium (competitive intelligence)
+
+### Implementation Roadmap
+
+**Phase 1: Quick Wins (2-3 weeks)**
+
+1. **Schema.org ImageObject Output**
+   ```php
+   private function generate_image_schema($context, $metadata) {
+       return [
+           '@context' => 'https://schema.org',
+           '@type' => 'ImageObject',
+           'name' => $metadata['title'],
+           'description' => $metadata['description'],
+           'contentUrl' => wp_get_attachment_url($context['attachment_id']),
+           'author' => [
+               '@type' => 'LocalBusiness',
+               'name' => $this->business_name,
+               'address' => [
+                   '@type' => 'PostalAddress',
+                   'addressLocality' => $this->extract_city($this->location),
+                   'addressRegion' => $this->extract_region($this->location)
+               ],
+               'areaServed' => $this->service_area
+           ]
+       ];
+   }
+   ```
+
+2. **Enhanced Descriptions (Question-Optimized)**
+   - Expand templates to include more answer-worthy content
+   - Add service variants, differentiators, specialties
+   - Example enhancement:
+   ```
+   Current:
+   "Licensed HVAC contractors serving Greater Toronto Area"
+
+   Enhanced:
+   "Licensed HVAC contractor providing furnace repair, installation,
+    and 24/7 emergency service in Toronto, North York, Scarborough,
+    and Etobicoke. Upfront pricing, same-day service, energy-efficient systems."
+   ```
+
+3. **AI Referral Tracking (Basic)**
+   - Detect referrers: chatgpt.com, claude.ai, perplexity.ai, gemini.google.com
+   - Log to custom table
+   - Dashboard widget: "AI Referral Traffic (Last 30 Days)"
+
+**Phase 2: Advanced Features (3-6 months)**
+
+1. **EXIF/IPTC Embedding**
+   - Write metadata into image files
+   - IPTC Caption, Description, Creator, Copyright
+   - GPS coordinates (if available)
+
+2. **Citation Monitoring**
+   - Periodic LLM queries: "Who does [industry] in [location]?"
+   - Parse responses, check for business mentions
+   - Alert when citation rate changes
+
+3. **Competitive GEO Dashboard**
+   - Benchmark vs competitors
+   - Track citation rate by LLM (ChatGPT vs Claude vs Perplexity)
+   - Visibility gap analysis
+
+### Business Case
+
+**Market Opportunity:**
+- WordPress: 43% of all websites (810M sites)
+- Small business sites: 30% (243M sites)
+- Local businesses most impacted by AI discovery
+- **WordPress GEO plugins: DO NOT EXIST**
+
+**Competitive Landscape:**
+- Adobe LLM Optimizer: Enterprise ($$$), requires Adobe stack
+- Yoast/Rank Math/AIOSEO: Traditional SEO, no GEO features
+- **Market Gap:** SMBs need GEO but have no tools
+
+**Revenue Potential (Evidence-Based):**
+```
+Current Pricing (MAINTAIN):
+  Free: Basic optimization
+  Pro ($49/year): Advanced metadata, industry templates, Schema.org
+
+Optional Analytics Add-On ($15-20/year):
+  - AI referral tracking
+  - Traffic source insights
+  - Dashboard analytics
+
+Strategy:
+  - Don't inflate pricing on unproven GEO claims
+  - Add analytics to PROVE GEO value over time
+  - If data shows meaningful AI traffic after 6-12 months:
+    → THEN introduce premium GEO tier with proven ROI
+    → THEN market with actual customer results
+```
+
+**Marketing Position (Honest, Defensible):**
+> "Industry-Specific SEO Metadata for WordPress: Save hours with automated,
+> context-aware image optimization tailored to your business. Future-proof
+> your images for AI discovery."
+
+**Key Messages:**
+1. "Proven SEO Results" - Google Image Search traffic increase (measurable)
+2. "AI-Ready Metadata" - Structured data and natural language future-proofing
+3. "17 Industries, Professionally Optimized" - HVAC, medical, legal, etc.
+4. "Track Your Results" - See traffic sources (Google, AI assistants, social)
+5. "Save Time, Look Professional" - Automated vs. manual metadata
+
+**Honest GEO Positioning:**
+"While AI discovery is emerging and research suggests metadata matters as part of
+overall quality, we focus on delivering proven SEO value today while preparing
+your images for tomorrow's AI-driven search."
+
+### Success Metrics (Realistic, Evidence-Based)
+
+**3 Months Post-Launch:**
+- ✅ Schema.org output implemented (technical success)
+- ✅ AI referral tracking deployed (data collection starts)
+- ✅ Baseline metrics established (current SEO performance)
+- ⚠️ AI referral data analyzed (likely <5% of total traffic initially)
+- ✅ Customer feedback gathered (what value do they actually see?)
+
+**12 Months Post-Launch:**
+- ✅ 1,000+ active Pro users maintaining current pricing
+- ✅ Data-driven decision on GEO tier (if AI traffic meaningful, launch premium)
+- ✅ 5-10 detailed case studies with real metrics (not speculation)
+- ✅ Clear documentation of which industries/businesses see AI referral value
+- ⚠️ Adjust marketing claims based on actual customer results
+
+**Honest Success Criteria:**
+- Primary: Proven SEO value (image search traffic increase)
+- Secondary: Time savings (automated metadata)
+- Tertiary: AI referral traffic (track but don't overpromise)
+- Long-term: If AI referrals become meaningful (>10% of traffic), capitalize with evidence
+
+### Technical Requirements
+
+**Database Schema (AI Tracking):**
+```sql
+CREATE TABLE wp_msh_ai_referrals (
+    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    referrer_url VARCHAR(255),
+    ai_agent VARCHAR(50),
+    landing_page VARCHAR(255),
+    timestamp DATETIME,
+    INDEX idx_ai_agent (ai_agent),
+    INDEX idx_timestamp (timestamp)
+);
+```
+
+**New Methods Required:**
+- `generate_image_schema()` - Create Schema.org markup
+- `extract_city()` - Parse city from location string
+- `extract_region()` - Parse region from location string
+- `output_image_schema_markup()` - Hook into wp_footer
+- `track_ai_referrals()` - Log AI agent traffic
+- `get_ai_traffic_stats()` - Dashboard analytics
+
+**Hooks to Add:**
+- `add_filter('wp_get_attachment_metadata')` - Inject Schema.org
+- `add_action('wp_footer')` - Output ImageObject JSON-LD
+- `add_action('wp')` - Track referrers on page load
+
+### Key Takeaways (Evidence-Based)
+
+1. **Core Value is Proven SEO** - 15+ years of evidence for image metadata improving search rankings
+2. **GEO is Emerging, Not Proven** - Research shows correlation, not causation; no SMB validation yet
+3. **Metadata Matters as Part of Bundle** - Works with authority, content, freshness (not alone)
+4. **Schema.org Worth Doing** - Low effort, aligns with research findings, proven SEO practice
+5. **Track Before Claiming** - Add AI referral analytics, gather data, THEN make claims
+6. **Honest Marketing Wins** - Promise proven value (SEO, time savings), position GEO as future-proofing
+
+**Strategic Recommendation:**
+- ✅ Fix current bugs (wellness, dimension filtering) - ensure quality
+- ✅ Add Schema.org output - research-backed, low effort
+- ✅ Add AI referral tracking - prove value before claiming it
+- ❌ Don't inflate pricing or marketing on unproven GEO claims
+- ✅ Revisit GEO positioning after 6-12 months of real customer data
+
+### References & Research
+
+**Academic/Industry Research:**
+- Kumar & Palkhouski (2025): "GEO16 Framework" - metadata correlates with citations
+  - Observational study on 1,702 citations
+  - Enterprise B2B focus, not SMB validation
+  - Correlation, not proven causation
+
+**Industry Announcements:**
+- Adobe LLM Optimizer: Launched October 14, 2025 (enterprise tool)
+- Adobe Claims: 200% visibility ↑, 5× citations ↑, 41% referral traffic ↑
+  - ⚠️ Marketing claims, not peer-reviewed
+  - ⚠️ High-authority domains with bundle of changes
+  - ⚠️ Not validated for small/local businesses
+
+**Related Documentation:**
+- [GEO_STRATEGY.md](../../GEO_STRATEGY.md) - Full strategy (evidence-based revision)
+- [SEO-Optimized Filename Generation](#seo-optimized-filename-generation-strategy-october-2025)
+- [Industry Metadata Templates](../../INDUSTRY_METADATA_TEMPLATES.md)
+
+**Status:** 🔲 Planning Phase - Conservative, Research-Backed Approach (Fix Bugs First)
+
+---

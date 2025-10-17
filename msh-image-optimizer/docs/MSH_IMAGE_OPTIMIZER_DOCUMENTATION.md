@@ -187,10 +187,62 @@ These files document a complete investigation cycle from October 2025 when datab
 
 ---
 
-## 9. Document History
+## 9. Testing & Quality Assurance
+
+### Industry-Specific Test Sites
+
+For comprehensive testing across different business types, we maintain separate test site documentation:
+
+**Phase 1 - Core Industries:**
+- **[Wellness Test Site](TEST_SITE_WELLNESS.md)** - Radiant Bloom Studio (spa/beauty)
+  - Purpose: Test wellness metadata, validate wellness ≠ healthcare bug fix
+  - Critical for confirming spa services don't get "Rehabilitation Treatment" metadata
+  - Tests beauty/spa/massage/skincare vocabulary
+
+**Phase 2 - Professional Services:**
+- **[Legal Test Site](TEST_SITE_LAW_FIRM.md)** - Sterling & Associates Law
+  - Purpose: Test professional services metadata generation
+  - Validates legal industry vocabulary (attorneys, counsel, practice areas)
+  - Tests distinction between professional vs. home services vs. healthcare
+
+**Phase 3 - Home Services:**
+- **HVAC Test Site** - Arctic Comfort Systems
+  - Purpose: Test home services/contractor metadata
+  - Validates technical service vocabulary (licensed, emergency, 24/7)
+  - Tests equipment/facility images vs. professional headshots
+
+**General Testing:**
+- **Current Test Site:** `thedot-optimizer-test` (local)
+  - General edge case testing
+  - WordPress test image patterns (alignment, featured, markup)
+  - Dimension pattern detection (580x300, 150x150, etc.)
+  - Generic filename handling (IMG_xxxx.jpg, canola2.jpg)
+
+### Testing Documentation
+
+Each test site includes:
+- Complete business context (UVP, pain points, target audience)
+- WP-CLI setup scripts for rapid deployment
+- Sample page content with industry-specific copy
+- Recommended stock images with download links
+- Expected metadata examples (before/after bug fixes)
+- Edge case scenarios to validate
+- Troubleshooting steps
+
+### Related Documentation
+
+- [Industry Metadata Templates](../../INDUSTRY_METADATA_TEMPLATES.md) - All 17 industry specifications
+- [GEO Strategy](../../GEO_STRATEGY.md) - AI discovery optimization strategy (evidence-based)
+- [MSH R&D Document](MSH_IMAGE_OPTIMIZER_RND.md) - Research and development notes
+- [Wellness Test Site Setup](../../WELLNESS_SITE_SETUP.md) - Quick setup guide for Radiant Bloom
+
+---
+
+## 10. Document History
 
 | Date | Change |
 | --- | --- |
+| 2025-10-15 | Added Testing & QA section with industry-specific test site documentation (wellness, legal, HVAC). |
 | 2025-10-14 | Added Technical Investigation section documenting file resolver, path mismatch handling, and references to detailed investigation findings. |
 | 2025-10-09 | Added Quick Start workflow, documented diagnostics snapshot card, and noted deep scan legacy issue. |
 | 2025-10-06 | Re-authored for the streamlined analyzer, auto usage refresh, and updated duplicate workflow. Older technical notes moved to `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md`. |

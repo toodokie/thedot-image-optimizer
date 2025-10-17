@@ -3,7 +3,7 @@
  * Plugin Name: MSH Image Optimizer
  * Plugin URI: https://github.com/toodokie/thedot-image-optimizer
  * Description: Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking.
- * Version: 1.1.0
+ * Version: 1.2.0
  * Author: Main Street Health
  * Author URI: https://github.com/toodokie
  * Text Domain: msh-image-optimizer
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 final class MSH_Image_Optimizer_Plugin {
-    const VERSION = '1.1.0';
+    const VERSION = '1.2.0';
 
     private static $instance = null;
 
@@ -72,6 +72,8 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-qa-cli.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-media-cleanup.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-webp-delivery.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-service.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-admin.php';

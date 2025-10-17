@@ -1,0 +1,105 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0"
+	xmlns:excerpt="http://wordpress.org/export/1.2/excerpt/"
+	xmlns:content="http://purl.org/rss/1.0/modules/content/"
+	xmlns:wfw="http://wellformedweb.org/CommentAPI/"
+	xmlns:dc="http://purl.org/dc/elements/1.1/"
+	xmlns:wp="http://wordpress.org/export/1.2/">
+<channel>
+	<title>Radiant Bloom Wellness Pages</title>
+	<link>http://radiant-bloom-wellness-site.local</link>
+	<description>Wellness site pages for testing</description>
+	<language>en-US</language>
+	<wp:wxr_version>1.2</wp:wxr_version>
+
+	<item>
+		<title>Welcome to Radiant Bloom Studio</title>
+		<content:encoded><![CDATA[<h2>Your Urban Wellness Sanctuary</h2>
+<p>Experience holistic beauty and wellness treatments in the heart of Toronto. Our expert therapists combine ancient healing techniques with modern spa luxuries.</p>
+
+<h3>Featured Services</h3>
+<ul>
+<li>Therapeutic Massage</li>
+<li>Organic Facials</li>
+<li>Body Treatments</li>
+<li>Wellness Consultations</li>
+</ul>]]></content:encoded>
+		<wp:post_type>page</wp:post_type>
+		<wp:status>publish</wp:status>
+	</item>
+
+	<item>
+		<title>Massage Therapy</title>
+		<content:encoded><![CDATA[<h2>Therapeutic Massage Services</h2>
+<p>Our registered massage therapists provide personalized treatments to relieve muscle tension, reduce stress, and promote overall wellness.</p>
+
+<h3>Massage Types</h3>
+<ul>
+<li>Swedish Massage - Relaxation and circulation</li>
+<li>Deep Tissue Massage - Target chronic pain</li>
+<li>Hot Stone Massage - Ultimate relaxation</li>
+<li>Aromatherapy Massage - Holistic healing</li>
+</ul>]]></content:encoded>
+		<wp:post_type>page</wp:post_type>
+		<wp:status>publish</wp:status>
+	</item>
+
+	<item>
+		<title>Organic Facial Treatments</title>
+		<content:encoded><![CDATA[<h2>Customized Organic Facials</h2>
+<p>Reveal your natural radiance with our organic skincare treatments. We use only natural, plant-based products tailored to your unique skin type.</p>
+
+<h3>Facial Services</h3>
+<ul>
+<li>Hydrating Facial - Deep moisture restoration</li>
+<li>Anti-Aging Facial - Reduce fine lines naturally</li>
+<li>Detox Facial - Purify and refresh</li>
+<li>Brightening Facial - Even skin tone</li>
+</ul>]]></content:encoded>
+		<wp:post_type>page</wp:post_type>
+		<wp:status>publish</wp:status>
+	</item>
+
+	<item>
+		<title>Body Treatments &amp; Wraps</title>
+		<content:encoded><![CDATA[<h2>Luxurious Body Treatments</h2>
+<p>Nourish your skin and relax your body with our signature body treatments featuring organic ingredients and healing touch.</p>
+
+<h3>Body Services</h3>
+<ul>
+<li>Body Scrub - Exfoliation and renewal</li>
+<li>Mud Wrap - Detoxification</li>
+<li>Seaweed Wrap - Skin toning</li>
+<li>Hot Oil Treatment - Deep hydration</li>
+</ul>]]></content:encoded>
+		<wp:post_type>page</wp:post_type>
+		<wp:status>publish</wp:status>
+	</item>
+
+	<item>
+		<title>About Radiant Bloom Studio</title>
+		<content:encoded><![CDATA[<h2>Our Philosophy</h2>
+<p>At Radiant Bloom Studio, we believe in the power of natural beauty and holistic wellness. Our sanctuary in Toronto offers a peaceful escape where mind, body, and spirit unite.</p>
+
+<h3>Our Team</h3>
+<p>Our certified aestheticians and registered massage therapists bring years of expertise in holistic wellness and natural skincare. Every treatment is personalized to your unique needs.</p>]]></content:encoded>
+		<wp:post_type>page</wp:post_type>
+		<wp:status>publish</wp:status>
+	</item>
+
+	<item>
+		<title>Book Your Appointment</title>
+		<content:encoded><![CDATA[<h2>Visit Our Toronto Spa</h2>
+<p><strong>Radiant Bloom Studio</strong><br>
+123 Wellness Lane<br>
+Toronto, ON M5H 2N2</p>
+
+<p><strong>Serving:</strong> Greater Toronto Area, North York, Scarborough, Etobicoke, Midtown Toronto</p>
+
+<p><strong>Hours:</strong> Monday-Saturday 9am-8pm, Sunday 10am-6pm</p>]]></content:encoded>
+		<wp:post_type>page</wp:post_type>
+		<wp:status>publish</wp:status>
+	</item>
+
+</channel>
+</rss>
