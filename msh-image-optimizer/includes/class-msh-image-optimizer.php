@@ -5279,6 +5279,7 @@ class MSH_Image_Optimizer {
         add_action('wp_ajax_msh_remove_filename_suggestion', array($this, 'ajax_remove_filename_suggestion'));
         add_action('wp_ajax_msh_accept_filename_suggestion', array($this, 'ajax_accept_filename_suggestion'));
         add_action('wp_ajax_msh_toggle_file_rename', array($this, 'ajax_toggle_file_rename'));
+        add_action('wp_ajax_msh_toggle_ai_mode', array($this, 'ajax_toggle_ai_mode'));
         add_action('wp_ajax_msh_reject_filename_suggestion', array($this, 'ajax_reject_filename_suggestion'));
         add_action('wp_ajax_msh_preview_meta_text', array($this, 'ajax_preview_meta_text'));
         add_action('wp_ajax_msh_save_edited_meta', array($this, 'ajax_save_edited_meta'));
@@ -5806,7 +5807,7 @@ class MSH_Image_Optimizer {
                 'post_mime_type' => $attachment->post_mime_type,
                 'file_path' => $file_path,
                 'alt_text' => $alt_text,
-                'used_in' => [], // AI regeneration doesn't need usage data
+                'used_in' => '', // AI regeneration doesn't need usage data (empty string for type safety)
                 'ai_regeneration' => true, // Flag to force AI
                 'ai_mode' => $mode,
                 'ai_fields' => $fields
@@ -8621,6 +8622,26 @@ class MSH_Image_Optimizer {
 
         wp_send_json_success([
             'enabled' => $enabled
+        ]);
+    }
+
+    public function ajax_toggle_ai_mode() {
+        check_ajax_referer('msh_toggle_ai_mode', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Unauthorized.', 'msh-image-optimizer')], 403);
+        }
+
+        $mode = isset($_POST['mode']) ? sanitize_text_field($_POST['mode']) : 'manual';
+        $allowed_modes = array('manual', 'assist', 'hybrid');
+        if (!in_array($mode, $allowed_modes, true)) {
+            $mode = 'manual';
+        }
+
+        update_option('msh_ai_mode', $mode);
+
+        wp_send_json_success([
+            'mode' => $mode
         ]);
     }
 

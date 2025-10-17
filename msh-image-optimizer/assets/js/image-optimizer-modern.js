@@ -79,6 +79,7 @@
             direction: 'asc'
         },
         renameEnabled: Boolean(Number((window.mshImageOptimizer && mshImageOptimizer.renameEnabled) || 0)),
+        aiEnabled: Boolean(window.mshImageOptimizer && mshImageOptimizer.aiMode && mshImageOptimizer.aiMode !== 'manual'),
         processing: false,
         stats: {
             total: 0,
@@ -1471,6 +1472,51 @@
                         AppState.renameEnabled = !AppState.renameEnabled;
                         $renameToggle.prop('checked', AppState.renameEnabled);
                         UI.updateFilenameSuggestionsButton();
+                    });
+                });
+            }
+
+            const $aiToggle = $('#enable-ai-mode');
+            const $aiStatus = $('#ai-mode-status-indicator .rename-status-text');
+            const updateAiStatus = (enabled) => {
+                if (!$aiStatus.length) {
+                    return;
+                }
+                if (enabled) {
+                    $aiStatus.html('<span class="status-ready">' + mshImageOptimizer.strings.aiEnabled + '</span>');
+                } else {
+                    $aiStatus.html('<span class="status-disabled">' + mshImageOptimizer.strings.aiDisabled + '</span>');
+                }
+            };
+
+            if ($aiToggle.length) {
+                $aiToggle.prop('checked', AppState.aiEnabled);
+                updateAiStatus(AppState.aiEnabled);
+
+                $aiToggle.on('change', function() {
+                    const enabled = $(this).is(':checked');
+                    const previous = AppState.aiEnabled;
+                    AppState.aiEnabled = enabled;
+                    $.ajax({
+                        url: mshImageOptimizer.ajaxurl,
+                        type: 'POST',
+                        data: {
+                            action: 'msh_toggle_ai_mode',
+                            nonce: mshImageOptimizer.aiToggleNonce,
+                            mode: enabled ? 'assist' : 'manual'
+                        }
+                    }).done((response) => {
+                        if (response && response.success && response.data && response.data.mode) {
+                            AppState.aiEnabled = response.data.mode !== 'manual';
+                            updateAiStatus(AppState.aiEnabled);
+                        } else {
+                            throw new Error('Invalid response');
+                        }
+                    }).fail(() => {
+                        alert(mshImageOptimizer.strings.aiToggleError || 'Unable to update AI setting. Please try again.');
+                        AppState.aiEnabled = previous;
+                        $aiToggle.prop('checked', previous);
+                        updateAiStatus(previous);
                     });
                 });
             }

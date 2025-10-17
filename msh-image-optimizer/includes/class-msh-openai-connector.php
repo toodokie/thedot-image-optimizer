@@ -90,6 +90,57 @@ class MSH_OpenAI_Connector {
             return null;
         }
 
+        // Apply AI regeneration filters if specified
+        $ai_options = !empty($payload['ai_options']) ? $payload['ai_options'] : [];
+        if (!empty($ai_options['ai_regeneration'])) {
+            $ai_mode = !empty($ai_options['ai_mode']) ? $ai_options['ai_mode'] : 'fill-empty';
+            $ai_fields = !empty($ai_options['ai_fields']) ? $ai_options['ai_fields'] : [];
+
+            error_log('[MSH OpenAI] AI Regeneration mode: ' . $ai_mode . ', fields: ' . implode(',', $ai_fields));
+
+            // Filter to only requested fields
+            if (!empty($ai_fields)) {
+                $field_map = [
+                    'title' => 'title',
+                    'alt_text' => 'alt_text',
+                    'caption' => 'caption',
+                    'description' => 'description'
+                ];
+
+                $filtered_metadata = [];
+                foreach ($ai_fields as $field) {
+                    if (isset($field_map[$field]) && isset($parsed_metadata[$field_map[$field]])) {
+                        $filtered_metadata[$field_map[$field]] = $parsed_metadata[$field_map[$field]];
+                    }
+                }
+                $parsed_metadata = $filtered_metadata;
+            }
+
+            // Apply fill-empty mode: only include fields that are currently empty
+            if ($ai_mode === 'fill-empty') {
+                $current_title = get_the_title($attachment_id);
+                $current_alt = get_post_meta($attachment_id, '_wp_attachment_image_alt', true);
+                $current_caption = wp_get_attachment_caption($attachment_id);
+                $current_description = get_post_field('post_content', $attachment_id);
+
+                // Remove fields that already have values
+                if (!empty($current_title) && isset($parsed_metadata['title'])) {
+                    unset($parsed_metadata['title']);
+                }
+                if (!empty($current_alt) && isset($parsed_metadata['alt_text'])) {
+                    unset($parsed_metadata['alt_text']);
+                }
+                if (!empty($current_caption) && isset($parsed_metadata['caption'])) {
+                    unset($parsed_metadata['caption']);
+                }
+                if (!empty($current_description) && isset($parsed_metadata['description'])) {
+                    unset($parsed_metadata['description']);
+                }
+
+                error_log('[MSH OpenAI] Fill-empty mode: filtered to ' . count($parsed_metadata) . ' empty fields');
+            }
+        }
+
         error_log('[MSH OpenAI] Successfully generated metadata for attachment ' . $attachment_id);
         return $parsed_metadata;
     }

@@ -202,6 +202,8 @@ class MSH_Image_Optimizer_Admin {
             'pluginUrl' => untrailingslashit(MSH_IO_PLUGIN_URL),
             'renameEnabled' => get_option('msh_enable_file_rename', '0'),
             'renameToggleNonce' => wp_create_nonce('msh_toggle_file_rename'),
+            'aiMode' => get_option('msh_ai_mode', 'manual'),
+            'aiToggleNonce' => wp_create_nonce('msh_toggle_ai_mode'),
             'indexStats' => $index_summary,
             'onboardingContext' => $sanitized_context,
             'onboardingComplete' => $onboarding_complete,
@@ -245,6 +247,9 @@ class MSH_Image_Optimizer_Admin {
                 'onboardingSummaryNotSpecified' => __('Not specified', 'msh-image-optimizer'),
                 'onboardingSummaryAiYes' => __('Subscribed to updates', 'msh-image-optimizer'),
                 'onboardingSummaryAiNo' => __('No updates requested', 'msh-image-optimizer'),
+                'aiEnabled' => __('✓ AI suggestions enabled', 'msh-image-optimizer'),
+                'aiDisabled' => __('AI suggestions disabled', 'msh-image-optimizer'),
+                'aiToggleError' => __('Unable to update AI setting. Please try again.', 'msh-image-optimizer'),
                 'contextSwitchSuccess' => __('Active context updated.', 'msh-image-optimizer'),
                 'contextSwitchError' => __('Unable to change the active context right now.', 'msh-image-optimizer'),
                 'contextSwitcherLabel' => __('Active Context', 'msh-image-optimizer'),
@@ -693,6 +698,31 @@ class MSH_Image_Optimizer_Admin {
                     </p>
                     <p class="msh-inline-note" style="margin-top: 4px;"><em><?php _e('We scan published content (pages, posts, widgets) and include images that are in use, plus auto-include newer SVG icons so they never get missed.', 'msh-image-optimizer'); ?></em></p>
                     <p class="msh-inline-note"><em><?php _e('Smart Indexing: Files are indexed automatically when renamed for optimal performance', 'msh-image-optimizer'); ?></em></p>
+                    <div class="msh-ai-toggle-section">
+                        <label class="rename-toggle-wrapper ai-toggle-wrapper">
+                            <input type="checkbox" id="enable-ai-mode" class="rename-toggle-checkbox"
+                                   <?php checked(get_option('msh_ai_mode', 'manual') !== 'manual'); ?>>
+                            <span class="rename-toggle-slider"></span>
+                            <div class="rename-toggle-text">
+                                <strong><?php _e('Enable AI Metadata Suggestions', 'msh-image-optimizer'); ?></strong>
+                                <span class="rename-toggle-description">
+                                    <?php _e('When enabled, Analyze will use OpenAI to generate titles, alt text, captions, and descriptions. Disable to fall back to rules-based suggestions.', 'msh-image-optimizer'); ?>
+                                </span>
+                            </div>
+                        </label>
+                        <div id="ai-mode-status-indicator" class="rename-status ai-mode-status">
+                            <span class="rename-status-text">
+                                <?php
+                                $ai_enabled = get_option('msh_ai_mode', 'manual') !== 'manual';
+                                if ($ai_enabled) {
+                                    echo '<span class="status-ready">' . __('✓ AI suggestions enabled', 'msh-image-optimizer') . '</span>';
+                                } else {
+                                    echo '<span class="status-disabled">' . __('AI suggestions disabled', 'msh-image-optimizer') . '</span>';
+                                }
+                                ?>
+                            </span>
+                        </div>
+                    </div>
                     <div class="msh-rename-settings-section step-rename-settings">
                         <div class="rename-important-callout">
                             <strong><?php _e('File renaming powers Step 1', 'msh-image-optimizer'); ?></strong>

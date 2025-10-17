@@ -252,7 +252,7 @@ class MSH_AI_Service {
      * @param MSH_Contextual_Meta_Generator  $generator     Generator instance (for filters).
      * @return array|null
      */
-    public function maybe_generate_metadata($attachment_id, array $context, $generator) {
+    public function maybe_generate_metadata($attachment_id, array $context, $generator, $ai_options = []) {
         $state = $this->determine_access_state();
         if (!$state['allowed']) {
             return null;
@@ -266,6 +266,7 @@ class MSH_AI_Service {
             'plan_tier' => $state['plan_tier'],
             'features' => $state['features'],
             'api_key' => $state['api_key'],
+            'ai_options' => $ai_options, // Pass AI regeneration options (mode, fields)
         );
 
         /**
