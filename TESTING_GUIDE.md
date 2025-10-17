@@ -378,6 +378,15 @@ tail -f "/Users/anastasiavolkova/Local Sites/thedot-optimizer-test/app/public/wp
 
 ---
 
+## Desktop Notifications
+
+1. In **Step 1**, click **Enable Notifications** (shown only if the browser supports the Notification API).
+2. Approve the browser permission prompt and confirm the status text flips to “Notifications enabled.”
+3. **Secure-origin requirement:** browser notifications only work on `https://…` or `http://localhost`. For Local URLs like `http://thedot-optimizer-test.local`, either trust the SSL cert in Local (switching the site to HTTPS) or enable the Chromium flag `unsafely-treat-insecure-origin-as-secure` for that origin before testing.
+4. Kick off an Analyze or Optimize run, switch to another tab, and wait for completion. You should receive a desktop toast summarizing the outcome; if notifications were blocked, the status message will call it out and the enable button will be hidden.
+
+---
+
 ## Next Steps After Testing
 
 Once basic testing passes:

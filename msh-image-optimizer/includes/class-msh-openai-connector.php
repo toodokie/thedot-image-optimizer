@@ -43,7 +43,16 @@ class MSH_OpenAI_Connector {
         }
 
         // Get API key
+        // Priority: 1) Payload API key (BYOK), 2) Option API key (BYOK), 3) Platform key for bundled credits
         $api_key = !empty($payload['api_key']) ? $payload['api_key'] : get_option('msh_ai_api_key', '');
+
+        // For bundled access mode, use platform key from wp-config.php
+        if (empty($api_key) && !empty($payload['access_mode']) && $payload['access_mode'] === 'bundled') {
+            $api_key = defined('MSH_PLATFORM_OPENAI_KEY') ? MSH_PLATFORM_OPENAI_KEY : '';
+            if (!empty($api_key)) {
+                error_log('[MSH OpenAI] Using platform API key for bundled access');
+            }
+        }
 
         if (empty($api_key)) {
             error_log('[MSH OpenAI] No API key available');

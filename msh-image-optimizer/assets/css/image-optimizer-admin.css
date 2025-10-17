@@ -919,7 +919,7 @@ select.msh-select,
     margin: 16px 0 20px;
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
 }
 
 .msh-ai-toggle-section .rename-toggle-wrapper {
@@ -932,6 +932,85 @@ select.msh-select,
 
 .ai-mode-status {
     margin-top: 0;
+}
+
+.ai-toggle-panel {
+    padding: var(--section-padding-sm);
+    gap: var(--section-gap-sm);
+}
+
+.ai-toggle-panel .rename-setting-card {
+    margin: 0;
+}
+
+.ai-toggle-panel .rename-setting-content {
+    align-items: center;
+}
+
+.msh-notification-section {
+    margin: 12px 0 20px;
+}
+
+.notification-panel {
+    padding: var(--section-padding-sm);
+    gap: var(--section-gap-sm);
+}
+
+.notification-panel .rename-setting-card {
+    margin: 0;
+}
+
+.notification-setting-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: var(--section-gap-sm);
+    flex-wrap: wrap;
+}
+
+.notification-copy {
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.notification-copy strong {
+    font-family: var(--font-primary);
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #35332f;
+    font-size: 0.95rem;
+}
+
+.notification-copy p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: rgba(53, 51, 47, 0.75);
+    line-height: 1.4;
+}
+
+.notification-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.notification-status-text {
+    font-size: 0.85rem;
+    color: rgba(53, 51, 47, 0.65);
+}
+
+.notification-status-text.is-success {
+    color: #2f855a;
+}
+
+.notification-status-text.is-warning {
+    color: #d97706;
+}
+
+.notification-status-text.is-error {
+    color: #b91c1c;
 }
 
 .msh-ai-regen-section-inline {
@@ -3866,4 +3945,22 @@ tr.context-updated {
     padding: 16px 24px;
     border-top: 1px solid #e0e0e0;
     background: #f9f9f9;
+}
+.manual-edit-indicator {
+    display: inline-block;
+    margin-left: 8px;
+    padding: 1px 6px;
+    border-radius: 999px;
+    background-color: #fef3c7;
+    color: #92400e;
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+}
+
+.meta-preview-status--manual {
+    background: #fff7ed;
+    border-left: 3px solid #f97316;
+    color: #c2410c;
 }

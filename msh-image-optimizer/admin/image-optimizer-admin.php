@@ -180,10 +180,20 @@ class MSH_Image_Optimizer_Admin {
         $ai_plan_tier = get_option('msh_plan_tier', 'free');
         $ai_credits_used = 0;
         $ai_last_job = null;
+        $ai_credits = 0;
+        $ai_access_mode = '';
 
         if (class_exists('MSH_AI_Service')) {
             $ai_service = MSH_AI_Service::get_instance();
-            $ai_credits = $ai_service->get_credit_balance();
+            $access_state = $ai_service->determine_access_state();
+            $ai_access_mode = isset($access_state['access_mode']) ? $access_state['access_mode'] : '';
+
+            if ($ai_access_mode === 'byok') {
+                $ai_credits = PHP_INT_MAX;
+            } else {
+                $ai_credits = $ai_service->get_credit_balance();
+            }
+
             $credit_usage = get_option('msh_ai_credit_usage', array());
             $current_month = date('Y-m');
             $ai_credits_used = isset($credit_usage[$current_month]) ? $credit_usage[$current_month] : 0;
@@ -216,6 +226,7 @@ class MSH_Image_Optimizer_Admin {
             'contextChoices' => $context_menu_options,
             'contextChoiceMap' => $context_choice_map,
             'aiCredits' => $ai_credits,
+            'aiAccessMode' => $ai_access_mode,
             'aiPlanTier' => $ai_plan_tier,
             'aiCreditsUsedMonth' => $ai_credits_used,
             'aiLastJob' => $ai_last_job,
@@ -658,6 +669,35 @@ class MSH_Image_Optimizer_Admin {
                     </div>
                 </div>
 
+                <!-- Manual Edit Warning Modal -->
+                <div id="ai-manual-edit-warning-modal" class="ai-regen-modal" style="display: none;">
+                    <div class="ai-modal-overlay"></div>
+                    <div class="ai-modal-content" style="max-width: 500px;">
+                        <div class="ai-modal-header">
+                            <h3><?php _e('Manual Edits Detected', 'msh-image-optimizer'); ?></h3>
+                            <button type="button" class="ai-manual-warning-close" aria-label="<?php esc_attr_e('Close', 'msh-image-optimizer'); ?>">×</button>
+                        </div>
+
+                        <div class="ai-modal-body">
+                            <p class="ai-modal-description" id="ai-manual-edit-message">
+                                <!-- Message will be populated by JavaScript -->
+                            </p>
+                            <p style="margin-top: 15px; color: #666; font-size: 14px;">
+                                <?php _e('AI Regeneration will stage new metadata but won\'t overwrite your manual changes unless you explicitly apply it during the Optimize step.', 'msh-image-optimizer'); ?>
+                            </p>
+                        </div>
+
+                        <div class="ai-modal-footer">
+                            <button type="button" id="ai-manual-warning-cancel" class="button button-dot-secondary">
+                                <?php _e('Cancel', 'msh-image-optimizer'); ?>
+                            </button>
+                            <button type="button" id="ai-manual-warning-continue" class="button button-dot-primary">
+                                <?php _e('Continue', 'msh-image-optimizer'); ?>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Progress Overview -->
                 <div class="msh-progress-section">
                     <h2><?php _e('Image Optimization Progress', 'msh-image-optimizer'); ?></h2>
@@ -694,28 +734,49 @@ class MSH_Image_Optimizer_Admin {
                 <div class="msh-actions-section">
                     <h2 style="color: #35332f;"><?php _e('Step 1: Optimize Published Images', 'msh-image-optimizer'); ?></h2>
                     <div class="msh-ai-toggle-section">
-                        <label class="rename-toggle-wrapper ai-toggle-wrapper">
-                            <input type="checkbox" id="enable-ai-mode" class="rename-toggle-checkbox"
-                                   <?php checked(get_option('msh_ai_mode', 'manual') !== 'manual'); ?>>
-                            <span class="rename-toggle-slider"></span>
-                            <div class="rename-toggle-text">
-                                <strong><?php _e('Enable AI Metadata Suggestions', 'msh-image-optimizer'); ?></strong>
-                                <span class="rename-toggle-description">
-                                    <?php _e('When enabled, Analyze will use OpenAI to generate titles, alt text, captions, and descriptions. Disable to fall back to rules-based suggestions.', 'msh-image-optimizer'); ?>
-                                </span>
+                        <div class="msh-rename-settings-section ai-toggle-panel">
+                            <div class="rename-setting-card">
+                                <div class="rename-setting-content">
+                                    <label class="rename-toggle-wrapper ai-toggle-wrapper">
+                                        <input type="checkbox" id="enable-ai-mode" class="rename-toggle-checkbox"
+                                               <?php checked(get_option('msh_ai_mode', 'manual') !== 'manual'); ?>>
+                                        <span class="rename-toggle-slider"></span>
+                                        <div class="rename-toggle-text">
+                                            <strong><?php _e('Enable AI Metadata Suggestions', 'msh-image-optimizer'); ?></strong>
+                                        </div>
+                                    </label>
+                                    <div id="ai-mode-status-indicator" class="rename-status ai-mode-status">
+                                        <span class="rename-status-text">
+                                            <?php
+                                            $ai_enabled = get_option('msh_ai_mode', 'manual') !== 'manual';
+                                            if ($ai_enabled) {
+                                                echo '<span class="status-ready">' . __('✓ AI suggestions enabled', 'msh-image-optimizer') . '</span>';
+                                            } else {
+                                                echo '<span class="status-disabled">' . __('AI suggestions disabled', 'msh-image-optimizer') . '</span>';
+                                            }
+                                            ?>
+                                        </span>
+                                    </div>
+                                </div>
                             </div>
-                        </label>
-                        <div id="ai-mode-status-indicator" class="rename-status ai-mode-status">
-                            <span class="rename-status-text">
-                                <?php
-                                $ai_enabled = get_option('msh_ai_mode', 'manual') !== 'manual';
-                                if ($ai_enabled) {
-                                    echo '<span class="status-ready">' . __('✓ AI suggestions enabled', 'msh-image-optimizer') . '</span>';
-                                } else {
-                                    echo '<span class="status-disabled">' . __('AI suggestions disabled', 'msh-image-optimizer') . '</span>';
-                                }
-                                ?>
-                            </span>
+                        </div>
+                    </div>
+                    <div class="msh-notification-section">
+                        <div class="msh-rename-settings-section notification-panel">
+                            <div class="rename-setting-card">
+                                <div class="notification-setting-content">
+                                    <div class="notification-copy">
+                                        <strong><?php _e('Desktop Notifications', 'msh-image-optimizer'); ?></strong>
+                                        <p><?php _e('Get an OS notification when optimization finishes so you can work in other tabs.', 'msh-image-optimizer'); ?></p>
+                                    </div>
+                                    <div class="notification-actions">
+                                        <button type="button" class="button button-dot-secondary" id="enable-desktop-notifications">
+                                            <?php _e('Enable Notifications', 'msh-image-optimizer'); ?>
+                                        </button>
+                                        <span class="notification-status-text" id="notification-status-text"></span>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                     <p style="margin-bottom: 15px; color: #35332f; font-size: 14px; background: #faf9f6; padding: 10px; border-radius: 4px;">

@@ -117,7 +117,14 @@ class MSH_AI_Ajax_Handlers {
         }
 
         $ai_service = MSH_AI_Service::get_instance();
-        $balance = $ai_service->get_credit_balance();
+        $access_state = $ai_service->determine_access_state();
+        $access_mode = isset($access_state['access_mode']) ? $access_state['access_mode'] : '';
+
+        if ($access_mode === 'byok') {
+            $balance = PHP_INT_MAX;
+        } else {
+            $balance = $ai_service->get_credit_balance();
+        }
 
         $credit_usage = get_option('msh_ai_credit_usage', []);
         $current_month = date('Y-m');
@@ -126,7 +133,8 @@ class MSH_AI_Ajax_Handlers {
         wp_send_json_success([
             'balance' => $balance,
             'used_this_month' => $used_this_month,
-            'plan_tier' => get_option('msh_plan_tier', 'free')
+            'plan_tier' => get_option('msh_plan_tier', 'free'),
+            'access_mode' => $access_mode
         ]);
     }
 

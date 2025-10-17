@@ -16,6 +16,11 @@
         return;
     }
 
+    // Ensure AI access mode is always defined
+    if (typeof mshImageOptimizer.aiAccessMode === 'undefined' || mshImageOptimizer.aiAccessMode === null) {
+        mshImageOptimizer.aiAccessMode = '';
+    }
+
     // =============================================================================
     // CONFIGURATION & CONSTANTS
     // =============================================================================
@@ -47,6 +52,7 @@
         'webp_missing': { label: 'WebP Missing', badgeClass: 'status-warning' },
         'webp_optimized': { label: 'WebP Active', badgeClass: 'status-optimized' },
         'context_stale': { label: 'Context Updated', badgeClass: 'status-warning' },
+        'ai_pending': { label: 'AI Metadata Ready', badgeClass: 'status-warning' },
         'needs_attention': { label: 'Attention Required', badgeClass: 'status-warning' }
     };
 
@@ -60,6 +66,54 @@
         const contextFlag = contextDetails && (contextDetails.location_specific === true || contextDetails.location_specific === 1 || contextDetails.location_specific === '1');
 
         return !!(directFlag || contextFlag);
+    }
+
+    function isUnlimitedAiCredits() {
+        return (mshImageOptimizer.aiAccessMode || '') === 'byok';
+    }
+
+    function getAiCreditsNumeric() {
+        if (isUnlimitedAiCredits()) {
+            return Number.POSITIVE_INFINITY;
+        }
+
+        const credits = Number(mshImageOptimizer.aiCredits);
+        return Number.isFinite(credits) ? credits : 0;
+    }
+
+    function formatAiCreditsValue(value) {
+        if (isUnlimitedAiCredits()) {
+            return 'Unlimited';
+        }
+
+        const resolved = (typeof value !== 'undefined' && value !== null) ? Number(value) : Number(mshImageOptimizer.aiCredits);
+        if (!Number.isFinite(resolved)) {
+            return '0';
+        }
+
+        return resolved.toString();
+    }
+
+    function setAiCredits(value, accessMode) {
+        if (typeof accessMode === 'string' && accessMode !== '') {
+            mshImageOptimizer.aiAccessMode = accessMode;
+        }
+
+        if (isUnlimitedAiCredits()) {
+            mshImageOptimizer.aiCredits = Number.POSITIVE_INFINITY;
+        } else {
+            const incoming = (typeof value !== 'undefined' && value !== null) ? Number(value) : Number(mshImageOptimizer.aiCredits);
+            mshImageOptimizer.aiCredits = Number.isFinite(incoming) ? incoming : 0;
+        }
+
+        const displayValue = formatAiCreditsValue();
+        $('#ai-credits-available').text(displayValue);
+        $('#ai-estimate-available').text(displayValue);
+
+        if (isUnlimitedAiCredits()) {
+            $('#ai-insufficient-credits').hide();
+            $('#ai-modal-start').prop('disabled', false);
+        }
     }
 
     // =============================================================================
@@ -86,6 +140,102 @@
             optimized: 0,
             remaining: 0,
             percentage: 0
+        }
+    };
+
+    const Notifications = {
+        supported: typeof Notification !== 'undefined',
+        init() {
+            this.$button = $('#enable-desktop-notifications');
+            this.$status = $('#notification-status-text');
+
+            if (!this.$button.length || !this.$status.length) {
+                return;
+            }
+
+            if (!this.supported) {
+                this.$button.prop('disabled', true).hide();
+                this.setStatus('warning', 'Desktop notifications are not supported in this browser.');
+                return;
+            }
+
+            this.updateUI(Notification.permission);
+
+            this.$button.on('click', (event) => {
+                event.preventDefault();
+                this.requestPermission();
+            });
+        },
+        async requestPermission() {
+            if (!this.supported) {
+                return;
+            }
+
+            try {
+                const permission = await Notification.requestPermission();
+                this.updateUI(permission);
+
+                if (permission === 'granted') {
+                    this.setStatus('success', 'Notifications enabled. We will alert you when jobs finish.');
+                    this.notify('Notifications enabled', 'You will receive a desktop alert when optimization completes.');
+                } else if (permission === 'denied') {
+                    this.setStatus('error', 'Notifications blocked. Re-enable them in your browser settings.');
+                }
+            } catch (error) {
+                console.warn('Notification permission request failed:', error);
+                this.setStatus('error', 'Unable to enable notifications right now.');
+            }
+        },
+        updateUI(permission) {
+            if (!this.$button || !this.$button.length) {
+                return;
+            }
+
+            if (permission === 'granted') {
+                this.$button.prop('disabled', true).hide();
+                this.setStatus('success', 'Notifications enabled. We will alert you when jobs finish.');
+            } else if (permission === 'denied') {
+                this.$button.prop('disabled', true).hide();
+                this.setStatus('error', 'Notifications blocked. Re-enable them in your browser settings.');
+            } else {
+                this.$button.prop('disabled', false).show();
+                this.setStatus('', '');
+            }
+        },
+        setStatus(type, message) {
+            if (!this.$status || !this.$status.length) {
+                return;
+            }
+            this.$status.removeClass('is-success is-warning is-error');
+            if (type) {
+                this.$status.addClass(`is-${type}`);
+            }
+            this.$status.text(message || '');
+        },
+        notify(title, body) {
+            if (!this.supported || Notification.permission !== 'granted') {
+                return;
+            }
+
+            try {
+                const options = {
+                    body: body || '',
+                    icon: (window.mshImageOptimizer && mshImageOptimizer.pluginUrl)
+                        ? `${mshImageOptimizer.pluginUrl}/assets/icons/Favicon.png`
+                        : undefined,
+                    silent: false
+                };
+                const notification = new Notification(title, options);
+                if (notification) {
+                    notification.onclick = () => {
+                        if (window.focus) {
+                            window.focus();
+                        }
+                    };
+                }
+            } catch (error) {
+                console.warn('Failed to show notification:', error);
+            }
         }
     };
 
@@ -1895,7 +2045,12 @@
             const issuesText = (image.issues || []).map((issue) => issue.label).join(', ');
             const issuesDisplay = issuesText ? issuesText : 'No issues flagged';
             const needsOptimization = image.optimization_status !== 'optimized';
-            const needsReoptimizationHelper = image.optimization_status === 'context_stale';
+            let optimizeHelperMarkup = '';
+            if (image.optimization_status === 'context_stale') {
+                optimizeHelperMarkup = '<div class="optimize-helper">Needs re-optimization</div>';
+            } else if (image.optimization_status === 'ai_pending') {
+                optimizeHelperMarkup = '<div class="optimize-helper">AI metadata ready</div>';
+            }
             const optimizeButtonClasses = ['button', 'button-small', 'optimize-single'];
             if (!needsOptimization) {
                 optimizeButtonClasses.push('is-disabled');
@@ -1905,8 +2060,17 @@
             // Generate thumbnail URL from WordPress attachment
             const thumbnailUrl = image.thumbnail_url || `${window.location.origin}/wp-content/uploads/${image.file_path}`;
             const filename = image.filename || (image.file_path ? image.file_path.split('/').pop() : 'undefined');
-            const title = image.title || image.post_title || 'No title';
-            const altText = image.alt_text || image.post_title || '';
+            const aiMeta = image.generated_meta || {};
+            const aiTitle = aiMeta.title || '';
+            const aiAlt = aiMeta.alt_text || '';
+            const titleSource = aiTitle || image.title || image.post_title || 'No title';
+            const altSource = aiAlt || image.alt_text || image.post_title || aiTitle || '';
+            const safeTitle = this.escapeHtml(titleSource);
+            const safeAlt = this.escapeHtml(altSource);
+            const safeFilename = this.escapeHtml(filename);
+            const manualEditIndicator = image.metadata_source === 'manual_edit'
+                ? '<span class="manual-edit-indicator" title="Metadata locked by manual edits">Manual edit</span>'
+                : '';
 
             const showEditIcon = !image.suggested_filename || image.optimized_date;
             const editButtonMarkup = showEditIcon
@@ -1921,15 +2085,16 @@
                         <input type="checkbox" class="image-select" value="${image.ID}" />
                     </td>
                     <td class="image-cell">
-                        <img src="${thumbnailUrl}" alt="${altText}" class="table-thumbnail" />
+                        <img src="${thumbnailUrl}" alt="${safeAlt}" class="table-thumbnail" />
                     </td>
                     <td class="filename-cell">
                         <div class="filename-stack">
                             <div class="current-filename-display">
-                                <strong class="filename-heading">${filename}</strong>
+                                <strong class="filename-heading">${safeFilename}</strong>
                                 ${editButtonMarkup}
+                                ${manualEditIndicator}
                             </div>
-                            <span class="filename-subheading">${title}</span>
+                            <span class="filename-subheading">${safeTitle}</span>
                         </div>
                         ${this.renderFilenameSuggestion(image)}
                         ${this.renderMetaPreview(image)}
@@ -1954,7 +2119,7 @@
                         <button class="${optimizeButtonClasses.join(' ')}" data-id="${image.ID}" ${optimizeDisabledAttr}>
                             Optimize
                         </button>
-                        ${needsReoptimizationHelper ? '<div class="optimize-helper">Needs re-optimization</div>' : ''}
+                        ${optimizeHelperMarkup}
                     </td>
                 </tr>
             `;
@@ -1999,8 +2164,17 @@
         }
 
         static renderFilenameSuggestion(image) {
-            // Don't show suggestion if file has already been optimized (suggestion was applied)
-            if (!image.suggested_filename || image.optimized_date) {
+            // Don't show suggestion if there isn't one
+            if (!image.suggested_filename) {
+                return '';
+            }
+
+            // Check if suggested filename matches current filename
+            const currentFilename = image.filename || (image.file_path ? image.file_path.split('/').pop() : '');
+            const suggestedFilename = image.suggested_filename;
+
+            // Don't show if suggestion matches current filename (already applied)
+            if (currentFilename === suggestedFilename) {
                 return '';
             }
 
@@ -2087,10 +2261,19 @@
                 return '';
             }
 
+            const aiNotice = image.has_pending_ai_meta
+                ? '<div class="meta-preview-status meta-preview-status--ai">AI metadata staged – run Optimize to apply</div>'
+                : '';
+            const manualNotice = image.metadata_source === 'manual_edit'
+                ? '<div class="meta-preview-status meta-preview-status--manual">Manual edits locked – Optimize won’t overwrite current metadata</div>'
+                : '';
+
             return `
                 <details class="meta-preview">
                     <summary class="meta-preview-summary">Meta Preview</summary>
                     <div class="meta-preview-body">
+                        ${aiNotice}
+                        ${manualNotice}
                         ${metaFields.join('<br>')}
                         <div class="meta-preview-actions">
                             <button class="button button-small edit-meta brand-primary" data-id="${image.ID}">Edit</button>
@@ -2886,20 +3069,45 @@
 
         static showProgressModal(title, status, progress) {
             this.prepareAudioContext();
+            const $modal = $('#processing-modal');
+            const $progressContainer = $('#modal-progress');
             $('#modal-title').text(title);
             $('#modal-status').text(status);
-            $('#modal-progress-fill').css('width', progress + '%');
-            $('#modal-progress-text').text(Math.round(progress) + '%');
+
+            if (progress === null || progress === undefined || Number.isNaN(progress)) {
+                $modal.addClass('is-indeterminate');
+                $progressContainer.hide();
+                $('#modal-progress-fill').css('width', '0%');
+                $('#modal-progress-text').text('');
+            } else {
+                $modal.removeClass('is-indeterminate');
+                $progressContainer.show();
+                $('#modal-progress-fill').css('width', progress + '%');
+                $('#modal-progress-text').text(Math.round(progress) + '%');
+            }
+
             $('#modal-dismiss').hide();
-            $('#processing-modal').show();
+            $modal.show();
         }
 
         static updateProgressModal(title, status, progress) {
             if (title) $('#modal-title').text(title);
             if (status) $('#modal-status').text(status);
             if (progress !== undefined) {
-                $('#modal-progress-fill').css('width', progress + '%');
-                $('#modal-progress-text').text(Math.round(progress) + '%');
+                const $modal = $('#processing-modal');
+                const $progressContainer = $('#modal-progress');
+
+                if (progress === null || Number.isNaN(progress)) {
+                    $modal.addClass('is-indeterminate');
+                    $progressContainer.hide();
+                    $('#modal-progress-fill').css('width', '0%');
+                    $('#modal-progress-text').text('');
+                } else {
+                    $modal.removeClass('is-indeterminate');
+                    $progressContainer.show();
+                    $('#modal-progress-fill').css('width', progress + '%');
+                    $('#modal-progress-text').text(Math.round(progress) + '%');
+                }
             }
         }
 
@@ -2914,7 +3122,12 @@
         }
 
         static hideProgressModal() {
-            $('#processing-modal').hide();
+            const $modal = $('#processing-modal');
+            $modal.removeClass('is-indeterminate');
+            $('#modal-progress').show();
+            $('#modal-progress-fill').css('width', '0%');
+            $('#modal-progress-text').text('0%');
+            $modal.hide();
             $('#modal-dismiss').hide();
         }
 
@@ -3596,6 +3809,9 @@
                 // Final completion
                 UI.updateProgressModal(`${label} Complete`, `Successfully optimized ${processed} images!`, 100);
                 UI.updateLog(`✅ ${label} optimization complete! Processed ${processed} images.`);
+                if (typeof document !== 'undefined' && typeof document.hidden !== 'undefined' && document.hidden) {
+                    Notifications.notify('Optimization complete', `${processed} image${processed === 1 ? '' : 's'} optimized successfully.`);
+                }
 
                 CONFIG.diagnostics.last_optimization_run = new Date().toISOString();
                 UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
@@ -3677,7 +3893,15 @@
 
             Wizard.ensureActive(1);
             AppState.processing = true;
-            UI.showProgressModal('Analyzing Images', 'Analyzing published images...', 0);
+            const aiActive = AppState.aiEnabled;
+            const initialStatus = aiActive
+                ? 'Analyzing images with AI... This may take a few minutes'
+                : 'Analyzing published images...';
+            const progressStatus = aiActive
+                ? 'Scanning images and staging AI metadata...'
+                : 'Scanning published images and metadata...';
+
+            UI.showProgressModal('Analyzing Images', initialStatus, 0);
             UI.updateLog('Starting image analysis...');
 
             // Start progress simulation while analysis is running
@@ -3686,7 +3910,7 @@
 
             // Update initial progress right away
             UI.updateProgressModal('Analyzing Images',
-                'Scanning published images and metadata...',
+                progressStatus,
                 currentProgress);
 
             // Start the progress simulation
@@ -3695,7 +3919,7 @@
                 if (currentProgress > 85) currentProgress = 85; // Cap at 85% until completion
 
                 UI.updateProgressModal(null,
-                    `Scanning published images and metadata...`,
+                    progressStatus,
                     Math.floor(currentProgress));
             }, 400); // Update every 400ms
 
@@ -3729,6 +3953,13 @@
                         UI.updateLog(`Analysis complete. ${needsOptimization} image(s) need optimization.`);
                     } else {
                         UI.updateLog('Analysis complete. All images are optimized!');
+                    }
+
+                    if (typeof document !== 'undefined' && typeof document.hidden !== 'undefined' && document.hidden) {
+                        const message = needsOptimization > 0
+                            ? `${needsOptimization} image${needsOptimization === 1 ? '' : 's'} need optimization.`
+                            : 'All published images are optimized.';
+                        Notifications.notify('Analysis complete', message);
                     }
 
                     // Play completion sound
@@ -4264,7 +4495,7 @@
                     type: 'POST',
                     data: {
                         action: 'msh_check_capabilities',
-                        nonce: mshImageOptimizer.cleanup_nonce
+                        nonce: mshImageOptimizer.nonce
                     }
                 });
 
@@ -5747,7 +5978,7 @@
 
         initDashboard() {
             // Populate initial credit stats
-            $('#ai-credits-available').text(mshImageOptimizer.aiCredits || 0);
+            setAiCredits(mshImageOptimizer.aiCredits, mshImageOptimizer.aiAccessMode || '');
             $('#ai-plan-tier').text(this.getPlanLabel(mshImageOptimizer.aiPlanTier || 'free'));
             $('#ai-credits-used-month').text(mshImageOptimizer.aiCreditsUsedMonth || 0);
 
@@ -5769,6 +6000,7 @@
 
         initModal() {
             const $modal = $('#ai-regen-modal');
+            const $warningModal = $('#ai-manual-edit-warning-modal');
 
             // Open modal handler
             $('#start-ai-regeneration').on('click', () => {
@@ -5789,6 +6021,16 @@
 
             // Start regeneration
             $('#ai-modal-start').on('click', () => this.startRegeneration());
+
+            // Manual edit warning modal handlers
+            $('.ai-manual-warning-close, #ai-manual-warning-cancel').on('click', () => {
+                $warningModal.fadeOut(200);
+            });
+
+            $('#ai-manual-warning-continue').on('click', () => {
+                $warningModal.fadeOut(200);
+                this.proceedWithRegeneration();
+            });
         },
 
         initJobControls() {
@@ -5846,12 +6088,16 @@
                 },
                 success: (response) => {
                     if (response.success) {
-                        $('#ai-estimate-count').text(response.data.image_count);
-                        $('#ai-estimate-credits').text(response.data.estimated_credits);
-                        $('#ai-estimate-available').text(mshImageOptimizer.aiCredits);
+                        const estimatedCredits = Number(response.data.estimated_credits) || 0;
 
-                        // Show warning if insufficient credits
-                        if (response.data.estimated_credits > mshImageOptimizer.aiCredits) {
+                        $('#ai-estimate-count').text(response.data.image_count);
+                        $('#ai-estimate-credits').text(estimatedCredits);
+                        $('#ai-estimate-available').text(formatAiCreditsValue());
+
+                        const creditsAvailable = getAiCreditsNumeric();
+                        const showWarning = Number.isFinite(creditsAvailable) && estimatedCredits > creditsAvailable;
+
+                        if (showWarning) {
                             $('#ai-insufficient-credits').show();
                             $('#ai-modal-start').prop('disabled', true);
                         } else {
@@ -5875,11 +6121,56 @@
                 return;
             }
 
-            // Close modal
-            $('#ai-regen-modal').fadeOut(200);
+            // Store parameters for later use
+            this.pendingRegenerationParams = { scope, mode, fields };
 
-            // Show progress overlay
-            this.showProgressOverlay();
+            // Run preflight check for manual edits
+            this.checkForManualEdits(scope);
+        },
+
+        checkForManualEdits(scope) {
+            // Get images based on scope
+            let imagesToCheck = [];
+
+            if (scope === 'all') {
+                imagesToCheck = AppState.images;
+            } else if (scope === 'published') {
+                imagesToCheck = AppState.images.filter(img => img.is_published);
+            } else if (scope === 'missing') {
+                imagesToCheck = AppState.images.filter(img =>
+                    !img.title || !img.alt_text || !img.caption || !img.description
+                );
+            }
+
+            // Count images with manual edits
+            const manualEditCount = imagesToCheck.filter(img =>
+                img.metadata_source === 'manual_edit'
+            ).length;
+
+            const totalCount = imagesToCheck.length;
+
+            if (manualEditCount > 0) {
+                // Show warning modal
+                const message = `${manualEditCount} of ${totalCount} selected images have manual edits. AI Regeneration will stage new metadata but won't overwrite your manual changes unless you explicitly apply it. Continue?`;
+                $('#ai-manual-edit-message').text(message);
+                $('#ai-regen-modal').fadeOut(200);
+                $('#ai-manual-edit-warning-modal').fadeIn(200);
+            } else {
+                // No manual edits, proceed directly
+                $('#ai-regen-modal').fadeOut(200);
+                this.proceedWithRegeneration();
+            }
+        },
+
+        proceedWithRegeneration() {
+            const { scope, mode, fields } = this.pendingRegenerationParams;
+
+            // Show progress modal using brand design system
+            UI.showProgressModal(
+                'AI Regeneration',
+                'Analyzing images with AI... This may take a few minutes',
+                null
+            );
 
             // Call existing analyze with AI regeneration params
             UI.updateLog('Starting AI regeneration analysis...');
@@ -5896,8 +6187,6 @@
                     ai_fields: fields
                 },
                 success: (response) => {
-                    this.hideProgressOverlay();
-
                     if (response.success) {
                         // Use existing analyze result handling
                         AppState.images = response.data.images || [];
@@ -5918,19 +6207,46 @@
                         // Play completion sound
                         UI.playCompletionSound();
 
+                        // Update credit display if returned in response
+                        if (response.data.credits_remaining !== undefined) {
+                            const accessMode = response.data.ai_access_mode || mshImageOptimizer.aiAccessMode;
+                            setAiCredits(response.data.credits_remaining, accessMode);
+                            UI.updateLog(`Credits remaining: ${formatAiCreditsValue()}`);
+                        }
+
                         // Update diagnostics
                         CONFIG.diagnostics.last_analyzer_run = new Date().toISOString();
                         UI.renderDiagnostics(CONFIG.diagnostics, CONFIG.indexStats);
+
+                        // Show completion status with dismiss button
+                        UI.updateProgressModal(
+                            'AI Regeneration Complete',
+                            `Successfully analyzed ${AppState.images.length} images`,
+                            100
+                        );
+                        UI.enableModalDismiss('Dismiss');
+                        UI.playCompletionSound();
                     } else {
                         console.error('AI Regeneration failed:', response);
                         const errorMsg = response.data?.message || response.message || 'Unknown error - check console';
-                        alert('Failed to analyze images: ' + errorMsg);
+
+                        UI.updateProgressModal(
+                            'AI Regeneration Failed',
+                            errorMsg,
+                            0
+                        );
+                        UI.enableModalDismiss('Close');
                     }
                 },
                 error: (xhr, status, error) => {
-                    this.hideProgressOverlay();
                     console.error('AI Regeneration network error:', xhr.responseText);
-                    alert('Network error during analysis: ' + error);
+
+                    UI.updateProgressModal(
+                        'Network Error',
+                        'Failed to connect to server: ' + error,
+                        0
+                    );
+                    UI.enableModalDismiss('Close');
                 }
             });
         },
@@ -6079,7 +6395,7 @@
 
             // Update credit display in dashboard
             if (job.credits_remaining !== undefined) {
-                $('#ai-credits-available').text(job.credits_remaining);
+                setAiCredits(job.credits_remaining, job.ai_access_mode || mshImageOptimizer.aiAccessMode || '');
             }
 
             // Add new log messages
@@ -6190,9 +6506,8 @@
                 },
                 success: (response) => {
                     if (response.success) {
-                        $('#ai-credits-available').text(response.data.balance);
+                        setAiCredits(response.data.balance, response.data.access_mode || mshImageOptimizer.aiAccessMode || '');
                         $('#ai-credits-used-month').text(response.data.used_this_month);
-                        mshImageOptimizer.aiCredits = response.data.balance;
                     }
                 }
             });
@@ -6251,6 +6566,7 @@
 
     // Initialize AI Regeneration when DOM is ready
     $(document).ready(function() {
+        Notifications.init();
         if ($('#ai-regen-dashboard').length) {
             AIRegeneration.init();
         }

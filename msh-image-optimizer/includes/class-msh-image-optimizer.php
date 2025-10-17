@@ -1804,7 +1804,7 @@ class MSH_Contextual_Meta_Generator {
         return $title . $variants[$index];
     }
 
-    public function generate_meta_fields($attachment_id, array $context) {
+    public function generate_meta_fields($attachment_id, array $context, $ai_options = []) {
         $this->ensure_fresh_context();
         $this->hydrate_active_context();
         $this->log_debug("MSH Meta Generation: Type='{$context['type']}', attachment_id=$attachment_id, title='{$context['attachment_title']}'");
@@ -1813,7 +1813,7 @@ class MSH_Contextual_Meta_Generator {
             $context['type'] = 'business';
         }
 
-        $ai_meta = MSH_AI_Service::get_instance()->maybe_generate_metadata($attachment_id, $context, $this);
+        $ai_meta = MSH_AI_Service::get_instance()->maybe_generate_metadata($attachment_id, $context, $this, $ai_options);
         if (is_array($ai_meta) && !empty($ai_meta)) {
             $this->log_debug('MSH Meta Generation: AI metadata returned, skipping heuristic generator.');
 
@@ -5344,6 +5344,7 @@ class MSH_Image_Optimizer {
     private function validate_status($status) {
         $valid_statuses = [
             'ready_for_optimization',
+            'ai_pending',
             'optimized',
             'metadata_missing',
             'needs_recompression',
@@ -5929,6 +5930,43 @@ class MSH_Image_Optimizer {
             : ($context_info['type'] ?? $auto_context_value);
         $generated_meta = $this->contextual_meta_generator->generate_meta_fields($attachment_id, $context_info, $ai_options);
 
+        // Check if this is an AI regeneration request BEFORE using the variable
+        $is_ai_regeneration = !empty($ai_options['ai_regeneration']);
+
+        $pending_ai_fields = [];
+        $has_pending_ai_meta = false;
+        $staged_ai_metadata = null;
+
+        if ($is_ai_regeneration) {
+            if (!empty($generated_meta)) {
+                $staged_ai_metadata = array_intersect_key(
+                    $generated_meta,
+                    array_flip(['title', 'alt_text', 'caption', 'description'])
+                );
+
+                if (!empty($staged_ai_metadata)) {
+                    $pending_ai_fields = array_keys($staged_ai_metadata);
+                    $has_pending_ai_meta = true;
+                    update_post_meta($attachment_id, '_msh_ai_staged_meta', [
+                        'generated_at' => time(),
+                        'ai_mode' => $ai_options['ai_mode'] ?? '',
+                        'ai_fields' => $ai_options['ai_fields'] ?? [],
+                        'data' => $staged_ai_metadata,
+                    ]);
+                } else {
+                    delete_post_meta($attachment_id, '_msh_ai_staged_meta');
+                }
+            } else {
+                delete_post_meta($attachment_id, '_msh_ai_staged_meta');
+            }
+        } else {
+            $staged_ai_metadata = get_post_meta($attachment_id, '_msh_ai_staged_meta', true);
+            if (is_array($staged_ai_metadata) && !empty($staged_ai_metadata['data'])) {
+                $pending_ai_fields = array_keys((array) $staged_ai_metadata['data']);
+                $has_pending_ai_meta = !empty($pending_ai_fields);
+            }
+        }
+
         // Check if file already has SEO-optimized name FIRST
         $current_file = $file_path; // Use the correct variable name
         $path_info = pathinfo($current_file);
@@ -5943,7 +5981,10 @@ class MSH_Image_Optimizer {
         }
 
         // If file already has good name, clear any existing suggestion and don't generate new one
-        if (!empty($expected_slug)) {
+        // BUT: Always regenerate if AI regeneration is running (regardless of current filename quality)
+        if ($is_ai_regeneration) {
+            $has_good_name = false; // Force regeneration for AI mode
+        } elseif (!empty($expected_slug)) {
             $has_good_name = ($current_slug === strtolower($expected_slug));
         } else {
             $has_good_name = (strpos($current_basename, 'msh') !== false ||
@@ -6044,7 +6085,24 @@ class MSH_Image_Optimizer {
         $can_regenerate_meta = $this->should_regenerate_meta($attachment_id);
         $context_mismatch = $metadata_context_mismatch && $can_regenerate_meta;
 
-        if ($context_mismatch && $optimization_status === 'optimized') {
+        if ($has_pending_ai_meta) {
+            $context_mismatch = false;
+            $metadata_context_mismatch = false;
+        }
+
+        $pending_ai_override_allowed_statuses = [
+            'optimized',
+            'ready_for_optimization',
+            'metadata_missing',
+            'needs_recompression',
+            'needs_webp_conversion',
+            'webp_timestamp_missing',
+            'context_stale'
+        ];
+
+        if ($has_pending_ai_meta && in_array($optimization_status, $pending_ai_override_allowed_statuses, true)) {
+            $optimization_status = 'ai_pending';
+        } elseif ($context_mismatch && $optimization_status === 'optimized') {
             $optimization_status = 'context_stale';
         }
 
@@ -6072,6 +6130,8 @@ class MSH_Image_Optimizer {
             'webp_last_converted' => $webp_last_converted,
             'metadata_last_updated' => $metadata_last_updated,
             'source_last_compressed' => $source_last_compressed,
+            'has_pending_ai_meta' => $has_pending_ai_meta,
+            'pending_ai_fields' => $pending_ai_fields,
             'context_signature' => $current_context_signature,
             'metadata_context_hash' => $stored_meta_hash,
             'metadata_context_mismatch' => $metadata_context_mismatch,
@@ -7047,7 +7107,17 @@ class MSH_Image_Optimizer {
                     $this->log_debug("MSH: AI Regeneration progress: {$current_index}/{$total_to_process} ({$percent}%) - Processing attachment {$image['ID']}");
                 }
 
-                $analysis = $this->analyze_single_image($image['ID']);
+                // Pass AI options if this is an AI regeneration request
+                $ai_options = [];
+                if ($is_ai_regeneration) {
+                    $ai_options = [
+                        'ai_regeneration' => true,
+                        'ai_mode' => $ai_mode,
+                        'ai_fields' => $ai_fields
+                    ];
+                }
+
+                $analysis = $this->analyze_single_image($image['ID'], $ai_options);
             $priority = $this->calculate_healthcare_priority($image);
 
             // Map current_size_bytes to file_size for frontend compatibility
@@ -7085,6 +7155,17 @@ class MSH_Image_Optimizer {
                 'analysis_duration_ms' => $duration_ms
             ]
         ];
+
+        // Include credit balance in response if this was an AI Regeneration request
+        if ($is_ai_regeneration && class_exists('MSH_AI_Service')) {
+            $ai_service = MSH_AI_Service::get_instance();
+            $access_state = $ai_service->determine_access_state();
+            $access_mode = isset($access_state['access_mode']) ? $access_state['access_mode'] : '';
+            $response_data['credits_remaining'] = ($access_mode === 'byok')
+                ? PHP_INT_MAX
+                : $ai_service->get_credit_balance();
+            $response_data['ai_access_mode'] = $access_mode;
+        }
 
         // URGENT: Cache the results to prevent time waste
         set_transient($cache_key, [
@@ -7341,8 +7422,21 @@ class MSH_Image_Optimizer {
             : ($context_details['type'] ?? $auto_context_value);
         $active_context_label = $this->format_context_label($active_context_slug);
         $auto_context_label = $auto_context_value !== '' ? $this->format_context_label($auto_context_value) : '';
-        $meta_preview = $this->contextual_meta_generator->generate_meta_fields($attachment_id, $context_details);
+        $staged_ai_meta = get_post_meta($attachment_id, '_msh_ai_staged_meta', true);
+        $using_staged_ai_meta = false;
+
+        if (is_array($staged_ai_meta) && !empty($staged_ai_meta['data']) && is_array($staged_ai_meta['data'])) {
+            $meta_preview = array_intersect_key(
+                (array) $staged_ai_meta['data'],
+                array_flip(['title', 'alt_text', 'caption', 'description'])
+            );
+            $using_staged_ai_meta = !empty($meta_preview);
+        } else {
+            $meta_preview = $this->contextual_meta_generator->generate_meta_fields($attachment_id, $context_details);
+        }
+
         $meta_preview = $this->validate_and_truncate_meta($meta_preview);
+        $meta_source_label = $using_staged_ai_meta ? 'AI regeneration' : 'contextual generator';
 
         $context_message = $context_source === 'manual'
             ? sprintf(__('Manual override in effect: %s', 'msh-image-optimizer'), $active_context_label)
@@ -7366,7 +7460,7 @@ class MSH_Image_Optimizer {
                     'post_title' => sanitize_text_field($meta_preview['title']),
                     'post_name' => sanitize_title($meta_preview['title'])
                 ]);
-                $result['actions'][] = 'Title updated from contextual generator';
+                $result['actions'][] = sprintf('Title updated from %s', $meta_source_label);
                 $meta_applied['title'] = $meta_preview['title'];
             } else {
                 $meta_skipped[] = 'title';
@@ -7380,7 +7474,7 @@ class MSH_Image_Optimizer {
                     'ID' => $attachment_id,
                     'post_excerpt' => sanitize_textarea_field($meta_preview['caption'])
                 ]);
-                $result['actions'][] = 'Caption updated from contextual generator';
+                $result['actions'][] = sprintf('Caption updated from %s', $meta_source_label);
                 $meta_applied['caption'] = $meta_preview['caption'];
             } else {
                 $meta_skipped[] = 'caption';
@@ -7394,7 +7488,7 @@ class MSH_Image_Optimizer {
                     'ID' => $attachment_id,
                     'post_content' => sanitize_textarea_field($meta_preview['description'])
                 ]);
-                $result['actions'][] = 'Description updated from contextual generator';
+                $result['actions'][] = sprintf('Description updated from %s', $meta_source_label);
                 $meta_applied['description'] = $meta_preview['description'];
             } else {
                 $meta_skipped[] = 'description';
@@ -7405,7 +7499,7 @@ class MSH_Image_Optimizer {
         if (!empty($meta_preview['alt_text'])) {
             if ($this->should_regenerate_meta($attachment_id, 'alt_text')) {
                 update_post_meta($attachment_id, '_wp_attachment_image_alt', sanitize_text_field($meta_preview['alt_text']));
-                $result['actions'][] = 'ALT text updated from contextual generator';
+                $result['actions'][] = sprintf('ALT text updated from %s', $meta_source_label);
                 $meta_applied['alt_text'] = $meta_preview['alt_text'];
             } else {
                 $meta_skipped[] = 'alt_text';
@@ -7454,13 +7548,21 @@ class MSH_Image_Optimizer {
 
         // Always refresh metadata timestamp so status reflects the latest context application
         if (!empty($meta_applied)) {
-            delete_post_meta($attachment_id, 'msh_metadata_source');
+            if ($using_staged_ai_meta) {
+                update_post_meta($attachment_id, 'msh_metadata_source', 'ai_generated');
+            } else {
+                delete_post_meta($attachment_id, 'msh_metadata_source');
+            }
         }
 
         update_post_meta($attachment_id, 'msh_metadata_last_updated', (int) $timestamp);
         update_post_meta($attachment_id, 'msh_metadata_context_hash', $this->contextual_meta_generator->get_context_signature());
         delete_post_meta($attachment_id, 'msh_context_needs_refresh');
         $metadata_timestamp_applied = true;
+
+        if ($using_staged_ai_meta) {
+            delete_post_meta($attachment_id, '_msh_ai_staged_meta');
+        }
 
         foreach ($meta_skipped as $field) {
             $result['actions'][] = ucfirst(str_replace('_', ' ', $field)) . ' preserved (manual edit)';
