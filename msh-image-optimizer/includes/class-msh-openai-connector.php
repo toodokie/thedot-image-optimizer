@@ -179,15 +179,18 @@ class MSH_OpenAI_Connector {
         $json_schema = "{\n" . implode(",\n", $json_fields) . "\n}";
         $requirements_list = implode("\n", $requirements);
 
-        return "You are analyzing an image for {$business_name}, a {$industry} business{$location_text}.{$uvp_text}
-
-Analyze this image and provide SEO-optimized metadata in JSON format with these exact keys:
+        return "Analyze this image and provide SEO-optimized metadata in JSON format with these exact keys:
 
 {$json_schema}
 
 Requirements:
 {$requirements_list}
-- Use professional, industry-appropriate language
+- CRITICAL: Describe ONLY what is actually visible in the image. Do NOT invent or assume content that isn't there.
+- If the image is a graphic, banner, or text image, describe it as such (e.g., 'Wide banner displaying alignment test text')
+- If the image shows people, objects, or scenes, describe what you actually see
+- This is for {$business_name}, a {$industry} business{$location_text}{$uvp_text}
+- Only relate the image to the business IF it's clearly relevant to {$industry}
+- Use professional, industry-appropriate language when relevant
 - Return ONLY valid JSON, no markdown or explanation";
     }
 
