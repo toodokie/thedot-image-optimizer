@@ -486,6 +486,10 @@ class MSH_Image_Optimizer_Settings {
                                 <span><?php esc_html_e('Vision analysis (quality & branding checks)', 'msh-image-optimizer'); ?></span>
                             </label>
                             <label class="msh-checkbox-field">
+                                <input type="checkbox" name="options[ai_features][]" value="filename" <?php checked(in_array('filename', $ai_features, true)); ?>>
+                                <span><?php esc_html_e('AI-powered filename generation', 'msh-image-optimizer'); ?></span>
+                            </label>
+                            <label class="msh-checkbox-field">
                                 <input type="checkbox" name="options[ai_features][]" value="duplicate" <?php checked(in_array('duplicate', $ai_features, true)); ?>>
                                 <span><?php esc_html_e('Duplicate detection + smart cleanup targets', 'msh-image-optimizer'); ?></span>
                             </label>

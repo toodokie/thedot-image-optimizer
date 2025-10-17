@@ -70,8 +70,9 @@ class MSH_OpenAI_Connector {
         $location = !empty($context['location']) ? $context['location'] : '';
         $uvp = !empty($context['uvp']) ? $context['uvp'] : '';
 
-        // Build AI prompt
-        $prompt = $this->build_vision_prompt($business_name, $industry, $location, $uvp);
+        // Build AI prompt with enabled features
+        $features = !empty($payload['features']) ? $payload['features'] : array();
+        $prompt = $this->build_vision_prompt($business_name, $industry, $location, $uvp, $features);
 
         // Call OpenAI Vision API
         $response = $this->call_openai_vision($image_url, $prompt, $api_key);
@@ -94,30 +95,47 @@ class MSH_OpenAI_Connector {
     }
 
     /**
-     * Build vision analysis prompt
+     * Build vision analysis prompt based on enabled features
      */
-    private function build_vision_prompt($business_name, $industry, $location, $uvp) {
+    private function build_vision_prompt($business_name, $industry, $location, $uvp, $features = array()) {
         $location_text = !empty($location) ? " in {$location}" : '';
         $uvp_text = !empty($uvp) ? "\n\nBusiness value proposition: {$uvp}" : '';
+
+        // Check if filename generation is enabled
+        $filename_enabled = in_array('filename', $features, true);
+
+        // Build JSON schema based on enabled features
+        $json_fields = array(
+            '  "title": "Descriptive title (50-60 chars, include business name)"',
+            '  "alt_text": "Accessible alt text describing what\'s in the image (100-125 chars)"',
+            '  "caption": "Brief caption (40-60 chars)"',
+            '  "description": "Detailed description for search engines (150-200 chars)"'
+        );
+
+        $requirements = array(
+            '- Title: Include what\'s visible in the image + business name',
+            '- Alt text: Describe the image for screen readers, be specific',
+            '- Caption: Short, punchy description',
+            '- Description: Include context, location, and what this represents for the business'
+        );
+
+        // Add filename field if enabled
+        if ($filename_enabled) {
+            $json_fields[] = '  "filename_slug": "seo-friendly-filename-slug-describing-image-content"';
+            $requirements[] = '- Filename slug: Lowercase, hyphens only, 4-5 descriptive words MAXIMUM about what\'s IN the image (not the business name), suitable for file naming';
+        }
+
+        $json_schema = "{\n" . implode(",\n", $json_fields) . "\n}";
+        $requirements_list = implode("\n", $requirements);
 
         return "You are analyzing an image for {$business_name}, a {$industry} business{$location_text}.{$uvp_text}
 
 Analyze this image and provide SEO-optimized metadata in JSON format with these exact keys:
 
-{
-  \"title\": \"Descriptive title (50-60 chars, include business name)\",
-  \"alt_text\": \"Accessible alt text describing what's in the image (100-125 chars)\",
-  \"caption\": \"Brief caption (40-60 chars)\",
-  \"description\": \"Detailed description for search engines (150-200 chars)\",
-  \"filename_slug\": \"seo-friendly-filename-slug-describing-image-content\"
-}
+{$json_schema}
 
 Requirements:
-- Title: Include what's visible in the image + business name
-- Alt text: Describe the image for screen readers, be specific
-- Caption: Short, punchy description
-- Description: Include context, location, and what this represents for the business
-- Filename slug: Lowercase, hyphens only, 4-5 descriptive words MAXIMUM about what's IN the image (not the business name), suitable for file naming
+{$requirements_list}
 - Use professional, industry-appropriate language
 - Return ONLY valid JSON, no markdown or explanation";
     }
