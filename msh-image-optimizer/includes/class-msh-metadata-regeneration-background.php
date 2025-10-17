@@ -483,7 +483,41 @@ class MSH_Metadata_Regeneration_Background {
         $state = $this->get_state();
         $jobs = $this->get_jobs();
 
+        // Get the current/most recent job for UI polling
+        $current_job = null;
+        if (!empty($state) && !empty($state['job_id'])) {
+            // Job is active, use state data to build job object
+            $current_job = [
+                'job_id' => $state['job_id'],
+                'status' => $state['status'],
+                'total' => $state['total'],
+                'processed' => $state['processed'],
+                'successful' => $state['succeeded'],
+                'failed' => $state['failed'],
+                'skipped' => $state['skipped'],
+                'credits_used' => $state['credits_used'],
+                'started_at' => $state['started_at'],
+                'completed_at' => $state['completed_at'] ?? null,
+            ];
+        } elseif (!empty($jobs)) {
+            // No active state, get most recent completed job
+            $recent_job = reset($jobs);
+            $current_job = [
+                'job_id' => $recent_job['job_id'],
+                'status' => $recent_job['status'],
+                'total' => $recent_job['total'],
+                'processed' => $recent_job['processed'],
+                'successful' => $recent_job['succeeded'],
+                'failed' => $recent_job['failed'],
+                'skipped' => $recent_job['skipped'],
+                'credits_used' => $recent_job['credits_used'],
+                'started_at' => $recent_job['started_at'],
+                'completed_at' => $recent_job['completed_at'] ?? null,
+            ];
+        }
+
         wp_send_json_success([
+            'job' => $current_job,
             'current_state' => $state,
             'jobs' => $jobs,
         ]);
