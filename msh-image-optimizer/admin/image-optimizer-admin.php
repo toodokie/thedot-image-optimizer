@@ -273,7 +273,27 @@ class MSH_Image_Optimizer_Admin {
                 'indexStatusQueued' => __('Usage index building…', 'msh-image-optimizer'),
                 'indexStatusNotBuilt' => __('Usage index not built yet', 'msh-image-optimizer'),
                 'onboardingResetConfirm' => __('Reset the saved context? This will clear all onboarding answers.', 'msh-image-optimizer'),
-                'onboardingResetDone' => __('Context cleared. You can complete the setup whenever you’re ready.', 'msh-image-optimizer')
+                'onboardingResetDone' => __('Context cleared. You can complete the setup whenever you're ready.', 'msh-image-optimizer'),
+                // Status labels
+                'supported' => __('Supported', 'msh-image-optimizer'),
+                'notSupported' => __('Not Supported', 'msh-image-optimizer'),
+                'active' => __('Active', 'msh-image-optimizer'),
+                'inactive' => __('Inactive', 'msh-image-optimizer'),
+                'never' => __('Never', 'msh-image-optimizer'),
+                // Button states
+                'save' => __('Save', 'msh-image-optimizer'),
+                'edit' => __('Edit', 'msh-image-optimizer'),
+                'preview' => __('Preview', 'msh-image-optimizer'),
+                // Wizard states
+                'wizardComplete' => __('Complete', 'msh-image-optimizer'),
+                'wizardActive' => __('In progress', 'msh-image-optimizer'),
+                'wizardUpcoming' => __('Coming soon', 'msh-image-optimizer'),
+                'wizardPending' => __('Pending', 'msh-image-optimizer'),
+                // Progress states
+                'ready' => __('Ready', 'msh-image-optimizer'),
+                // WebP detection
+                'javascriptDetection' => __('JavaScript Detection', 'msh-image-optimizer'),
+                'cookieJavascript' => __('Cookie + JavaScript', 'msh-image-optimizer')
             )
         ));
         

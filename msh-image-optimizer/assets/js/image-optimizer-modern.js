@@ -3033,7 +3033,7 @@
         }
 
         static hideLoading() {
-            $('#progress-status').text('Ready');
+            $('#progress-status').text(window.mshImageOptimizer?.strings?.ready || 'Ready');
             $('.action-buttons button').prop('disabled', false);
             this.updateStats(); // Re-enable buttons based on actual state
         }
@@ -4442,12 +4442,12 @@
 
             if (supported) {
                 supportElement
-                    .text('Supported')
+                    .text(window.mshImageOptimizer?.strings?.supported || 'Supported')
                     .removeClass('not-supported')
                     .addClass('status-value supported');
             } else {
                 supportElement
-                    .text('Not Supported')
+                    .text(window.mshImageOptimizer?.strings?.notSupported || 'Not Supported')
                     .removeClass('supported')
                     .addClass('status-value not-supported');
             }
@@ -4457,7 +4457,10 @@
             const methodElement = $('#webp-detection-method');
             if (methodElement.length > 0) {
                 methodElement
-                    .text(cookieExists ? 'Cookie + JavaScript' : 'JavaScript Detection')
+                    .text(cookieExists
+                        ? (window.mshImageOptimizer?.strings?.cookieJavascript || 'Cookie + JavaScript')
+                        : (window.mshImageOptimizer?.strings?.javascriptDetection || 'JavaScript Detection')
+                    )
                     .addClass('status-value active');
             }
 
@@ -4465,7 +4468,7 @@
             const deliveryElement = $('#webp-delivery-status');
             if (deliveryElement.length > 0) {
                 deliveryElement
-                    .text('Active')
+                    .text(window.mshImageOptimizer?.strings?.active || 'Active')
                     .addClass('status-value active');
             }
 

@@ -217,6 +217,7 @@ For comprehensive testing across different business types, we maintain separate 
   - WordPress test image patterns (alignment, featured, markup)
   - Dimension pattern detection (580x300, 150x150, etc.)
   - Generic filename handling (IMG_xxxx.jpg, canola2.jpg)
+- **Context Profiles QA:** follow the dedicated [Context Profiles QA Plan](CONTEXT_PROFILE_QA_PLAN.md) whenever context handling or localization code changes. The checklist covers profile creation, switching, metadata validation, and deletion safeguards.
 
 ### Testing Documentation
 

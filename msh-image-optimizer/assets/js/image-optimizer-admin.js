@@ -1687,22 +1687,22 @@
         }
 
         if (supported) {
-            supportElement.text('Supported').removeClass('not-supported').addClass('status-value supported');
+            supportElement.text(mshImageOptimizer.strings?.supported || 'Supported').removeClass('not-supported').addClass('status-value supported');
             updateLog('WebP support detected - optimized images will be served automatically.');
         } else {
-            supportElement.text('Not Supported').removeClass('supported').addClass('status-value not-supported');
+            supportElement.text(mshImageOptimizer.strings?.notSupported || 'Not Supported').removeClass('supported').addClass('status-value not-supported');
             updateLog('WebP not supported - original images will be served (full compatibility).');
         }
 
         // Check if cookie exists
         const cookieExists = document.cookie.indexOf('webp_support=') !== -1;
         if (cookieExists) {
-            $('#webp-detection-method').text('Cookie + JavaScript').addClass('status-value active');
+            $('#webp-detection-method').text(mshImageOptimizer.strings?.cookieJavascript || 'Cookie + JavaScript').addClass('status-value active');
         } else {
-            $('#webp-detection-method').text('JavaScript Detection').addClass('status-value active');
+            $('#webp-detection-method').text(mshImageOptimizer.strings?.javascriptDetection || 'JavaScript Detection').addClass('status-value active');
         }
 
-        $('#webp-delivery-status').text('Active').addClass('status-value active');
+        $('#webp-delivery-status').text(mshImageOptimizer.strings?.active || 'Active').addClass('status-value active');
 
         console.log('MSH: WebP status update complete');
     }
@@ -1817,7 +1817,7 @@
                     // Update the button to show it was saved
                     $(`.save-filename[data-id="${imageId}"]`).text('Saved!').prop('disabled', true);
                     setTimeout(() => {
-                        $(`.save-filename[data-id="${imageId}"]`).text('Save').prop('disabled', false);
+                        $(`.save-filename[data-id="${imageId}"]`).text(mshImageOptimizer.strings?.save || 'Save').prop('disabled', false);
                     }, 2000);
                 } else {
                     updateLog(`Failed to save filename suggestion for image ${imageId}: ${response.data || 'Unknown error'}`);
@@ -2018,20 +2018,22 @@
                     // Add edit functionality
                     $('#edit-meta-toggle').on('click', function() {
                         const $button = $(this);
-                        const isEditing = $button.text().includes('Edit');
-                        
+                        const editText = mshImageOptimizer.strings?.edit || 'Edit';
+                        const previewText = mshImageOptimizer.strings?.preview || 'Preview';
+                        const isEditing = $button.text().includes(editText);
+
                         if (isEditing) {
                             // Switch to edit mode
                             $('.meta-display').hide();
                             $('.meta-edit').show();
                             $('#save-meta-changes').show();
-                            $button.text('Preview');
+                            $button.text(previewText);
                         } else {
                             // Switch to preview mode
                             $('.meta-edit').hide();
                             $('.meta-display').show();
                             $('#save-meta-changes').hide();
-                            $button.text('Edit');
+                            $button.text(editText);
                         }
                     });
                     
@@ -2090,7 +2092,7 @@
                     $('.meta-edit').hide();
                     $('.meta-display').show();
                     $('#save-meta-changes').hide();
-                    $('#edit-meta-toggle').text('Edit');
+                    $('#edit-meta-toggle').text(mshImageOptimizer.strings?.edit || 'Edit');
                     
                     alert('Meta text saved successfully!');
                 } else {
