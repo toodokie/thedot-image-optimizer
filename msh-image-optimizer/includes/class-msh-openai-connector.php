@@ -211,17 +211,27 @@ Requirements:
             error_log('[MSH OpenAI] Local URL detected, converting to base64');
 
             // Convert to base64 for local development
-            $image_path = str_replace(home_url('/'), ABSPATH, $image_url);
+            // Use wp_get_upload_dir() for robust path mapping (handles schemes, ports, subdirs, multisite, etc.)
+            $uploads = wp_get_upload_dir();
 
-            if (file_exists($image_path)) {
-                $image_data = file_get_contents($image_path);
-                $base64 = base64_encode($image_data);
-                $mime_type = mime_content_type($image_path);
+            if (strpos($image_url, $uploads['baseurl']) === 0) {
+                // Get relative path from upload base URL
+                $relative = ltrim(str_replace($uploads['baseurl'], '', $image_url), '/');
+                $absolute_path = trailingslashit($uploads['basedir']) . $relative;
 
-                return "data:{$mime_type};base64,{$base64}";
+                if (file_exists($absolute_path)) {
+                    $image_data = file_get_contents($absolute_path);
+                    $base64 = base64_encode($image_data);
+                    $mime_type = mime_content_type($absolute_path);
+
+                    error_log('[MSH OpenAI] Converted to base64: ' . $absolute_path);
+                    return "data:{$mime_type};base64,{$base64}";
+                }
+
+                error_log('[MSH OpenAI] Local image file not found: ' . $absolute_path);
+            } else {
+                error_log('[MSH OpenAI] Image URL not in uploads directory: ' . $image_url);
             }
-
-            error_log('[MSH OpenAI] Local image file not found: ' . $image_path);
         }
 
         // Return URL as-is for public URLs
