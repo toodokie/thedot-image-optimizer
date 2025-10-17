@@ -1816,6 +1816,13 @@ class MSH_Contextual_Meta_Generator {
         $ai_meta = MSH_AI_Service::get_instance()->maybe_generate_metadata($attachment_id, $context, $this);
         if (is_array($ai_meta) && !empty($ai_meta)) {
             $this->log_debug('MSH Meta Generation: AI metadata returned, skipping heuristic generator.');
+
+            // Store AI filename slug in context for filename generation
+            if (!empty($ai_meta['filename_slug'])) {
+                update_post_meta($attachment_id, '_msh_ai_filename_slug', $ai_meta['filename_slug']);
+                $this->log_debug('MSH Meta Generation: Stored AI filename slug: ' . $ai_meta['filename_slug']);
+            }
+
             return $ai_meta;
         }
 
@@ -1856,6 +1863,19 @@ class MSH_Contextual_Meta_Generator {
         $this->ensure_fresh_context();
         $this->hydrate_active_context();
         // Debug disabled for performance
+
+        // PRIORITY 1: Check if AI generated a filename slug (from post meta or context)
+        $ai_slug_raw = !empty($context['ai_filename_slug'])
+            ? $context['ai_filename_slug']
+            : get_post_meta($attachment_id, '_msh_ai_filename_slug', true);
+
+        if (!empty($ai_slug_raw)) {
+            $ai_slug = $this->slugify($ai_slug_raw);
+            // Append location for consistency with other filenames
+            $location_suffix = !empty($this->location_slug) ? '-' . $this->location_slug : '';
+            error_log('[MSH] Using AI-generated filename slug: ' . $ai_slug . $location_suffix);
+            return $ai_slug . $location_suffix;
+        }
 
         if (!$this->is_healthcare_industry($this->industry) && $context['type'] === 'clinical') {
             $context['type'] = 'business';

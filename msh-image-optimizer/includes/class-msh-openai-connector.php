@@ -108,7 +108,8 @@ Analyze this image and provide SEO-optimized metadata in JSON format with these 
   \"title\": \"Descriptive title (50-60 chars, include business name)\",
   \"alt_text\": \"Accessible alt text describing what's in the image (100-125 chars)\",
   \"caption\": \"Brief caption (40-60 chars)\",
-  \"description\": \"Detailed description for search engines (150-200 chars)\"
+  \"description\": \"Detailed description for search engines (150-200 chars)\",
+  \"filename_slug\": \"seo-friendly-filename-slug-describing-image-content\"
 }
 
 Requirements:
@@ -116,6 +117,7 @@ Requirements:
 - Alt text: Describe the image for screen readers, be specific
 - Caption: Short, punchy description
 - Description: Include context, location, and what this represents for the business
+- Filename slug: Lowercase, hyphens only, 4-5 descriptive words MAXIMUM about what's IN the image (not the business name), suitable for file naming
 - Use professional, industry-appropriate language
 - Return ONLY valid JSON, no markdown or explanation";
     }
@@ -261,7 +263,7 @@ Requirements:
             return null;
         }
 
-        // Validate required fields
+        // Validate required fields (filename_slug is optional for backward compatibility)
         $required = array('title', 'alt_text', 'caption', 'description');
         foreach ($required as $field) {
             if (empty($metadata[$field])) {
@@ -271,12 +273,20 @@ Requirements:
         }
 
         // Sanitize the metadata
-        return array(
+        $sanitized = array(
             'title' => sanitize_text_field($metadata['title']),
             'alt_text' => sanitize_text_field($metadata['alt_text']),
             'caption' => sanitize_text_field($metadata['caption']),
             'description' => sanitize_textarea_field($metadata['description']),
         );
+
+        // Add filename_slug if provided by AI
+        if (!empty($metadata['filename_slug'])) {
+            $sanitized['filename_slug'] = sanitize_title($metadata['filename_slug']);
+            error_log('[MSH OpenAI] AI suggested filename slug: ' . $sanitized['filename_slug']);
+        }
+
+        return $sanitized;
     }
 }
 

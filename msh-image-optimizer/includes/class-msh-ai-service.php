@@ -164,7 +164,7 @@ class MSH_AI_Service {
             return null;
         }
 
-        $allowed_keys = array('title', 'alt_text', 'caption', 'description');
+        $allowed_keys = array('title', 'alt_text', 'caption', 'description', 'filename_slug');
         $prepared = array();
         foreach ($allowed_keys as $key) {
             if (isset($metadata[$key]) && is_string($metadata[$key]) && $metadata[$key] !== '') {
