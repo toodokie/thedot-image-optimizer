@@ -195,6 +195,12 @@ class MSH_Metadata_Regeneration_Background {
                     $state['succeeded']++;
                     if (isset($result['credits'])) {
                         $state['credits_used'] += $result['credits'];
+
+                        // Deduct credits from AI service
+                        if (class_exists('MSH_AI_Service')) {
+                            $ai_service = MSH_AI_Service::get_instance();
+                            $ai_service->decrement_credits($result['credits']);
+                        }
                     }
                 } elseif ($result['skipped']) {
                     $state['skipped']++;
