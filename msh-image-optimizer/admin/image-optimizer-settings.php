@@ -460,6 +460,21 @@ class MSH_Image_Optimizer_Settings {
                             </p>
                         </div>
 
+                        <div class="msh-settings-field">
+                            <label for="msh_ai_live_link_url"><?php esc_html_e('Local Live Link URL (for testing)', 'msh-image-optimizer'); ?></label>
+                            <input
+                                type="url"
+                                id="msh_ai_live_link_url"
+                                name="options[ai_live_link_url]"
+                                value="<?php echo esc_attr(get_option('msh_ai_live_link_url', '')); ?>"
+                                class="msh-input"
+                                placeholder="<?php esc_attr_e('https://abc123.loca.lt', 'msh-image-optimizer'); ?>"
+                            />
+                            <p class="msh-settings-note">
+                                <?php esc_html_e('For local development: Enable "Live Link" in Local by Flywheel (disable password protection!) and paste the public URL here. OpenAI will use this instead of base64 encoding. Leave blank for automatic base64 fallback.', 'msh-image-optimizer'); ?>
+                            </p>
+                        </div>
+
                         <div class="msh-settings-field msh-settings-checkbox-group">
                             <span class="msh-field-heading"><?php esc_html_e('Enabled AI modules', 'msh-image-optimizer'); ?></span>
                             <label class="msh-checkbox-field">
@@ -532,6 +547,9 @@ class MSH_Image_Optimizer_Settings {
 
         $ai_api_key = isset($options_raw['ai_api_key']) ? sanitize_text_field($options_raw['ai_api_key']) : '';
         update_option('msh_ai_api_key', $ai_api_key, false);
+
+        $ai_live_link_url = isset($options_raw['ai_live_link_url']) ? esc_url_raw($options_raw['ai_live_link_url']) : '';
+        update_option('msh_ai_live_link_url', $ai_live_link_url, false);
 
         $ai_features_sanitized = array();
         if (isset($options_raw['ai_features']) && is_array($options_raw['ai_features'])) {

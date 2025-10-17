@@ -180,13 +180,36 @@ Requirements:
     }
 
     /**
-     * Get image data - use base64 for local URLs, direct URL for public URLs
+     * Get image data - supports multiple methods for local development
+     *
+     * Priority:
+     * 1. Live Link URL (if configured) - cleanest for testing
+     * 2. Base64 encoding (automatic fallback) - always works
+     * 3. Direct URL (for production sites)
      */
     private function get_image_data($image_url) {
+        // Check if Live Link URL is configured (Local by Flywheel feature)
+        $live_link_url = get_option('msh_ai_live_link_url', '');
+
+        if (!empty($live_link_url)) {
+            // Replace local domain with Live Link domain
+            $local_url = home_url('/');
+            $live_link_url = trailingslashit($live_link_url);
+
+            $converted_url = str_replace($local_url, $live_link_url, $image_url);
+
+            if ($converted_url !== $image_url) {
+                error_log('[MSH OpenAI] Using Live Link URL: ' . $converted_url);
+                return $converted_url;
+            }
+        }
+
         // Check if URL is local (localhost, .local, 127.0.0.1, etc.)
         $is_local = preg_match('/(localhost|\.local|127\.0\.0\.1|192\.168\.|10\.|172\.(1[6-9]|2[0-9]|3[01])\.)/i', $image_url);
 
         if ($is_local) {
+            error_log('[MSH OpenAI] Local URL detected, converting to base64');
+
             // Convert to base64 for local development
             $image_path = str_replace(home_url('/'), ABSPATH, $image_url);
 
