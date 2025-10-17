@@ -25,6 +25,16 @@ class MSH_AI_Service {
     private $last_state = array();
 
     /**
+     * Credit plan mappings (credits per month)
+     */
+    const PLAN_CREDITS = [
+        'free' => 0,
+        'ai_starter' => 100,
+        'ai_pro' => 500,
+        'ai_business' => 2000,
+    ];
+
+    /**
      * Get singleton instance.
      *
      * @return MSH_AI_Service
@@ -38,6 +48,12 @@ class MSH_AI_Service {
     }
 
     private function __construct() {
+        // Schedule monthly credit refresh
+        if (!wp_next_scheduled('msh_ai_refresh_credits')) {
+            wp_schedule_event(strtotime('first day of next month midnight'), 'monthly', 'msh_ai_refresh_credits');
+        }
+
+        add_action('msh_ai_refresh_credits', [$this, 'refresh_monthly_credits']);
     }
 
     /**
@@ -88,14 +104,27 @@ class MSH_AI_Service {
             $state['allowed'] = true;
             $state['access_mode'] = 'byok';
             $state['api_key'] = $api_key;
+            $state['credits_remaining'] = PHP_INT_MAX; // Unlimited for BYOK
             $this->last_state = $state;
             return $state;
         }
 
         $paid_tiers = apply_filters('msh_ai_paid_tiers', array('ai_starter', 'ai_pro', 'ai_business'));
         if (in_array($plan_tier, $paid_tiers, true)) {
+            // Check credit balance
+            $credits_remaining = $this->get_credit_balance();
+
+            if ($credits_remaining <= 0) {
+                $state['allowed'] = false;
+                $state['reason'] = 'insufficient_credits';
+                $state['credits_remaining'] = 0;
+                $this->last_state = $state;
+                return $state;
+            }
+
             $state['allowed'] = true;
             $state['access_mode'] = 'bundled';
+            $state['credits_remaining'] = $credits_remaining;
             $this->last_state = $state;
             return $state;
         }
@@ -103,6 +132,97 @@ class MSH_AI_Service {
         $state['reason'] = 'upgrade_required';
         $this->last_state = $state;
         return $state;
+    }
+
+    /**
+     * Get current credit balance.
+     *
+     * @return int Current credits available.
+     */
+    public function get_credit_balance() {
+        $balance = get_option('msh_ai_credit_balance', null);
+
+        // Initialize if first time
+        if ($balance === null) {
+            $balance = $this->initialize_credits();
+        }
+
+        return max(0, (int) $balance);
+    }
+
+    /**
+     * Initialize credits based on current plan tier.
+     *
+     * @return int Initial credit balance.
+     */
+    private function initialize_credits() {
+        $plan_tier = get_option('msh_plan_tier', 'free');
+        $credits = self::PLAN_CREDITS[$plan_tier] ?? 0;
+
+        update_option('msh_ai_credit_balance', $credits);
+        update_option('msh_ai_credit_last_reset', time());
+
+        return $credits;
+    }
+
+    /**
+     * Decrement credit balance.
+     *
+     * @param int $amount Amount to decrement (default: 1).
+     *
+     * @return bool True if successfully decremented, false if insufficient.
+     */
+    public function decrement_credits($amount = 1) {
+        $balance = $this->get_credit_balance();
+
+        if ($balance < $amount) {
+            return false;
+        }
+
+        $new_balance = $balance - $amount;
+        update_option('msh_ai_credit_balance', $new_balance);
+
+        // Log usage
+        $this->log_credit_usage($amount);
+
+        return true;
+    }
+
+    /**
+     * Log credit usage for analytics.
+     *
+     * @param int $amount Credits used.
+     */
+    private function log_credit_usage($amount) {
+        $usage = get_option('msh_ai_credit_usage', []);
+        $month_key = date('Y-m');
+
+        if (!isset($usage[$month_key])) {
+            $usage[$month_key] = 0;
+        }
+
+        $usage[$month_key] += $amount;
+
+        // Keep only last 12 months
+        if (count($usage) > 12) {
+            ksort($usage);
+            $usage = array_slice($usage, -12, null, true);
+        }
+
+        update_option('msh_ai_credit_usage', $usage);
+    }
+
+    /**
+     * Refresh monthly credits (called by WP-Cron).
+     */
+    public function refresh_monthly_credits() {
+        $plan_tier = get_option('msh_plan_tier', 'free');
+        $credits = self::PLAN_CREDITS[$plan_tier] ?? 0;
+
+        update_option('msh_ai_credit_balance', $credits);
+        update_option('msh_ai_credit_last_reset', time());
+
+        error_log('[MSH AI] Monthly credits refreshed: ' . $credits . ' credits for plan ' . $plan_tier);
     }
 
     /**
@@ -164,6 +284,18 @@ class MSH_AI_Service {
             return null;
         }
 
+        // DECREMENT CREDITS for bundled access
+        if ($state['access_mode'] === 'bundled') {
+            $success = $this->decrement_credits(1);
+
+            if (!$success) {
+                // This shouldn't happen (we checked above), but log it
+                error_log('[MSH AI] Failed to decrement credits after AI call');
+            } else {
+                error_log('[MSH AI] Credit used. Remaining: ' . $this->get_credit_balance());
+            }
+        }
+
         $allowed_keys = array('title', 'alt_text', 'caption', 'description', 'filename_slug');
         $prepared = array();
         foreach ($allowed_keys as $key) {
@@ -173,6 +305,76 @@ class MSH_AI_Service {
         }
 
         return !empty($prepared) ? $prepared : null;
+    }
+
+    /**
+     * Estimate cost and check credits for a bulk regeneration job.
+     *
+     * @param array $attachment_ids Attachment IDs to process.
+     * @param array $fields Fields to regenerate.
+     *
+     * @return array|WP_Error Estimate details or error.
+     */
+    public function estimate_bulk_job_cost($attachment_ids, $fields = []) {
+        $count = count($attachment_ids);
+
+        if ($count === 0) {
+            return new WP_Error('empty_job', __('No images to process.', 'msh-image-optimizer'));
+        }
+
+        // Determine access state
+        $access_state = $this->determine_access_state();
+
+        if ($access_state['access'] === 'none') {
+            return new WP_Error('no_access', __('AI features are not enabled.', 'msh-image-optimizer'));
+        }
+
+        // Calculate estimated cost
+        $estimated_cost = $count; // 1 credit per image
+
+        // Check credits availability
+        if ($access_state['access'] === 'bundled') {
+            $credits_available = $access_state['credits_remaining'];
+
+            if ($estimated_cost > $credits_available) {
+                return new WP_Error(
+                    'insufficient_credits',
+                    sprintf(
+                        __('Insufficient credits. Need %d credits, but only %d available.', 'msh-image-optimizer'),
+                        $estimated_cost,
+                        $credits_available
+                    )
+                );
+            }
+        } elseif ($access_state['access'] === 'byok') {
+            $credits_available = PHP_INT_MAX; // Unlimited with BYOK
+        }
+
+        return [
+            'estimated_cost' => $estimated_cost,
+            'credits_available' => $credits_available,
+            'access_mode' => $access_state['access'],
+            'plan_tier' => $access_state['plan'],
+            'images_to_process' => $count,
+        ];
+    }
+
+    /**
+     * Get recent regeneration jobs for UI display.
+     *
+     * @param int $limit Number of jobs to retrieve.
+     *
+     * @return array Jobs list.
+     */
+    public function get_recent_jobs($limit = 5) {
+        $jobs = get_option('msh_metadata_regen_jobs', []);
+
+        // Sort by created_at descending
+        uasort($jobs, function($a, $b) {
+            return ($b['created_at'] ?? 0) - ($a['created_at'] ?? 0);
+        });
+
+        return array_slice($jobs, 0, $limit, true);
     }
 }
 
