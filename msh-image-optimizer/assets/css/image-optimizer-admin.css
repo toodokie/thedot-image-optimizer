@@ -912,63 +912,6 @@ select.msh-select,
     font-weight: inherit;
 }
 
-.msh-ai-toggle-section {
-    margin: 20px 0;
-}
-
-.msh-ai-toggle-section .rename-toggle-wrapper {
-    margin-bottom: 0;
-}
-
-.ai-mode-status {
-    margin-top: 10px;
-}
-
-.msh-ai-regen-section-inline {
-    margin: 24px 0;
-    border: 1px solid rgba(53, 51, 47, 0.2);
-    border-radius: 10px;
-    background: #faf9f6;
-    overflow: hidden;
-}
-
-.msh-ai-regen-section-inline summary {
-    cursor: pointer;
-    list-style: none;
-    padding: 18px 20px;
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 12px;
-}
-
-.msh-ai-regen-section-inline summary::-webkit-details-marker {
-    display: none;
-}
-
-.msh-ai-regen-section-inline summary::after {
-    content: '\25BC';
-    font-size: 0.85rem;
-    color: rgba(53, 51, 47, 0.65);
-    transition: transform 0.2s ease;
-    margin-top: 6px;
-}
-
-.msh-ai-regen-section-inline[open] summary::after {
-    transform: rotate(-180deg);
-}
-
-.msh-ai-regen-section-inline .ai-regen-summary-helper {
-    margin: 6px 0 0 0;
-    font-size: 0.85rem;
-    color: rgba(53, 51, 47, 0.7);
-}
-
-.ai-regen-inline-content {
-    padding: 0 20px 20px;
-    border-top: 1px solid rgba(53, 51, 47, 0.15);
-}
-
 /* Rename Settings Section */
 .msh-rename-settings-section {
     background: #faf9f6;
