@@ -851,7 +851,7 @@ class MSH_Image_Optimizer_Admin {
                                 </div>
                                 <div class="ai-stat-inline">
                                     <span class="ai-stat-inline-label"><?php _e('Last Run:', 'msh-image-optimizer'); ?></span>
-                                    <span class="ai-stat-inline-value" id="ai-last-run">Never</span>
+                                    <span class="ai-stat-inline-value" id="ai-last-run"><?php esc_html_e('Never', 'msh-image-optimizer'); ?></span>
                                 </div>
                                 <div class="ai-stat-inline">
                                     <span class="ai-stat-inline-label"><?php _e('This Month:', 'msh-image-optimizer'); ?></span>
@@ -1127,7 +1127,7 @@ class MSH_Image_Optimizer_Admin {
                         </div>
                         <div class="webp-status-item">
                             <span class="status-label"><?php _e('Delivery Status:', 'msh-image-optimizer'); ?></span>
-                            <span id="webp-delivery-status" class="status-value">Active</span>
+                            <span id="webp-delivery-status" class="status-value"><?php esc_html_e('Active', 'msh-image-optimizer'); ?></span>
                         </div>
                     </div>
                 </div>

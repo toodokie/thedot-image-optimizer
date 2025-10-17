@@ -109,11 +109,11 @@ class MSH_AI_Ajax_Handlers {
         check_ajax_referer('msh_image_optimizer', 'nonce');
 
         if (!current_user_can('manage_options')) {
-            wp_send_json_error(['message' => 'Unauthorized'], 403);
+            wp_send_json_error(['message' => __('Unauthorized', 'msh-image-optimizer')], 403);
         }
 
         if (!class_exists('MSH_AI_Service')) {
-            wp_send_json_error(['message' => 'AI Service not available'], 500);
+            wp_send_json_error(['message' => __('AI Service not available', 'msh-image-optimizer')], 500);
         }
 
         $ai_service = MSH_AI_Service::get_instance();
