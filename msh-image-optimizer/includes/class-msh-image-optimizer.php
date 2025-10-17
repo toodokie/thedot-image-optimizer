@@ -1871,10 +1871,9 @@ class MSH_Contextual_Meta_Generator {
 
         if (!empty($ai_slug_raw)) {
             $ai_slug = $this->slugify($ai_slug_raw);
-            // Append location for consistency with other filenames
-            $location_suffix = !empty($this->location_slug) ? '-' . $this->location_slug : '';
-            error_log('[MSH] Using AI-generated filename slug: ' . $ai_slug . $location_suffix);
-            return $ai_slug . $location_suffix;
+            // AI slugs are already descriptive and constrained to 3-4 words, so don't add location
+            error_log('[MSH] Using AI-generated filename slug: ' . $ai_slug);
+            return $ai_slug;
         }
 
         if (!$this->is_healthcare_industry($this->industry) && $context['type'] === 'clinical') {
@@ -5279,6 +5278,7 @@ class MSH_Image_Optimizer {
         add_action('wp_ajax_msh_remove_filename_suggestion', array($this, 'ajax_remove_filename_suggestion'));
         add_action('wp_ajax_msh_accept_filename_suggestion', array($this, 'ajax_accept_filename_suggestion'));
         add_action('wp_ajax_msh_toggle_file_rename', array($this, 'ajax_toggle_file_rename'));
+        add_action('wp_ajax_msh_toggle_ai_mode', array($this, 'ajax_toggle_ai_mode'));
         add_action('wp_ajax_msh_reject_filename_suggestion', array($this, 'ajax_reject_filename_suggestion'));
         add_action('wp_ajax_msh_preview_meta_text', array($this, 'ajax_preview_meta_text'));
         add_action('wp_ajax_msh_save_edited_meta', array($this, 'ajax_save_edited_meta'));
@@ -7638,7 +7638,18 @@ class MSH_Image_Optimizer {
         }
 
         try {
-            $image_data = $this->analyze_single_image($attachment_id);
+            // Check if AI mode is enabled - if so, regenerate with AI
+            $ai_mode = get_option('msh_ai_mode', 'manual');
+            $ai_options = [];
+            if ($ai_mode !== 'manual') {
+                $ai_options = [
+                    'ai_regeneration' => true,
+                    'ai_mode' => 'fill-empty', // Fill empty fields
+                    'ai_fields' => ['title', 'alt_text', 'caption', 'description'] // All fields
+                ];
+            }
+
+            $image_data = $this->analyze_single_image($attachment_id, $ai_options);
             if (!is_array($image_data) || isset($image_data['error'])) {
                 $error_message = is_array($image_data) && isset($image_data['error'])
                     ? $image_data['error']
@@ -8638,6 +8649,27 @@ class MSH_Image_Optimizer {
         wp_send_json_success([
             'enabled' => $enabled
         ]);
+    }
+
+    public function ajax_toggle_ai_mode() {
+        check_ajax_referer('msh_toggle_ai_mode', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_send_json_error(['message' => __('Unauthorized.', 'msh-image-optimizer')], 403);
+        }
+
+        $mode = isset($_POST['mode']) ? sanitize_text_field(wp_unslash($_POST['mode'])) : 'manual';
+        $allowed_modes = array('manual', 'assist');
+
+        if (!in_array($mode, $allowed_modes, true)) {
+            $mode = 'manual';
+        }
+
+        update_option('msh_ai_mode', $mode, false);
+
+        wp_send_json_success(array(
+            'mode' => $mode,
+        ));
     }
 
     /**

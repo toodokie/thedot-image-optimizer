@@ -761,13 +761,15 @@ select.msh-select,
     display: none;
 }
 
-.summary-header h2 {
+.summary-header h2,
+.summary-header h3 {
     display: inline-flex;
     align-items: center;
     gap: 12px;
 }
 
-.summary-header h2::after {
+.summary-header h2::after,
+.summary-header h3::after {
     content: '▼';
     font-size: 1rem;
     color: #35332f;
@@ -776,7 +778,8 @@ select.msh-select,
     line-height: 1;
 }
 
-.summary-collapsible:not([open]) .summary-header h2::after {
+.summary-collapsible:not([open]) .summary-header h2::after,
+.summary-collapsible:not([open]) .summary-header h3::after {
     transform: rotate(180deg);
 }
 
@@ -910,6 +913,78 @@ select.msh-select,
 .wrap > h1 em {
     font-style: italic;
     font-weight: inherit;
+}
+
+.msh-ai-toggle-section {
+    margin: 16px 0 20px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.msh-ai-toggle-section .rename-toggle-wrapper {
+    margin-bottom: 0;
+}
+
+.ai-toggle-wrapper .rename-toggle-text strong {
+    display: block;
+}
+
+.ai-mode-status {
+    margin-top: 0;
+}
+
+.msh-ai-regen-section-inline {
+    background: #faf9f6;
+    border: 1px solid #35332f;
+    border-radius: 0.625rem;
+    box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05), inset 0 0 0 1px rgba(255, 255, 255, 0.35);
+    margin: 24px 0;
+    overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+}
+
+.msh-ai-regen-section-inline .summary-header {
+    padding: var(--section-padding-md);
+    display: flex;
+    align-items: center;
+    gap: var(--section-gap-sm);
+    flex-direction: row;
+    background: transparent;
+}
+
+.msh-ai-regen-section-inline .summary-title-group {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-right: auto;
+}
+
+.msh-ai-regen-section-inline .summary-header h3 {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    font-family: var(--font-primary);
+    font-size: clamp(1.15rem, 2vw, 1.35rem);
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: #35332f;
+}
+
+.msh-ai-regen-section-inline .summary-header .summary-description {
+    font-size: 0.9rem;
+    color: rgba(53, 51, 47, 0.75);
+}
+
+.msh-ai-regen-section-inline .summary-content {
+    padding: 0 var(--section-padding-md) var(--section-padding-md);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    border-top: 1px solid rgba(53, 51, 47, 0.15);
+    background: transparent;
 }
 
 /* Rename Settings Section */
@@ -3362,27 +3437,6 @@ tr.context-updated {
 /* ============================================================================
    AI METADATA REGENERATION - INTEGRATED IN STEP 1
    ========================================================================= */
-
-.msh-ai-regen-section-inline {
-    margin: 20px -32px;
-    padding: 24px 32px;
-    background: #faf9f6;
-    border: 2px solid #e8e6e0;
-    border-radius: 8px;
-    border-left: none;
-    border-right: none;
-}
-
-.ai-regen-advanced-header {
-    margin-bottom: 12px;
-}
-
-.ai-regen-advanced-header h3 {
-    margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-    color: #35332f;
-}
 
 .ai-regen-inline-content {
     display: flex;

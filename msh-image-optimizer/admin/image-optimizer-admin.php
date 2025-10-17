@@ -202,6 +202,8 @@ class MSH_Image_Optimizer_Admin {
             'pluginUrl' => untrailingslashit(MSH_IO_PLUGIN_URL),
             'renameEnabled' => get_option('msh_enable_file_rename', '0'),
             'renameToggleNonce' => wp_create_nonce('msh_toggle_file_rename'),
+            'aiMode' => get_option('msh_ai_mode', 'manual'),
+            'aiToggleNonce' => wp_create_nonce('msh_toggle_ai_mode'),
             'indexStats' => $index_summary,
             'onboardingContext' => $sanitized_context,
             'onboardingComplete' => $onboarding_complete,
@@ -245,6 +247,9 @@ class MSH_Image_Optimizer_Admin {
                 'onboardingSummaryNotSpecified' => __('Not specified', 'msh-image-optimizer'),
                 'onboardingSummaryAiYes' => __('Subscribed to updates', 'msh-image-optimizer'),
                 'onboardingSummaryAiNo' => __('No updates requested', 'msh-image-optimizer'),
+                'aiEnabled' => __('✓ AI suggestions enabled', 'msh-image-optimizer'),
+                'aiDisabled' => __('AI suggestions disabled', 'msh-image-optimizer'),
+                'aiToggleError' => __('Unable to update AI setting. Please try again.', 'msh-image-optimizer'),
                 'contextSwitchSuccess' => __('Active context updated.', 'msh-image-optimizer'),
                 'contextSwitchError' => __('Unable to change the active context right now.', 'msh-image-optimizer'),
                 'contextSwitcherLabel' => __('Active Context', 'msh-image-optimizer'),
@@ -688,6 +693,31 @@ class MSH_Image_Optimizer_Admin {
                 <!-- Step 1: Image Optimization -->
                 <div class="msh-actions-section">
                     <h2 style="color: #35332f;"><?php _e('Step 1: Optimize Published Images', 'msh-image-optimizer'); ?></h2>
+                    <div class="msh-ai-toggle-section">
+                        <label class="rename-toggle-wrapper ai-toggle-wrapper">
+                            <input type="checkbox" id="enable-ai-mode" class="rename-toggle-checkbox"
+                                   <?php checked(get_option('msh_ai_mode', 'manual') !== 'manual'); ?>>
+                            <span class="rename-toggle-slider"></span>
+                            <div class="rename-toggle-text">
+                                <strong><?php _e('Enable AI Metadata Suggestions', 'msh-image-optimizer'); ?></strong>
+                                <span class="rename-toggle-description">
+                                    <?php _e('When enabled, Analyze will use OpenAI to generate titles, alt text, captions, and descriptions. Disable to fall back to rules-based suggestions.', 'msh-image-optimizer'); ?>
+                                </span>
+                            </div>
+                        </label>
+                        <div id="ai-mode-status-indicator" class="rename-status ai-mode-status">
+                            <span class="rename-status-text">
+                                <?php
+                                $ai_enabled = get_option('msh_ai_mode', 'manual') !== 'manual';
+                                if ($ai_enabled) {
+                                    echo '<span class="status-ready">' . __('✓ AI suggestions enabled', 'msh-image-optimizer') . '</span>';
+                                } else {
+                                    echo '<span class="status-disabled">' . __('AI suggestions disabled', 'msh-image-optimizer') . '</span>';
+                                }
+                                ?>
+                            </span>
+                        </div>
+                    </div>
                     <p style="margin-bottom: 15px; color: #35332f; font-size: 14px; background: #faf9f6; padding: 10px; border-radius: 4px;">
                         <strong>RECOMMENDED FIRST:</strong> Optimize your published images with WebP conversion, proper ALT text, and SEO improvements before cleaning duplicates.
                     </p>
@@ -733,11 +763,14 @@ class MSH_Image_Optimizer_Admin {
                     </div>
 
                     <!-- AI Metadata Regeneration (Advanced) -->
-                    <div class="msh-ai-regen-section-inline" id="ai-regen-dashboard">
-                        <div class="ai-regen-advanced-header">
-                            <h3><?php _e('AI Metadata Regeneration (Advanced)', 'msh-image-optimizer'); ?></h3>
-                        </div>
-                        <div class="ai-regen-inline-content">
+                    <details class="msh-ai-regen-section-inline summary-collapsible step-rename-settings" id="ai-regen-dashboard">
+                        <summary class="summary-header ai-regen-summary">
+                            <div class="summary-title-group">
+                                <h3><?php _e('AI Metadata Regeneration (Advanced)', 'msh-image-optimizer'); ?></h3>
+                                <p class="summary-description ai-regen-summary-helper"><?php _e('Use this when you want AI-generated suggestions to appear in the results table before applying.', 'msh-image-optimizer'); ?></p>
+                            </div>
+                        </summary>
+                        <div class="summary-content ai-regen-inline-content">
                             <p class="ai-regen-help-text">
                                 <?php _e('Use AI to bulk-regenerate metadata for existing images. This analyzes images with OpenAI Vision and overwrites metadata.', 'msh-image-optimizer'); ?>
                             </p>
@@ -776,7 +809,7 @@ class MSH_Image_Optimizer_Admin {
 
                             <!-- Progress shown in existing analyze modal -->
                         </div>
-                    </div>
+                    </details>
 
                     <div class="action-buttons step-actions">
                         <button id="analyze-images" class="button button-dot-primary">

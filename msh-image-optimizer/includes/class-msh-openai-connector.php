@@ -173,7 +173,7 @@ class MSH_OpenAI_Connector {
         // Add filename field if enabled
         if ($filename_enabled) {
             $json_fields[] = '  "filename_slug": "seo-friendly-filename-slug-describing-image-content"';
-            $requirements[] = '- Filename slug: Lowercase, hyphens only, 4-5 descriptive words MAXIMUM about what\'s IN the image (not the business name), suitable for file naming';
+            $requirements[] = '- Filename slug: Lowercase, hyphens only, 3-4 descriptive words MAXIMUM about what\'s IN the image (not the business name), suitable for file naming. CRITICAL: Never exceed 4 words.';
         }
 
         $json_schema = "{\n" . implode(",\n", $json_fields) . "\n}";

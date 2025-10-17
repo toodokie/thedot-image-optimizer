@@ -3612,7 +3612,7 @@
                 UI.updateLog(`❌ Error during ${label.toLowerCase()} optimization: ${error.message}`);
             } finally {
                 AppState.processing = false;
-                setTimeout(() => UI.hideModal(), 2000); // Show completion for 2 seconds
+                setTimeout(() => UI.hideProgressModal(), 2000); // Show completion for 2 seconds
             }
         }
 
