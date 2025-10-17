@@ -3364,11 +3364,13 @@ tr.context-updated {
    ========================================================================= */
 
 .msh-ai-regen-section-inline {
-    margin: 20px 0;
-    padding: 20px;
+    margin: 20px -32px;
+    padding: 24px 32px;
     background: #faf9f6;
     border: 2px solid #e8e6e0;
     border-radius: 8px;
+    border-left: none;
+    border-right: none;
 }
 
 .ai-regen-advanced-header {
