@@ -742,7 +742,7 @@ class MSH_Image_Optimizer_Admin {
                                 <?php _e('Use AI to bulk-regenerate metadata for existing images. This analyzes images with OpenAI Vision and overwrites metadata.', 'msh-image-optimizer'); ?>
                             </p>
                             <div class="ai-when-to-use">
-                                <strong>⚠️ <?php _e('When to use this:', 'msh-image-optimizer'); ?></strong>
+                                <strong><?php _e('When to use this:', 'msh-image-optimizer'); ?></strong>
                                 <ul>
                                     <li><?php _e('You have old images with poor/missing metadata', 'msh-image-optimizer'); ?></li>
                                     <li><?php _e('You want to bulk-update metadata for your entire library', 'msh-image-optimizer'); ?></li>
