@@ -175,6 +175,26 @@ class MSH_Image_Optimizer_Admin {
             true
         );
         
+        // Get AI service data
+        $ai_credits = 0;
+        $ai_plan_tier = get_option('msh_plan_tier', 'free');
+        $ai_credits_used = 0;
+        $ai_last_job = null;
+
+        if (class_exists('MSH_AI_Service')) {
+            $ai_service = MSH_AI_Service::get_instance();
+            $ai_credits = $ai_service->get_credit_balance();
+            $credit_usage = get_option('msh_ai_credit_usage', array());
+            $current_month = date('Y-m');
+            $ai_credits_used = isset($credit_usage[$current_month]) ? $credit_usage[$current_month] : 0;
+        }
+
+        // Get last AI regeneration job
+        $ai_jobs = get_option('msh_metadata_regen_jobs', array());
+        if (!empty($ai_jobs)) {
+            $ai_last_job = reset($ai_jobs); // Get first (most recent) job
+        }
+
         wp_localize_script('msh-image-optimizer-modern', 'mshImageOptimizer', array(
             'ajaxurl' => admin_url('admin-ajax.php'),
             'nonce' => wp_create_nonce('msh_image_optimizer'),
@@ -193,6 +213,10 @@ class MSH_Image_Optimizer_Admin {
             'diagnostics' => $diagnostics_snapshot,
             'contextChoices' => $context_menu_options,
             'contextChoiceMap' => $context_choice_map,
+            'aiCredits' => $ai_credits,
+            'aiPlanTier' => $ai_plan_tier,
+            'aiCreditsUsedMonth' => $ai_credits_used,
+            'aiLastJob' => $ai_last_job,
             'strings' => array(
                 'analyzing' => __('Analyzing images...', 'msh-image-optimizer'),
                 'optimizing' => __('Optimizing images...', 'msh-image-optimizer'),
@@ -521,6 +545,208 @@ class MSH_Image_Optimizer_Admin {
                         </div>
                             </div><!-- .summary-content -->
                         </details><!-- .summary-collapsible -->
+                    </div>
+                </div>
+
+                <!-- AI Metadata Regeneration Card -->
+                <div class="msh-ai-regen-section" id="ai-regen-dashboard">
+                    <details class="ai-regen-card" open>
+                        <summary class="ai-regen-header">
+                            <h2><?php _e('AI Metadata Regeneration', 'msh-image-optimizer'); ?></h2>
+                            <p class="ai-regen-subtitle"><?php _e('Bulk regenerate metadata using AI for existing images', 'msh-image-optimizer'); ?></p>
+                        </summary>
+                        <div class="ai-regen-content">
+                            <div class="ai-regen-stats-row">
+                                <div class="ai-stat-box">
+                                    <span class="ai-stat-label"><?php _e('Credits Available', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-stat-value" id="ai-credits-available">-</span>
+                                    <span class="ai-stat-sublabel" id="ai-plan-tier">-</span>
+                                </div>
+                                <div class="ai-stat-box">
+                                    <span class="ai-stat-label"><?php _e('Last Run', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-stat-value" id="ai-last-run">Never</span>
+                                    <span class="ai-stat-sublabel" id="ai-last-run-summary">-</span>
+                                </div>
+                                <div class="ai-stat-box">
+                                    <span class="ai-stat-label"><?php _e('This Month', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-stat-value" id="ai-credits-used-month">-</span>
+                                    <span class="ai-stat-sublabel"><?php _e('credits used', 'msh-image-optimizer'); ?></span>
+                                </div>
+                            </div>
+
+                            <p class="ai-regen-description">
+                                <?php _e('Regenerate metadata (title, alt text, caption, description) for existing images using AI vision analysis. Credits are consumed per image processed.', 'msh-image-optimizer'); ?>
+                            </p>
+
+                            <div class="ai-regen-actions">
+                                <button id="start-ai-regeneration" class="button button-dot-primary">
+                                    <?php _e('Start AI Regeneration', 'msh-image-optimizer'); ?>
+                                </button>
+                                <a href="<?php echo esc_url(admin_url('options-general.php?page=msh-image-optimizer-settings&tab=ai')); ?>" class="button button-dot-secondary">
+                                    <?php _e('AI Settings', 'msh-image-optimizer'); ?>
+                                </a>
+                            </div>
+
+                            <!-- Live Progress Widget (shown during job execution) -->
+                            <div id="ai-regen-progress-widget" class="ai-regen-progress-widget" style="display: none;">
+                                <div class="ai-progress-header">
+                                    <h3><?php _e('Regeneration in Progress', 'msh-image-optimizer'); ?></h3>
+                                    <span class="ai-progress-status" id="ai-job-status">Running</span>
+                                </div>
+
+                                <div class="ai-progress-bar-container">
+                                    <div class="ai-progress-bar">
+                                        <div class="ai-progress-fill" id="ai-progress-fill" style="width: 0%"></div>
+                                    </div>
+                                    <span class="ai-progress-text" id="ai-progress-text">0%</span>
+                                </div>
+
+                                <div class="ai-progress-stats">
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Processed:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-processed-count">0 / 0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Success:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-success-count">0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Skipped:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-skipped-count">0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Failed:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-failed-count">0</span>
+                                    </div>
+                                    <div class="ai-progress-stat">
+                                        <span class="ai-progress-stat-label"><?php _e('Credits Used:', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-progress-stat-value" id="ai-credits-consumed">0</span>
+                                    </div>
+                                </div>
+
+                                <div class="ai-progress-log">
+                                    <h4><?php _e('Recent Updates:', 'msh-image-optimizer'); ?></h4>
+                                    <ul id="ai-progress-log-list"></ul>
+                                </div>
+
+                                <div class="ai-progress-controls">
+                                    <button id="ai-pause-job" class="button button-dot-secondary">
+                                        <?php _e('Pause', 'msh-image-optimizer'); ?>
+                                    </button>
+                                    <button id="ai-resume-job" class="button button-dot-secondary" style="display: none;">
+                                        <?php _e('Resume', 'msh-image-optimizer'); ?>
+                                    </button>
+                                    <button id="ai-cancel-job" class="button button-dot-secondary">
+                                        <?php _e('Cancel', 'msh-image-optimizer'); ?>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </details>
+                </div>
+
+                <!-- AI Regeneration Confirmation Modal -->
+                <div id="ai-regen-modal" class="ai-regen-modal" style="display: none;">
+                    <div class="ai-modal-overlay"></div>
+                    <div class="ai-modal-content">
+                        <div class="ai-modal-header">
+                            <h3><?php _e('Confirm AI Metadata Regeneration', 'msh-image-optimizer'); ?></h3>
+                            <button type="button" class="ai-modal-close" aria-label="<?php esc_attr_e('Close', 'msh-image-optimizer'); ?>">×</button>
+                        </div>
+
+                        <div class="ai-modal-body">
+                            <p class="ai-modal-description">
+                                <?php _e('Configure how you want to regenerate metadata for your images. This will use AI to analyze images and generate SEO-optimized metadata.', 'msh-image-optimizer'); ?>
+                            </p>
+
+                            <div class="ai-modal-section">
+                                <label class="ai-modal-label"><?php _e('Selection Scope', 'msh-image-optimizer'); ?></label>
+                                <div class="ai-radio-group">
+                                    <label>
+                                        <input type="radio" name="ai_scope" value="all" checked>
+                                        <span><?php _e('All images in media library', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-radio-count" id="ai-scope-all-count">(0 images)</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="ai_scope" value="published">
+                                        <span><?php _e('Only published images', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-radio-count" id="ai-scope-published-count">(0 images)</span>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="ai_scope" value="missing">
+                                        <span><?php _e('Images with missing metadata', 'msh-image-optimizer'); ?></span>
+                                        <span class="ai-radio-count" id="ai-scope-missing-count">(0 images)</span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="ai-modal-section">
+                                <label class="ai-modal-label"><?php _e('Regeneration Mode', 'msh-image-optimizer'); ?></label>
+                                <div class="ai-radio-group">
+                                    <label>
+                                        <input type="radio" name="ai_mode" value="fill-empty" checked>
+                                        <span><?php _e('Fill empty fields only', 'msh-image-optimizer'); ?></span>
+                                        <small class="ai-radio-help"><?php _e('Only generate metadata for fields that are currently empty', 'msh-image-optimizer'); ?></small>
+                                    </label>
+                                    <label>
+                                        <input type="radio" name="ai_mode" value="overwrite">
+                                        <span><?php _e('Overwrite all metadata', 'msh-image-optimizer'); ?></span>
+                                        <small class="ai-radio-help"><?php _e('Replace existing metadata with AI-generated content (backup created)', 'msh-image-optimizer'); ?></small>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="ai-modal-section">
+                                <label class="ai-modal-label"><?php _e('Fields to Generate', 'msh-image-optimizer'); ?></label>
+                                <div class="ai-checkbox-group">
+                                    <label>
+                                        <input type="checkbox" name="ai_fields[]" value="title" checked>
+                                        <span><?php _e('Title', 'msh-image-optimizer'); ?></span>
+                                    </label>
+                                    <label>
+                                        <input type="checkbox" name="ai_fields[]" value="alt_text" checked>
+                                        <span><?php _e('Alt Text', 'msh-image-optimizer'); ?></span>
+                                    </label>
+                                    <label>
+                                        <input type="checkbox" name="ai_fields[]" value="caption" checked>
+                                        <span><?php _e('Caption', 'msh-image-optimizer'); ?></span>
+                                    </label>
+                                    <label>
+                                        <input type="checkbox" name="ai_fields[]" value="description" checked>
+                                        <span><?php _e('Description', 'msh-image-optimizer'); ?></span>
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div class="ai-modal-estimate" id="ai-modal-estimate">
+                                <div class="ai-estimate-row">
+                                    <span class="ai-estimate-label"><?php _e('Images to process:', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-estimate-value" id="ai-estimate-count">-</span>
+                                </div>
+                                <div class="ai-estimate-row">
+                                    <span class="ai-estimate-label"><?php _e('Estimated credits:', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-estimate-value" id="ai-estimate-credits">-</span>
+                                </div>
+                                <div class="ai-estimate-row">
+                                    <span class="ai-estimate-label"><?php _e('Credits available:', 'msh-image-optimizer'); ?></span>
+                                    <span class="ai-estimate-value" id="ai-estimate-available">-</span>
+                                </div>
+                            </div>
+
+                            <div class="ai-modal-warning" id="ai-insufficient-credits" style="display: none;">
+                                <strong><?php _e('Insufficient Credits', 'msh-image-optimizer'); ?></strong>
+                                <p><?php _e('You do not have enough credits to process all selected images. Please reduce the selection scope or upgrade your plan.', 'msh-image-optimizer'); ?></p>
+                            </div>
+                        </div>
+
+                        <div class="ai-modal-footer">
+                            <button type="button" id="ai-modal-cancel" class="button button-dot-secondary">
+                                <?php _e('Cancel', 'msh-image-optimizer'); ?>
+                            </button>
+                            <button type="button" id="ai-modal-start" class="button button-dot-primary">
+                                <?php _e('Start Regeneration', 'msh-image-optimizer'); ?>
+                            </button>
+                        </div>
                     </div>
                 </div>
 

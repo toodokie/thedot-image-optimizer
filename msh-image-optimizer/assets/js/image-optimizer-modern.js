@@ -5684,4 +5684,454 @@
         DuplicateCleanup
     };
 
+    // =============================================================================
+    // AI METADATA REGENERATION MODULE
+    // =============================================================================
+
+    const AIRegeneration = {
+        pollInterval: null,
+        pollFrequency: 2000, // 2 seconds
+
+        init() {
+            this.initDashboard();
+            this.initModal();
+            this.initJobControls();
+            this.checkForActiveJob();
+        },
+
+        initDashboard() {
+            // Populate initial credit stats
+            $('#ai-credits-available').text(mshImageOptimizer.aiCredits || 0);
+            $('#ai-plan-tier').text(this.getPlanLabel(mshImageOptimizer.aiPlanTier || 'free'));
+            $('#ai-credits-used-month').text(mshImageOptimizer.aiCreditsUsedMonth || 0);
+
+            // Show last job info if available
+            if (mshImageOptimizer.aiLastJob) {
+                const job = mshImageOptimizer.aiLastJob;
+                const completed = new Date(job.completed_at);
+                $('#ai-last-run').text(this.formatDateTime(completed));
+                $('#ai-last-run-summary').text(
+                    job.successful + ' successful, ' +
+                    job.skipped + ' skipped, ' +
+                    job.failed + ' failed'
+                );
+            }
+
+            // Bind start button
+            $('#start-ai-regeneration').on('click', () => this.openModal());
+        },
+
+        initModal() {
+            const $modal = $('#ai-regen-modal');
+
+            // Open modal handler
+            $('#start-ai-regeneration').on('click', () => {
+                $modal.fadeIn(200);
+                this.loadModalCounts();
+                this.updateEstimate();
+            });
+
+            // Close modal handlers
+            $('#ai-modal-close, #ai-modal-cancel, .ai-modal-overlay').on('click', () => {
+                $modal.fadeOut(200);
+            });
+
+            // Update estimate when scope/mode/fields change
+            $('input[name="ai_scope"], input[name="ai_mode"], input[name="ai_fields[]"]').on('change', () => {
+                this.updateEstimate();
+            });
+
+            // Start regeneration
+            $('#ai-modal-start').on('click', () => this.startRegeneration());
+        },
+
+        initJobControls() {
+            $('#ai-pause-job').on('click', () => this.pauseJob());
+            $('#ai-resume-job').on('click', () => this.resumeJob());
+            $('#ai-cancel-job').on('click', () => this.cancelJob());
+        },
+
+        openModal() {
+            $('#ai-regen-modal').fadeIn(200);
+            this.loadModalCounts();
+            this.updateEstimate();
+        },
+
+        loadModalCounts() {
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_get_ai_regen_counts',
+                    nonce: mshImageOptimizer.nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        $('#ai-scope-all-count').text('(' + response.data.all + ' images)');
+                        $('#ai-scope-published-count').text('(' + response.data.published + ' images)');
+                        $('#ai-scope-missing-count').text('(' + response.data.missing_metadata + ' images)');
+                    }
+                }
+            });
+        },
+
+        updateEstimate() {
+            const scope = $('input[name="ai_scope"]:checked').val();
+            const mode = $('input[name="ai_mode"]:checked').val();
+            const fields = $('input[name="ai_fields[]"]:checked').map(function() {
+                return $(this).val();
+            }).get();
+
+            if (fields.length === 0) {
+                $('#ai-estimate-count').text('0');
+                $('#ai-estimate-credits').text('0');
+                return;
+            }
+
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_estimate_ai_regeneration',
+                    nonce: mshImageOptimizer.nonce,
+                    scope: scope,
+                    mode: mode,
+                    fields: fields
+                },
+                success: (response) => {
+                    if (response.success) {
+                        $('#ai-estimate-count').text(response.data.image_count);
+                        $('#ai-estimate-credits').text(response.data.estimated_credits);
+                        $('#ai-estimate-available').text(mshImageOptimizer.aiCredits);
+
+                        // Show warning if insufficient credits
+                        if (response.data.estimated_credits > mshImageOptimizer.aiCredits) {
+                            $('#ai-insufficient-credits').show();
+                            $('#ai-modal-start').prop('disabled', true);
+                        } else {
+                            $('#ai-insufficient-credits').hide();
+                            $('#ai-modal-start').prop('disabled', false);
+                        }
+                    }
+                }
+            });
+        },
+
+        startRegeneration() {
+            const scope = $('input[name="ai_scope"]:checked').val();
+            const mode = $('input[name="ai_mode"]:checked').val();
+            const fields = $('input[name="ai_fields[]"]:checked').map(function() {
+                return $(this).val();
+            }).get();
+
+            if (fields.length === 0) {
+                alert('Please select at least one field to generate.');
+                return;
+            }
+
+            $('#ai-modal-start').prop('disabled', true).text('Starting...');
+
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_start_ai_regeneration',
+                    nonce: mshImageOptimizer.nonce,
+                    scope: scope,
+                    mode: mode,
+                    fields: fields
+                },
+                success: (response) => {
+                    if (response.success) {
+                        // Close modal
+                        $('#ai-regen-modal').fadeOut(200);
+
+                        // Show progress widget
+                        $('#ai-regen-progress-widget').slideDown(300);
+
+                        // Start polling for status
+                        this.startPolling();
+
+                        // Log initial message
+                        this.addProgressLog('Job started: processing ' + response.data.total + ' images');
+                    } else {
+                        alert('Failed to start regeneration: ' + (response.data.message || 'Unknown error'));
+                        $('#ai-modal-start').prop('disabled', false).text('Start Regeneration');
+                    }
+                },
+                error: () => {
+                    alert('Network error while starting regeneration. Please try again.');
+                    $('#ai-modal-start').prop('disabled', false).text('Start Regeneration');
+                }
+            });
+        },
+
+        checkForActiveJob() {
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_get_ai_regeneration_status',
+                    nonce: mshImageOptimizer.nonce
+                },
+                success: (response) => {
+                    if (response.success && response.data.job) {
+                        const job = response.data.job;
+                        if (job.status === 'queued' || job.status === 'running' || job.status === 'paused') {
+                            // Resume monitoring active job
+                            $('#ai-regen-progress-widget').show();
+                            this.updateProgressWidget(job);
+                            this.startPolling();
+                        }
+                    }
+                }
+            });
+        },
+
+        startPolling() {
+            if (this.pollInterval) {
+                clearInterval(this.pollInterval);
+            }
+
+            this.pollInterval = setInterval(() => {
+                this.pollJobStatus();
+            }, this.pollFrequency);
+        },
+
+        stopPolling() {
+            if (this.pollInterval) {
+                clearInterval(this.pollInterval);
+                this.pollInterval = null;
+            }
+        },
+
+        pollJobStatus() {
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_get_ai_regeneration_status',
+                    nonce: mshImageOptimizer.nonce
+                },
+                success: (response) => {
+                    if (response.success && response.data.job) {
+                        this.updateProgressWidget(response.data.job);
+
+                        // Stop polling if job is complete
+                        if (response.data.job.status === 'completed' ||
+                            response.data.job.status === 'cancelled' ||
+                            response.data.job.status === 'failed') {
+                            this.stopPolling();
+                            this.onJobComplete(response.data.job);
+                        }
+                    }
+                }
+            });
+        },
+
+        updateProgressWidget(job) {
+            const percent = job.total > 0 ? Math.round((job.processed / job.total) * 100) : 0;
+
+            // Update progress bar
+            $('#ai-progress-fill').css('width', percent + '%');
+            $('#ai-progress-text').text(percent + '%');
+
+            // Update stats
+            $('#ai-processed-count').text(job.processed + ' / ' + job.total);
+            $('#ai-success-count').text(job.successful || 0);
+            $('#ai-skipped-count').text(job.skipped || 0);
+            $('#ai-failed-count').text(job.failed || 0);
+            $('#ai-credits-consumed').text(job.credits_used || 0);
+
+            // Update status badge
+            $('#ai-job-status').text(this.getStatusLabel(job.status)).attr('class', 'ai-progress-status status-' + job.status);
+
+            // Update pause/resume button visibility
+            if (job.status === 'paused') {
+                $('#ai-pause-job').hide();
+                $('#ai-resume-job').show();
+            } else {
+                $('#ai-pause-job').show();
+                $('#ai-resume-job').hide();
+            }
+
+            // Update credit display in dashboard
+            if (job.credits_remaining !== undefined) {
+                $('#ai-credits-available').text(job.credits_remaining);
+            }
+
+            // Add new log messages
+            if (job.messages && job.messages.length > 0) {
+                job.messages.forEach(msg => {
+                    if (!this.isLogDuplicate(msg)) {
+                        this.addProgressLog(msg);
+                    }
+                });
+            }
+        },
+
+        pauseJob() {
+            $('#ai-pause-job').prop('disabled', true).text('Pausing...');
+
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_pause_ai_regeneration',
+                    nonce: mshImageOptimizer.nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.addProgressLog('Job paused');
+                        $('#ai-pause-job').hide();
+                        $('#ai-resume-job').show();
+                    } else {
+                        alert('Failed to pause: ' + (response.data.message || 'Unknown error'));
+                    }
+                    $('#ai-pause-job').prop('disabled', false).text('Pause');
+                }
+            });
+        },
+
+        resumeJob() {
+            $('#ai-resume-job').prop('disabled', true).text('Resuming...');
+
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_resume_ai_regeneration',
+                    nonce: mshImageOptimizer.nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.addProgressLog('Job resumed');
+                        $('#ai-pause-job').show();
+                        $('#ai-resume-job').hide();
+                    } else {
+                        alert('Failed to resume: ' + (response.data.message || 'Unknown error'));
+                    }
+                    $('#ai-resume-job').prop('disabled', false).text('Resume');
+                }
+            });
+        },
+
+        cancelJob() {
+            if (!confirm('Are you sure you want to cancel this regeneration job?')) {
+                return;
+            }
+
+            $('#ai-cancel-job').prop('disabled', true).text('Cancelling...');
+
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_cancel_ai_regeneration',
+                    nonce: mshImageOptimizer.nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        this.addProgressLog('Job cancelled');
+                        this.stopPolling();
+                        this.onJobComplete(response.data.job);
+                    } else {
+                        alert('Failed to cancel: ' + (response.data.message || 'Unknown error'));
+                    }
+                    $('#ai-cancel-job').prop('disabled', false).text('Cancel');
+                }
+            });
+        },
+
+        onJobComplete(job) {
+            this.addProgressLog('Job ' + job.status + ': ' + job.successful + ' successful, ' + job.skipped + ' skipped, ' + job.failed + ' failed');
+
+            // Update dashboard stats
+            $('#ai-last-run').text(this.formatDateTime(new Date(job.completed_at || job.updated_at)));
+            $('#ai-last-run-summary').text(
+                job.successful + ' successful, ' +
+                job.skipped + ' skipped, ' +
+                job.failed + ' failed'
+            );
+
+            // Refresh credit balance
+            this.refreshCreditBalance();
+        },
+
+        refreshCreditBalance() {
+            $.ajax({
+                url: mshImageOptimizer.ajaxurl,
+                type: 'POST',
+                data: {
+                    action: 'msh_get_ai_credit_balance',
+                    nonce: mshImageOptimizer.nonce
+                },
+                success: (response) => {
+                    if (response.success) {
+                        $('#ai-credits-available').text(response.data.balance);
+                        $('#ai-credits-used-month').text(response.data.used_this_month);
+                        mshImageOptimizer.aiCredits = response.data.balance;
+                    }
+                }
+            });
+        },
+
+        addProgressLog(message) {
+            const $log = $('#ai-progress-log-list');
+            const timestamp = new Date().toLocaleTimeString();
+            const $item = $('<li></li>').html('<span class="log-time">' + timestamp + '</span> ' + message);
+            $log.prepend($item);
+
+            // Keep only last 10 messages
+            if ($log.children().length > 10) {
+                $log.children().last().remove();
+            }
+        },
+
+        isLogDuplicate(message) {
+            let isDuplicate = false;
+            $('#ai-progress-log-list li').each(function() {
+                if ($(this).text().includes(message)) {
+                    isDuplicate = true;
+                    return false;
+                }
+            });
+            return isDuplicate;
+        },
+
+        getPlanLabel(tier) {
+            const labels = {
+                'free': 'Free Plan',
+                'ai_starter': 'AI Starter (100/mo)',
+                'ai_pro': 'AI Pro (500/mo)',
+                'ai_business': 'AI Business (2000/mo)'
+            };
+            return labels[tier] || tier;
+        },
+
+        getStatusLabel(status) {
+            const labels = {
+                'queued': 'Queued',
+                'running': 'Running',
+                'paused': 'Paused',
+                'completed': 'Completed',
+                'cancelled': 'Cancelled',
+                'failed': 'Failed'
+            };
+            return labels[status] || status;
+        },
+
+        formatDateTime(date) {
+            if (!date) return 'Never';
+            return date.toLocaleDateString() + ' ' + date.toLocaleTimeString();
+        }
+    };
+
+    // Initialize AI Regeneration when DOM is ready
+    $(document).ready(function() {
+        if ($('#ai-regen-dashboard').length) {
+            AIRegeneration.init();
+        }
+    });
+
 })(jQuery);

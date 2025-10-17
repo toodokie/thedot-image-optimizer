@@ -75,6 +75,7 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-service.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-regeneration-background.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-ajax-handlers.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-admin.php';
