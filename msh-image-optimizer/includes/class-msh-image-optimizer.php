@@ -1871,8 +1871,9 @@ class MSH_Contextual_Meta_Generator {
 
         if (!empty($ai_slug_raw)) {
             $ai_slug = $this->slugify($ai_slug_raw);
-            // AI slugs are already descriptive and constrained to 3-4 words, so don't add location
-            error_log('[MSH] Using AI-generated filename slug: ' . $ai_slug);
+            // Enforce 4-word maximum (AI should generate 3-4 words, but truncate as safeguard)
+            $ai_slug = $this->truncate_slug($ai_slug, 4);
+            error_log('[MSH] Using AI-generated filename slug (truncated to 4 words): ' . $ai_slug);
             return $ai_slug;
         }
 
@@ -5291,6 +5292,7 @@ class MSH_Image_Optimizer {
         add_action('wp_ajax_msh_verify_webp_status', array($this, 'ajax_verify_webp_status'));
         add_action('wp_ajax_msh_get_attachment_count', array($this, 'ajax_get_attachment_count'));
         add_action('wp_ajax_msh_get_remaining_count', array($this, 'ajax_get_remaining_count'));
+        add_action('wp_ajax_msh_check_capabilities', array($this, 'ajax_check_capabilities'));
         add_action('init', array($this, 'prime_season_cache'));
 
         $this->contextual_meta_generator = new MSH_Contextual_Meta_Generator();
@@ -5859,7 +5861,7 @@ class MSH_Image_Optimizer {
     /**
      * Analyze single image for optimization potential
      */
-    public function analyze_single_image($attachment_id) {
+    public function analyze_single_image($attachment_id, $ai_options = []) {
         $metadata = wp_get_attachment_metadata($attachment_id);
         if (!is_array($metadata)) {
             $metadata = [];
@@ -8589,6 +8591,28 @@ class MSH_Image_Optimizer {
             'remaining' => (int) $remaining,
             'percent_complete' => $total > 0 ? round(($indexed / $total) * 100, 1) : 0
         ]);
+    }
+
+    /**
+     * AJAX handler to check system capabilities (Imagick, etc.)
+     */
+    public function ajax_check_capabilities() {
+        check_ajax_referer('msh_image_optimizer', 'nonce');
+
+        if (!current_user_can('manage_options')) {
+            wp_die('Unauthorized');
+        }
+
+        $capabilities = [
+            'dependencies' => [
+                'imagick_compare' => extension_loaded('imagick') && method_exists('Imagick', 'compareImages'),
+                'imagick' => extension_loaded('imagick'),
+                'gd' => extension_loaded('gd'),
+                'webp' => function_exists('imagewebp'),
+            ]
+        ];
+
+        wp_send_json_success($capabilities);
     }
 
     /**
