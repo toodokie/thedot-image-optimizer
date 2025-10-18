@@ -31,28 +31,44 @@ class MSH_AI_Ajax_Handlers {
 
 		global $wpdb;
 
+		// Prepare LIKE pattern for image mime types
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		// All images
 		$all_count = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		// Published images (those referenced in content)
 		$published_count = $wpdb->get_var(
-			"SELECT COUNT(DISTINCT attachment_id)
+			$wpdb->prepare(
+				"SELECT COUNT(DISTINCT attachment_id)
             FROM {$wpdb->prefix}msh_image_usage_index
             WHERE attachment_id IN (
                 SELECT ID FROM {$wpdb->posts}
-                WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
-            )"
+                WHERE post_type = %s AND post_mime_type LIKE %s
+            )",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		// Images with missing metadata (empty title OR empty alt text)
 		$missing_count = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->posts} p
-            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
-            WHERE p.post_type = 'attachment'
-            AND p.post_mime_type LIKE 'image/%'
-            AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)"
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts} p
+            LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = %s
+            WHERE p.post_type = %s
+            AND p.post_mime_type LIKE %s
+            AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)",
+				'_wp_attachment_image_alt',
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		wp_send_json_success(
@@ -152,27 +168,39 @@ class MSH_AI_Ajax_Handlers {
 	private function get_attachments_by_scope( $scope ) {
 		global $wpdb;
 
+		// Prepare LIKE pattern for image mime types
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		switch ( $scope ) {
 			case 'published':
 				// Images referenced in usage index
 				$ids = $wpdb->get_col(
-					"SELECT DISTINCT attachment_id
+					$wpdb->prepare(
+						"SELECT DISTINCT attachment_id
                     FROM {$wpdb->prefix}msh_image_usage_index
                     WHERE attachment_id IN (
                         SELECT ID FROM {$wpdb->posts}
-                        WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
-                    )"
+                        WHERE post_type = %s AND post_mime_type LIKE %s
+                    )",
+						'attachment',
+						$image_mime_like
+					)
 				);
 				break;
 
 			case 'missing':
 				// Images with missing metadata
 				$ids = $wpdb->get_col(
-					"SELECT p.ID FROM {$wpdb->posts} p
-                    LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
-                    WHERE p.post_type = 'attachment'
-                    AND p.post_mime_type LIKE 'image/%'
-                    AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)"
+					$wpdb->prepare(
+						"SELECT p.ID FROM {$wpdb->posts} p
+                    LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = %s
+                    WHERE p.post_type = %s
+                    AND p.post_mime_type LIKE %s
+                    AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)",
+						'_wp_attachment_image_alt',
+						'attachment',
+						$image_mime_like
+					)
 				);
 				break;
 
@@ -180,8 +208,12 @@ class MSH_AI_Ajax_Handlers {
 			default:
 				// All images
 				$ids = $wpdb->get_col(
-					"SELECT ID FROM {$wpdb->posts}
-                    WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+					$wpdb->prepare(
+						"SELECT ID FROM {$wpdb->posts}
+                    WHERE post_type = %s AND post_mime_type LIKE %s",
+						'attachment',
+						$image_mime_like
+					)
 				);
 				break;
 		}
