@@ -32,9 +32,9 @@ final class MSH_Image_Optimizer_Plugin {
 
     private function __construct() {
         $this->define_constants();
+        $this->load_textdomain(); // Load immediately before includes()
         $this->includes();
         add_action('plugins_loaded', [$this, 'init']);
-        add_action('init', [$this, 'load_textdomain']);
     }
 
     public function load_textdomain() {
@@ -108,4 +108,5 @@ final class MSH_Image_Optimizer_Plugin {
     }
 }
 
+// Instantiate plugin immediately (AJAX handlers need early registration)
 MSH_Image_Optimizer_Plugin::instance();

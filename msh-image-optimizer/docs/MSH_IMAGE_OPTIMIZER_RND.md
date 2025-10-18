@@ -2240,9 +2240,9 @@ CREATE TABLE wp_msh_ai_referrals (
   - ⚠️ Not validated for small/local businesses
 
 **Related Documentation:**
-- [GEO_STRATEGY.md](../../GEO_STRATEGY.md) - Full strategy (evidence-based revision)
+- [GEO Strategy](../../docs/business/GEO_STRATEGY.md) - Full strategy (evidence-based revision)
 - [SEO-Optimized Filename Generation](#seo-optimized-filename-generation-strategy-october-2025)
-- [Industry Metadata Templates](../../INDUSTRY_METADATA_TEMPLATES.md)
+- [Industry Metadata Templates](../../docs/reference/INDUSTRY_METADATA_TEMPLATES.md)
 
 **Status:** 🔲 Planning Phase - Conservative, Research-Backed Approach (Fix Bugs First)
 

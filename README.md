@@ -69,11 +69,11 @@ Standalone Repository ←→ SYMLINK ←→ Local WordPress Test Site
 - ✅ No manual copying or sync scripts needed
 
 **Documentation:**
-- [SYMLINK_SETUP.md](SYMLINK_SETUP.md) - Complete symlink configuration and workflow
+- [Symlink Setup](docs/setup/SYMLINK_SETUP.md) - Complete symlink configuration and workflow
 
 **Legacy Sync Documentation** (if symlink not used):
-- [SYNC_GUIDE.md](SYNC_GUIDE.md) - Manual sync commands
-- [PREVENTING_SYNC_ISSUES.md](PREVENTING_SYNC_ISSUES.md) - Sync automation options
+- [Sync Guide](docs/setup/SYNC_GUIDE.md) - Manual sync commands
+- [Preventing Sync Issues](docs/setup/PREVENTING_SYNC_ISSUES.md) - Sync automation options
 
 ### WP-CLI Testing
 
@@ -90,7 +90,7 @@ wp msh qa --rename=123,456 --optimize=789 --duplicate --duplicate-min-coverage=5
 wp msh qa --duplicate --duplicate-require-groups
 ```
 
-See [WP_CLI_TEST_RESULTS.md](WP_CLI_TEST_RESULTS.md) for detailed test results and examples.
+See [WP-CLI Test Results](docs/testing/WP_CLI_TEST_RESULTS.md) for detailed test results and examples.
 
 ## Usage
 
@@ -150,11 +150,12 @@ msh-image-optimizer/
 
 ### Documentation
 
-- [Complete Documentation](docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md)
-- [Developer Notes](docs/MSH_IMAGE_OPTIMIZER_DEV_NOTES.md)
-- [Multilanguage Guide](docs/MSH_IMAGE_OPTIMIZER_MULTILANGUAGE_GUIDE.md)
-- [Research & Development](docs/MSH_IMAGE_OPTIMIZER_RND.md)
-- [Migration Plan](docs/MSH_STANDALONE_MIGRATION_PLAN.md)
+- [Standalone Documentation Index](docs/README.md)
+- [Complete Documentation](msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md)
+- [Developer Notes](msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_DEV_NOTES.md)
+- [Multilanguage Guide](msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_MULTILANGUAGE_GUIDE.md)
+- [Research & Development](msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_RND.md)
+- [Migration Plan](msh-image-optimizer/docs/MSH_STANDALONE_MIGRATION_PLAN.md)
 
 ## Environment Setup
 

@@ -4,6 +4,28 @@ This handbook covers the production build of the Image Optimizer that ships with
 
 ---
 
+## 🗂 Documentation Map
+
+The standalone repository now keeps every working doc under a single `docs/` folder with an index for quick navigation. Start at the [Standalone Documentation Index](../../docs/README.md) to jump into the right guide.
+
+- `docs/setup/` — environment and sync instructions (symlink workflow, troubleshooting, Live Links, daily checklist).
+- `docs/development/` — engineering change logs, architectural notes, investigations, and bug write-ups.
+- `docs/testing/` — QA playbooks, CLI examples, recorded results, and regression guides.
+- `docs/reports/` — status recaps, incident summaries, milestone wrap-ups, and stakeholder updates.
+- `docs/business/` — monetization, go-to-market research, and strategic planning.
+- `docs/reference/` — credentials, compliance, and reusable templates.
+
+If you are writing a new document, pick the folder that matches the primary audience. Add it to the index (`docs/README.md`) so the team can find it. Use `TODO.md` for the rolling roadmap and strike items there only when shipped.
+
+This file remains the operational handbook for the production plugin bundled with the Medicross theme. For internal architecture or roadmap work specific to the plugin codebase, continue to update the companion docs that live alongside it:
+
+- `MSH_IMAGE_OPTIMIZER_DEV_NOTES.md` — active developer notes and upcoming features.
+- `MSH_IMAGE_OPTIMIZER_RND.md` — research spikes and experiments.
+- `MSH_IMAGE_OPTIMIZER_MULTILANGUAGE_GUIDE.md` — localization plans.
+- `MSH_STANDALONE_MIGRATION_PLAN.md` — history and migration context.
+
+---
+
 ## ⚡ Quick Start Workflow
 
 1. **Run Analyzer** – refresh the table so priorities, statuses, and usage badges reflect the latest library changes.
@@ -232,10 +254,10 @@ Each test site includes:
 
 ### Related Documentation
 
-- [Industry Metadata Templates](../../INDUSTRY_METADATA_TEMPLATES.md) - All 17 industry specifications
-- [GEO Strategy](../../GEO_STRATEGY.md) - AI discovery optimization strategy (evidence-based)
+- [Industry Metadata Templates](../../docs/reference/INDUSTRY_METADATA_TEMPLATES.md) - All 17 industry specifications
+- [GEO Strategy](../../docs/business/GEO_STRATEGY.md) - AI discovery optimization strategy (evidence-based)
 - [MSH R&D Document](MSH_IMAGE_OPTIMIZER_RND.md) - Research and development notes
-- [Wellness Test Site Setup](../../WELLNESS_SITE_SETUP.md) - Quick setup guide for Radiant Bloom
+- [Wellness Test Site Setup](TEST_SITE_WELLNESS.md) - Quick setup guide for Radiant Bloom
 
 ---
 

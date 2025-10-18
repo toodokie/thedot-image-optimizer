@@ -2363,7 +2363,7 @@ For recreation or extension, focus on the shared metadata generator, maintain th
 
 ### Plugin Distribution & Monetization Documentation
 
-📄 **[WordPress.org Plugin Compliance Checklist](WP_PLUGIN_COMPLIANCE_CHECKLIST.md)**
+📄 **[WordPress.org Plugin Compliance Checklist](../../docs/reference/WP_PLUGIN_COMPLIANCE_CHECKLIST.md)**
 - GPL licensing requirements and implementation
 - Security standards (sanitization, escaping, nonces)
 - Internationalization (i18n/l10n) requirements
@@ -2372,7 +2372,7 @@ For recreation or extension, focus on the shared metadata generator, maintain th
 - **Estimated effort:** 57-81 hours for full compliance
 - **Current compliance:** ~27% (needs work before distribution)
 
-📄 **[AI Monetization Strategy](AI_MONETIZATION_STRATEGY.md)**
+📄 **[Sales Platform Strategy](../../docs/business/SALES_PLATFORM_PLAN.md)**
 - AI-powered features and pricing models
 - Freemium strategy (WordPress.org FREE + Freemius PRO)
 - Credit-based vs subscription pricing comparison
@@ -2381,7 +2381,7 @@ For recreation or extension, focus on the shared metadata generator, maintain th
 - Multi-tier pricing recommendations (Pro/Business/Agency)
 - **Pricing sweet spot:** $99-399/year with AI credits included
 
-📄 **[Competitor Analysis - AI Image Plugins](COMPETITOR_ANALYSIS_AI_IMAGE_PLUGINS.md)**
+📄 **[Competitor Analysis Highlights](../../docs/business/ALTERNATIVE_BUSINESS_MODELS.md#competitors)**
 - Detailed analysis of 6 major competitors
 - **Key competitors:** Media File Renamer (40k+ installs, $39-199/year), AltText.ai ($5-229/month)
 - Pricing comparison and market positioning

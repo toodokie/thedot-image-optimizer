@@ -437,8 +437,8 @@ This is usually correct behavior.
 
 **Related Guides:**
 - [Context Profiles User Guide](USER_GUIDE_CONTEXT_PROFILES.md)
-- [AI Regeneration Best Practices](USER_GUIDE_AI_REGENERATION.md)
-- [Multilingual WordPress Setup](USER_GUIDE_MULTILINGUAL_SETUP.md)
+- [AI Regeneration Workflow](../../docs/development/AI_REGENERATION_REDESIGN.md)
+- [Multilingual WordPress Setup](MSH_IMAGE_OPTIMIZER_MULTILANGUAGE_GUIDE.md)
 
 **Technical Documentation:**
 - [Multilingual AI Phase Plan](MULTILINGUAL_AI_PHASE_PLAN.md)

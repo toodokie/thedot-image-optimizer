@@ -584,7 +584,7 @@ Language Template
 
 **User Guides:**
 - [Multilingual AI User Guide](USER_GUIDE_MULTILINGUAL_AI.md)
-- [AI Regeneration Best Practices](USER_GUIDE_AI_REGENERATION.md)
+- [AI Regeneration Workflow](../../docs/development/AI_REGENERATION_REDESIGN.md)
 
 **Technical Documentation:**
 - [Context Profiles QA Plan](CONTEXT_PROFILE_QA_PLAN.md)

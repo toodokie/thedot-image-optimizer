@@ -366,7 +366,7 @@ All business contexts (UVP, pain points, target audience) are documented in each
 
 - [TEST_SITE_WELLNESS.md](TEST_SITE_WELLNESS.md) - Radiant Bloom Studio setup
 - [TEST_SITE_LAW_FIRM.md](TEST_SITE_LAW_FIRM.md) - Sterling & Associates Law setup
-- [INDUSTRY_METADATA_TEMPLATES.md](../../INDUSTRY_METADATA_TEMPLATES.md) - All 17 industry templates
+- [Industry Metadata Templates](../../docs/reference/INDUSTRY_METADATA_TEMPLATES.md) - All 17 industry templates
 - [MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md](MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md) - Main documentation
 
 ---
