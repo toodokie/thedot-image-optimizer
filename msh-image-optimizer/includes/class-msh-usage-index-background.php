@@ -86,9 +86,15 @@ class MSH_Usage_Index_Background {
 		} else {
 			global $wpdb;
 
+			$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 			$total = (int) $wpdb->get_var(
-				"SELECT COUNT(*) FROM {$wpdb->posts}
-                 WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM {$wpdb->posts}
+                 WHERE post_type = %s AND post_mime_type LIKE %s",
+					'attachment',
+					$image_mime_like
+				)
 			);
 
 			$state = array(
@@ -241,15 +247,18 @@ class MSH_Usage_Index_Background {
 				$state['queue'] = $queue;
 			} elseif ( $state['mode'] === 'full' ) {
 				global $wpdb;
+				$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 				$last_id   = isset( $state['last_id'] ) ? (int) $state['last_id'] : 0;
 				$batch_ids = $wpdb->get_col(
 					$wpdb->prepare(
 						"SELECT ID FROM {$wpdb->posts}
-                     WHERE post_type = 'attachment'
-                       AND post_mime_type LIKE 'image/%%'
+                     WHERE post_type = %s
+                       AND post_mime_type LIKE %s
                        AND ID > %d
                      ORDER BY ID ASC
                      LIMIT %d",
+						'attachment',
+						$image_mime_like,
 						$last_id,
 						$batch_size
 					)
@@ -293,9 +302,14 @@ class MSH_Usage_Index_Background {
 
 			if ( $state['mode'] === 'full' ) {
 				global $wpdb;
+				$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 				$total          = (int) $wpdb->get_var(
-					"SELECT COUNT(*) FROM {$wpdb->posts}
-                     WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+					$wpdb->prepare(
+						"SELECT COUNT(*) FROM {$wpdb->posts}
+                     WHERE post_type = %s AND post_mime_type LIKE %s",
+						'attachment',
+						$image_mime_like
+					)
 				);
 				$state['total'] = max( $total, (int) ( $state['total'] ?? 0 ) );
 			} elseif ( $state['mode'] === 'targeted' ) {

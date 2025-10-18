@@ -1438,6 +1438,8 @@ class MSH_Image_Usage_Index {
 	public function build_optimized_complete_index( $force_rebuild = false, $lookup = null, $context = array() ) {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		set_time_limit( 0 ); // No time limit
 		ignore_user_abort( true ); // Continue even if user navigates away
 		ini_set( 'memory_limit', '1G' ); // Increase memory
@@ -1456,13 +1458,17 @@ class MSH_Image_Usage_Index {
 
 		// Get all image attachments at once
 		$attachments = $wpdb->get_results(
-			"
-            SELECT ID, guid
-            FROM {$wpdb->posts}
-            WHERE post_type = 'attachment'
-            AND post_mime_type LIKE 'image/%'
-            ORDER BY ID
-        "
+			$wpdb->prepare(
+				"
+			SELECT ID, guid
+			FROM {$wpdb->posts}
+			WHERE post_type = %s
+			AND post_mime_type LIKE %s
+			ORDER BY ID
+		",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		if ( empty( $attachments ) ) {
@@ -1854,8 +1860,9 @@ class MSH_Image_Usage_Index {
 		$total_entries = $posts_entries + $meta_entries + $options_entries;
 
 		// Phase 2: Also save to WordPress option for compatibility
-		global $wpdb;
-		$usage_index = array();
+	global $wpdb;
+	$usage_index = array();
+	$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 
 		// Get all index entries and convert to option format
 		$index_entries = $wpdb->get_results(
@@ -1887,8 +1894,14 @@ class MSH_Image_Usage_Index {
 		$duration = microtime( true ) - $start_time;
 
 		// Verify actual completion by checking database
-		$actual_indexed = $wpdb->get_var( "SELECT COUNT(DISTINCT attachment_id) FROM {$this->index_table}" );
-		$total_images   = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'" );
+	$actual_indexed = $wpdb->get_var( "SELECT COUNT(DISTINCT attachment_id) FROM {$this->index_table}" );
+	$total_images   = $wpdb->get_var(
+		$wpdb->prepare(
+			"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+			'attachment',
+			$image_mime_like
+		)
+	);
 
 		$completion_rate = round( ( $actual_indexed / $total_images ) * 100, 1 );
 
@@ -1939,18 +1952,24 @@ class MSH_Image_Usage_Index {
 	public function get_unindexed_attachments() {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		return $wpdb->get_col(
-			"
-            SELECT p.ID
-            FROM {$wpdb->posts} p
-            WHERE p.post_type = 'attachment'
-            AND p.post_mime_type LIKE 'image/%'
-            AND p.ID NOT IN (
-                SELECT DISTINCT attachment_id
-                FROM {$this->index_table}
-            )
-            ORDER BY p.ID
-        "
+			$wpdb->prepare(
+				"
+			SELECT p.ID
+			FROM {$wpdb->posts} p
+			WHERE p.post_type = %s
+			AND p.post_mime_type LIKE %s
+			AND p.ID NOT IN (
+				SELECT DISTINCT attachment_id
+				FROM {$this->index_table}
+			)
+			ORDER BY p.ID
+		",
+				'attachment',
+				$image_mime_like
+			)
 		);
 	}
 
@@ -1979,24 +1998,27 @@ class MSH_Image_Usage_Index {
 			)
 		);
 
-		// Find postmeta modified (this is trickier, we'll use a heuristic)
-		// Look for attachments that might be affected by recent content changes
-		$potentially_affected = $wpdb->get_col(
-			$wpdb->prepare(
-				"
-            SELECT DISTINCT p.ID
-            FROM {$wpdb->posts} p
-            WHERE p.post_type = 'attachment'
-            AND p.post_mime_type LIKE 'image/%'
-            AND EXISTS (
-                SELECT 1 FROM {$wpdb->posts} p2
-                WHERE p2.post_modified > %s
-                AND p2.post_content LIKE CONCAT('%%', p.post_name, '%%')
-            )
-        ",
-				$last_index_update
-			)
-		);
+	// Find postmeta modified (this is trickier, we'll use a heuristic)
+	// Look for attachments that might be affected by recent content changes
+	$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+	$potentially_affected = $wpdb->get_col(
+		$wpdb->prepare(
+			"
+		SELECT DISTINCT p.ID
+		FROM {$wpdb->posts} p
+		WHERE p.post_type = %s
+		AND p.post_mime_type LIKE %s
+		AND EXISTS (
+			SELECT 1 FROM {$wpdb->posts} p2
+			WHERE p2.post_modified > %s
+			AND p2.post_content LIKE CONCAT('%%', p.post_name, '%%')
+		)
+	",
+			'attachment',
+			$image_mime_like,
+			$last_index_update
+		)
+	);
 
 		return array(
 			'modified_posts'                   => $modified_posts,
@@ -2157,6 +2179,8 @@ class MSH_Image_Usage_Index {
 	public function true_force_rebuild() {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		error_log( 'MSH Usage Index: Starting TRUE force rebuild - clearing everything' );
 
 		// 1. Always clear everything
@@ -2181,6 +2205,8 @@ class MSH_Image_Usage_Index {
 	public function chunked_force_rebuild( $chunk_size = 50, $offset = 0 ) {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		$chunk_start_time = microtime( true );
 		$chunk_timeout    = 360; // 6 minutes max per chunk
 
@@ -2194,7 +2220,11 @@ class MSH_Image_Usage_Index {
 			error_log( 'MSH Usage Index: Enhanced chunked force rebuild - cleared all data' );
 
 			$total_attachments = (int) $wpdb->get_var(
-				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+					'attachment',
+					$image_mime_like
+				)
 			);
 
 			return array(
@@ -2214,7 +2244,11 @@ class MSH_Image_Usage_Index {
 
 		// Get total attachments
 		$total_attachments = (int) $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		if ( $total_attachments === 0 ) {
@@ -2236,11 +2270,13 @@ class MSH_Image_Usage_Index {
 				"
             SELECT ID, post_title, post_name, guid, post_mime_type
             FROM {$wpdb->posts}
-            WHERE post_type = 'attachment'
-            AND post_mime_type LIKE 'image/%'
+            WHERE post_type = %s
+            AND post_mime_type LIKE %s
             ORDER BY ID
             LIMIT %d OFFSET %d
         ",
+				'attachment',
+				$image_mime_like,
 				$chunk_size,
 				$offset
 			)

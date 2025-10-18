@@ -5343,13 +5343,19 @@ class MSH_Image_Optimizer {
 	public function mark_all_attachments_for_context_refresh() {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		$attachment_ids = $wpdb->get_col(
-			"
+			$wpdb->prepare(
+				"
             SELECT ID
             FROM {$wpdb->posts}
-            WHERE post_type = 'attachment'
-              AND post_mime_type LIKE 'image/%'
-        "
+            WHERE post_type = %s
+              AND post_mime_type LIKE %s
+        ",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		if ( empty( $attachment_ids ) ) {
@@ -5706,13 +5712,18 @@ class MSH_Image_Optimizer {
 		// }
 
 		global $wpdb;
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 
 		$attachments = $wpdb->get_results(
-			"SELECT ID, post_title, post_name, post_mime_type
-             FROM {$wpdb->posts}
-             WHERE post_type = 'attachment'
-             AND post_mime_type LIKE 'image/%'
-             ORDER BY ID",
+			$wpdb->prepare(
+				"SELECT ID, post_title, post_name, post_mime_type
+	             FROM {$wpdb->posts}
+	             WHERE post_type = %s
+	             AND post_mime_type LIKE %s
+	             ORDER BY ID",
+				'attachment',
+				$image_mime_like
+			),
 			ARRAY_A
 		);
 
@@ -6008,12 +6019,18 @@ class MSH_Image_Optimizer {
 	private function get_images_for_ai_regeneration( $scope, $mode, $fields ) {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		// Get attachment IDs based on scope
 		switch ( $scope ) {
 			case 'all':
 				$attachment_ids = $wpdb->get_col(
-					"SELECT ID FROM {$wpdb->posts}
-                    WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+					$wpdb->prepare(
+						"SELECT ID FROM {$wpdb->posts}
+	                    WHERE post_type = %s AND post_mime_type LIKE %s",
+						'attachment',
+						$image_mime_like
+					)
 				);
 				break;
 
@@ -6025,11 +6042,15 @@ class MSH_Image_Optimizer {
 
 			case 'missing':
 				$attachment_ids = $wpdb->get_col(
-					"SELECT p.ID FROM {$wpdb->posts} p
-                    LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
-                    WHERE p.post_type = 'attachment'
-                    AND p.post_mime_type LIKE 'image/%'
-                    AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)"
+					$wpdb->prepare(
+						"SELECT p.ID FROM {$wpdb->posts} p
+	                    LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attachment_image_alt'
+	                    WHERE p.post_type = %s
+	                    AND p.post_mime_type LIKE %s
+	                    AND (p.post_title = '' OR p.post_title IS NULL OR pm.meta_value = '' OR pm.meta_value IS NULL)",
+						'attachment',
+						$image_mime_like
+					)
 				);
 				break;
 
@@ -7409,7 +7430,14 @@ class MSH_Image_Optimizer {
 
 		// Debug: First check total images
 		global $wpdb;
-		$total_images = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'" );
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+		$total_images    = (int) $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+				'attachment',
+				$image_mime_like
+			)
+		);
 
 		// Get images based on AI regeneration scope or normal published analysis
 		if ( $is_ai_regeneration ) {
@@ -8245,20 +8273,25 @@ class MSH_Image_Optimizer {
 		}
 
 		global $wpdb;
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 
 		// Get total published images (simplified for performance)
 		$total_images = count( $this->get_published_images() );
 
 		// Get optimized count (only from published images)
 		$optimized_count = $wpdb->get_var(
-			"
-            SELECT COUNT(DISTINCT pm.post_id) 
-            FROM {$wpdb->postmeta} pm
-            JOIN {$wpdb->posts} p ON p.ID = pm.post_id
-            WHERE pm.meta_key = 'msh_optimized_date'
-            AND p.post_type = 'attachment'
-            AND p.post_mime_type LIKE 'image/%'
-        "
+			$wpdb->prepare(
+				"
+			SELECT COUNT(DISTINCT pm.post_id) 
+			FROM {$wpdb->postmeta} pm
+			JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+			WHERE pm.meta_key = 'msh_optimized_date'
+			AND p.post_type = %s
+			AND p.post_mime_type LIKE %s
+		",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		$remaining  = max( 0, $total_images - $optimized_count );
@@ -9188,11 +9221,16 @@ class MSH_Image_Optimizer {
 		}
 
 		global $wpdb;
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 
 		$count = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->posts}
-             WHERE post_type = 'attachment'
-             AND post_mime_type LIKE 'image/%'"
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts}
+             WHERE post_type = %s
+             AND post_mime_type LIKE %s",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		wp_send_json_success(
@@ -9217,12 +9255,17 @@ class MSH_Image_Optimizer {
 		}
 
 		global $wpdb;
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 
 		// Get total attachments
 		$total = $wpdb->get_var(
-			"SELECT COUNT(*) FROM {$wpdb->posts}
-             WHERE post_type = 'attachment'
-             AND post_mime_type LIKE 'image/%'"
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts}
+             WHERE post_type = %s
+             AND post_mime_type LIKE %s",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		// Get already indexed count

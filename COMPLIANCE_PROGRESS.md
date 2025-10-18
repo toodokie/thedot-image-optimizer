@@ -49,50 +49,19 @@
 - **Commit:** 5905185
 - **Test status:** ✅ Verified in git
 
-### 5. SQL Preparation - 6/32 FIXED (19%)
-- ✅ class-msh-ai-ajax-handlers.php: 6/6 queries fixed
-  - All `LIKE 'image/%'` patterns properly prepared
-  - Using `$wpdb->esc_like()` + `$wpdb->prepare()`
-- **Commit:** 8f347d9
-- **Test status:** ✅ Copied to WordPress
-- **Remaining:** 26 queries across 4 files (see below)
+### 5. SQL Preparation - 32/32 FIXED (100%)
+- ✅ `class-msh-ai-ajax-handlers.php`: 6/6 queries (previous session)
+- ✅ `class-msh-media-cleanup.php`: 6/6 queries now wrapped with `$wpdb->prepare()` and `$image_mime_like`
+- ✅ `class-msh-image-usage-index.php`: 10/10 queries prepared (counts, rebuild handlers, smart rebuild)
+- ✅ `class-msh-usage-index-background.php`: 2/2 queries prepared (queue + cron processing)
+- ✅ `class-msh-image-optimizer.php`: 8/8 queries prepared (analysis, progress, CLI helpers)
+- ✅ `fix-sql-like-wildcards.py --dry-run` now reports **0** remaining unprepared LIKE queries
+- **Commit:** pending (will include all four files above)
+- **Test status:** ✅ Ready to copy to WordPress
 
 ---
 
 ## 🔄 In Progress / Ready for Other AI
-
-### Task 1: SQL LIKE Wildcards (26 queries remaining) - HIGHEST PRIORITY
-
-**Status:** Task brief created, analysis script ready
-**Priority:** 🔴 CRITICAL BLOCKER for WordPress.org
-**Estimated time:** 2-3 hours
-**Difficulty:** Medium (repetitive, well-defined pattern)
-
-**Files to fix:**
-1. class-msh-media-cleanup.php - 6 queries
-2. class-msh-image-usage-index.php - 10 queries
-3. class-msh-usage-index-background.php - 2 queries
-4. class-msh-image-optimizer.php - 8 queries
-
-**Task brief:** `TASK_SQL_LIKE_FIXES.md`
-**Reference implementation:** `class-msh-ai-ajax-handlers.php` (already fixed)
-**Analysis script:** `fix-sql-like-wildcards.py --dry-run`
-
-**Pattern (copy-paste ready):**
-```php
-// Add once per function
-$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
-
-// Wrap each query
-$count = $wpdb->get_var(
-    $wpdb->prepare(
-        "SELECT COUNT(*) WHERE post_mime_type LIKE %s",
-        $image_mime_like
-    )
-);
-```
-
----
 
 ### Task 2: Nonce Verification & Input Sanitization (~30 instances)
 
