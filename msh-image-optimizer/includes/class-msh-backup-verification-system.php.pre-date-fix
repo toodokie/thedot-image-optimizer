@@ -525,7 +525,7 @@ class MSH_Backup_Verification_System {
 	public function cleanup_old_backups( $days = 7 ) {
 		global $wpdb;
 
-		$cutoff_date = gmdate('Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+		$cutoff_date = date( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
 
 		$deleted = $wpdb->query(
 			$wpdb->prepare(

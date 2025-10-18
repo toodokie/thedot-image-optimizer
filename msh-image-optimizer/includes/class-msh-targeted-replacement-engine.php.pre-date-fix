@@ -457,7 +457,7 @@ class MSH_Targeted_Replacement_Engine {
 		$backup_table       = $wpdb->prefix . 'msh_rename_backups';
 		$verification_table = $wpdb->prefix . 'msh_rename_verification';
 
-		$cutoff_date = gmdate('Y-m-d H:i:s', strtotime( "-{$days} days" ) );
+		$cutoff_date = date( 'Y-m-d H:i:s', strtotime( "-{$days} days" ) );
 
 		$stats = $wpdb->get_row(
 			$wpdb->prepare(

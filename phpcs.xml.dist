@@ -1,0 +1,106 @@
+<?xml version="1.0"?>
+<ruleset name="MSH Image Optimizer">
+	<description>WordPress Coding Standards for MSH Image Optimizer</description>
+
+	<!-- Scan these files -->
+	<file>msh-image-optimizer</file>
+
+	<!-- Exclude vendor and node_modules -->
+	<exclude-pattern>*/vendor/*</exclude-pattern>
+	<exclude-pattern>*/node_modules/*</exclude-pattern>
+	<exclude-pattern>*/tests/*</exclude-pattern>
+
+	<!-- Use WordPress Coding Standards -->
+	<rule ref="WordPress">
+		<!-- KEEP SECURITY CHECKS AT ERROR LEVEL -->
+		<!-- These are critical for WordPress.org approval -->
+		<exclude name="WordPress.Security.EscapeOutput"/><!-- Will re-add below -->
+		<exclude name="WordPress.Security.ValidatedSanitizedInput"/><!-- Will re-add below -->
+		<exclude name="WordPress.DB.PreparedSQL"/><!-- Will re-add below -->
+	</rule>
+
+	<!-- CRITICAL: Security rules at ERROR level -->
+	<rule ref="WordPress.Security.EscapeOutput">
+		<type>error</type>
+		<message>All output must be escaped. Use esc_html(), esc_attr(), esc_url(), etc.</message>
+	</rule>
+
+	<rule ref="WordPress.Security.ValidatedSanitizedInput">
+		<type>error</type>
+		<message>All input must be validated and sanitized.</message>
+	</rule>
+
+	<rule ref="WordPress.DB.PreparedSQL">
+		<type>error</type>
+		<message>Use $wpdb->prepare() for all SQL queries with variables.</message>
+	</rule>
+
+	<!-- DOWNGRADE cosmetic rules to WARNING (won't fail builds) -->
+
+	<!-- Yoda conditions - downgrade to warning -->
+	<rule ref="WordPress.PHP.YodaConditions">
+		<type>warning</type>
+		<message>Consider using Yoda conditions for consistency with WordPress core.</message>
+	</rule>
+
+	<!-- Inline comment punctuation - downgrade to warning -->
+	<rule ref="Squiz.Commenting.InlineComment.InvalidEndChar">
+		<type>warning</type>
+	</rule>
+
+	<!-- Missing translator comments - only error when string has placeholders -->
+	<rule ref="WordPress.WP.I18n.MissingTranslatorsComment">
+		<type>warning</type>
+	</rule>
+
+	<!-- Missing docblocks for private methods - downgrade to warning -->
+	<rule ref="Squiz.Commenting.FunctionComment.Missing">
+		<type>warning</type>
+		<message>Public methods should have docblocks.</message>
+	</rule>
+
+	<!-- ALLOW certain development practices during active development -->
+
+	<!-- Allow error_log() during development (remove before production) -->
+	<rule ref="WordPress.PHP.DevelopmentFunctions">
+		<type>warning</type>
+		<properties>
+			<property name="exclude" value="error_log,print_r,var_dump"/>
+		</properties>
+	</rule>
+
+	<!-- Allow direct database queries (we have legitimate use cases) -->
+	<rule ref="WordPress.DB.DirectDatabaseQuery">
+		<type>warning</type>
+		<message>Consider using WP Query API when possible.</message>
+	</rule>
+
+	<!-- Allow unlink/rename (we handle media files) -->
+	<rule ref="WordPress.WP.AlternativeFunctions">
+		<type>warning</type>
+	</rule>
+
+	<!-- DISABLE purely cosmetic rules -->
+
+	<!-- Disable variable comment requirement -->
+	<rule ref="Squiz.Commenting.VariableComment">
+		<exclude name="Squiz.Commenting.VariableComment.Missing"/>
+	</rule>
+
+	<!-- Disable file package tag requirement -->
+	<rule ref="Squiz.Commenting.FileComment">
+		<exclude name="Squiz.Commenting.FileComment.MissingPackageTag"/>
+	</rule>
+
+	<!-- Set PHP version -->
+	<config name="minimum_supported_wp_version" value="6.0"/>
+	<config name="testVersion" value="7.4-"/>
+
+	<!-- Show progress -->
+	<arg value="ps"/>
+	<arg name="colors"/>
+	<arg name="extensions" value="php"/>
+
+	<!-- Parallel processing -->
+	<arg name="parallel" value="8"/>
+</ruleset>

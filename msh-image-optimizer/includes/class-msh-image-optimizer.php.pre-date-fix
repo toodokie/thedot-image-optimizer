@@ -8084,7 +8084,7 @@ class MSH_Image_Optimizer {
 		}
 
 		if ( $metadata_timestamp_applied || $webp_converted || $webp_timestamp_updated || $filename_refreshed ) {
-			update_post_meta( $attachment_id, 'msh_optimized_date', current_time('mysql') );
+			update_post_meta( $attachment_id, 'msh_optimized_date', date( 'Y-m-d H:i:s', $timestamp ) );
 		}
 
 		if ( $metadata_timestamp_applied || $webp_converted || $webp_timestamp_updated || $filename_refreshed ) {
@@ -8446,7 +8446,7 @@ class MSH_Image_Optimizer {
 			$this->log_debug( 'MSH Safe Rename: 📊   Files in this batch: ' . count( $current_batch ) );
 			$this->log_debug( "MSH Safe Rename: 📊   Total files overall: {$total_count}" );
 			$this->log_debug( 'MSH Safe Rename: 📊   Processing mode: ' . ( $mode === 'test' ? 'TEST MODE' : 'LIVE MODE' ) );
-			$this->log_debug( 'MSH Safe Rename: 📊   Start time: ' . current_time('mysql') );
+			$this->log_debug( 'MSH Safe Rename: 📊   Start time: ' . date( 'Y-m-d H:i:s' ) );
 			$this->log_debug( 'MSH Safe Rename: ===============================================' );
 
 			$results       = array();

@@ -203,7 +203,7 @@ class MSH_AI_Service {
 	 */
 	private function log_credit_usage( $amount ) {
 		$usage     = get_option( 'msh_ai_credit_usage', array() );
-		$month_key = wp_date('Y-m');
+		$month_key = date( 'Y-m' );
 
 		if ( ! isset( $usage[ $month_key ] ) ) {
 			$usage[ $month_key ] = 0;

@@ -214,7 +214,7 @@ class MSH_Image_Optimizer_Admin {
 			}
 
 			$credit_usage    = get_option( 'msh_ai_credit_usage', array() );
-			$current_month   = wp_date('Y-m');
+			$current_month   = date( 'Y-m' );
 			$ai_credits_used = isset( $credit_usage[ $current_month ] ) ? $credit_usage[ $current_month ] : 0;
 		}
 

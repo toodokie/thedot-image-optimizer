@@ -133,7 +133,7 @@ class MSH_AI_Ajax_Handlers {
 		}
 
 		$credit_usage    = get_option( 'msh_ai_credit_usage', array() );
-		$current_month   = wp_date('Y-m');
+		$current_month   = date( 'Y-m' );
 		$used_this_month = isset( $credit_usage[ $current_month ] ) ? $credit_usage[ $current_month ] : 0;
 
 		wp_send_json_success(
