@@ -258,9 +258,14 @@ class MSH_AI_Service {
             return null;
         }
 
+        // Get active profile context for business name, location, etc.
+        $active_context = class_exists('MSH_Image_Optimizer_Context_Helper')
+            ? MSH_Image_Optimizer_Context_Helper::get_active_context()
+            : array();
+
         $payload = array(
             'attachment_id' => $attachment_id,
-            'context' => $context,
+            'context' => !empty($active_context) ? $active_context : $context,
             'mode' => $state['mode'],
             'access_mode' => $state['access_mode'],
             'plan_tier' => $state['plan_tier'],

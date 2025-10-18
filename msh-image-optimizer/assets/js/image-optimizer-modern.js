@@ -5974,6 +5974,7 @@
         lastLanguageProfileId: null,
 
         init() {
+            this.lastLanguageProfileId = window.mshImageOptimizer?.activeProfile || 'primary';
             this.initDashboard();
             this.initModal();
             this.initJobControls();

@@ -76,8 +76,21 @@ class MSH_OpenAI_Connector {
         $context = $payload['context'];
         $business_name = !empty($context['business_name']) ? $context['business_name'] : 'this business';
         $industry = !empty($context['industry_label']) ? $context['industry_label'] : 'professional services';
-        $location = !empty($context['location']) ? $context['location'] : '';
+
+        // Build location from city, region, country
+        $location_parts = array();
+        if (!empty($context['city'])) {
+            $location_parts[] = $context['city'];
+        }
+        if (!empty($context['country'])) {
+            $location_parts[] = $context['country'];
+        }
+        $location = implode(', ', $location_parts);
+
         $uvp = !empty($context['uvp']) ? $context['uvp'] : '';
+
+        // Debug: Log context data
+        error_log('[MSH OpenAI] Context data - Business: ' . $business_name . ', Location: ' . $location . ', UVP: ' . substr($uvp, 0, 50));
 
         // Build AI prompt with enabled features
         $features = !empty($payload['features']) ? $payload['features'] : array();
@@ -164,7 +177,9 @@ class MSH_OpenAI_Connector {
      * Build vision analysis prompt based on enabled features
      */
     private function build_vision_prompt($business_name, $industry, $location, $uvp, $features = array(), $language = 'en') {
-        $location_text = !empty($location) ? " in {$location}" : '';
+        $business_name_clean = wp_strip_all_tags($business_name);
+        $location_clean = wp_strip_all_tags($location);
+        $location_text = !empty($location_clean) ? " in {$location_clean}" : '';
         $uvp_text = !empty($uvp) ? "\n\nBusiness value proposition: {$uvp}" : '';
 
         // Check if filename generation is enabled
@@ -199,6 +214,14 @@ class MSH_OpenAI_Connector {
         if ($filename_enabled) {
             $json_fields[] = '  "filename_slug": "seo-friendly-filename-slug-describing-image-content"';
             $requirements[] = '- Filename slug: Lowercase, hyphens only, 3-4 descriptive words MAXIMUM about what\'s IN the image (not the business name), suitable for file naming. CRITICAL: Never exceed 4 words.';
+        }
+
+        if (!empty($business_name_clean)) {
+            $requirements[] = sprintf('- Mention the business name "%s" when appropriate.', $business_name_clean);
+        }
+
+        if (!empty($location_clean)) {
+            $requirements[] = sprintf('- Highlight details that connect the imagery to %s when relevant.', $location_clean);
         }
 
         $json_schema = "{\n" . implode(",\n", $json_fields) . "\n}";

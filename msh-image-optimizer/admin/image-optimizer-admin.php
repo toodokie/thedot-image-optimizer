@@ -147,6 +147,7 @@ class MSH_Image_Optimizer_Admin {
                 'label' => $profile['label'],
                 'usage' => $profile['usage'],
                 'notes' => $profile['notes'],
+                'locale' => isset($profile['locale']) ? $profile['locale'] : '',
                 'context' => $profile['context'],
                 'summary' => MSH_Image_Optimizer_Context_Helper::format_summary($profile['context']),
             );
