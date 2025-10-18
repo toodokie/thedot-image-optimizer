@@ -76,6 +76,8 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-regeneration-background.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-ajax-handlers.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-versioning.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-manual-edit-protection.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-admin.php';
@@ -94,6 +96,12 @@ final class MSH_Image_Optimizer_Plugin {
         }
         if (class_exists('MSH_Usage_Index_Background')) {
             MSH_Usage_Index_Background::get_instance();
+        }
+        if (class_exists('MSH_Metadata_Versioning')) {
+            MSH_Metadata_Versioning::get_instance();
+        }
+        if (class_exists('MSH_Manual_Edit_Protection')) {
+            MSH_Manual_Edit_Protection::get_instance();
         }
         // Ensure admin assets are enqueued by the admin file.
         do_action('msh_image_optimizer_plugin_loaded');
