@@ -122,7 +122,7 @@ class MSH_Image_Optimizer_Settings {
 		<div class="wrap msh-settings-wrap">
 			<div class="msh-page-header">
 				<div class="msh-logo-container">
-					<img src="<?php echo esc_url( trailingslashit( MSH_IO_ASSETS_URL ) . 'icons/Optimizer logo.svg' ); ?>"
+					<img src="<?php echo esc_url( trailingslashit( MSH_IO_ASSETS_URL ) . 'icons/optimizer-logo.svg' ); ?>"
 						alt="<?php esc_attr_e( 'The Dot Image Optimizer', 'msh-image-optimizer' ); ?>"
 						class="msh-logo" />
 				</div>

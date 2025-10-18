@@ -361,7 +361,7 @@ class MSH_Image_Optimizer_Admin {
 		<div class="wrap">
 			<div class="msh-page-header">
 				<div class="msh-logo-container">
-					<img src="<?php echo esc_url( trailingslashit( MSH_IO_ASSETS_URL ) . 'icons/Optimizer logo.svg' ); ?>"
+					<img src="<?php echo esc_url( trailingslashit( MSH_IO_ASSETS_URL ) . 'icons/optimizer-logo.svg' ); ?>"
 						alt="<?php esc_attr_e( 'The Dot Image Optimizer', 'msh-image-optimizer' ); ?>"
 						class="msh-logo" />
 				</div>
@@ -819,9 +819,9 @@ class MSH_Image_Optimizer_Admin {
 											<?php
 											$ai_enabled = get_option( 'msh_ai_mode', 'manual' ) !== 'manual';
 											if ( $ai_enabled ) {
-												echo '<span class="status-ready">' . __( '✓ AI suggestions enabled', 'msh-image-optimizer' ) . '</span>';
+												echo '<span class="status-ready">' . esc_html__( '✓ AI suggestions enabled', 'msh-image-optimizer' ) . '</span>';
 											} else {
-												echo '<span class="status-disabled">' . __( 'AI suggestions disabled', 'msh-image-optimizer' ) . '</span>';
+												echo '<span class="status-disabled">' . esc_html__( 'AI suggestions disabled', 'msh-image-optimizer' ) . '</span>';
 											}
 											?>
 										</span>
@@ -879,11 +879,11 @@ class MSH_Image_Optimizer_Admin {
 										$index_built    = get_option( 'msh_usage_index_last_build' ) !== false;
 
 										if ( $rename_enabled && $index_built ) {
-											echo '<span class="status-ready">' . __( '✓ Ready for renaming', 'msh-image-optimizer' ) . '</span>';
+											echo '<span class="status-ready">' . esc_html__( '✓ Ready for renaming', 'msh-image-optimizer' ) . '</span>';
 										} elseif ( $rename_enabled && ! $index_built ) {
-											echo '<span class="status-pending">' . __( '⚠ Index required', 'msh-image-optimizer' ) . '</span>';
+											echo '<span class="status-pending">' . esc_html__( '⚠ Index required', 'msh-image-optimizer' ) . '</span>';
 										} else {
-											echo '<span class="status-disabled">' . __( 'Renaming disabled', 'msh-image-optimizer' ) . '</span>';
+											echo '<span class="status-disabled">' . esc_html__( 'Renaming disabled', 'msh-image-optimizer' ) . '</span>';
 										}
 										?>
 									</span>
