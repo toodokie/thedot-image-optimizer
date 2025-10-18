@@ -67,23 +67,33 @@ class MSH_Image_Usage_Index {
 	public function build_complete_index( $batch_size = 50 ) {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		// Clear existing index
 		$this->invalidate_stats_cache();
 		$wpdb->query( "TRUNCATE TABLE {$this->index_table}" );
 
 		$processed         = 0;
-		$total_attachments = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'" );
+		$total_attachments = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+				'attachment',
+				$image_mime_like
+			)
+		);
 
 		$offset = 0;
 		while ( $offset < $total_attachments ) {
 			$attachments = $wpdb->get_results(
 				$wpdb->prepare(
 					"
-                SELECT ID FROM {$wpdb->posts}
-                WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
-                ORDER BY ID
-                LIMIT %d OFFSET %d
-            ",
+	                SELECT ID FROM {$wpdb->posts}
+	                WHERE post_type = %s AND post_mime_type LIKE %s
+	                ORDER BY ID
+	                LIMIT %d OFFSET %d
+	            ",
+					'attachment',
+					$image_mime_like,
 					$batch_size,
 					$offset
 				)
@@ -121,6 +131,8 @@ class MSH_Image_Usage_Index {
 	public function robust_server_rebuild( $batch_size = 10 ) {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		set_time_limit( 0 ); // Remove PHP time limit
 		ignore_user_abort( true ); // Continue even if user navigates away
 
@@ -132,7 +144,13 @@ class MSH_Image_Usage_Index {
 
 		$processed         = 0;
 		$errors            = 0;
-		$total_attachments = $wpdb->get_var( "SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'" );
+		$total_attachments = $wpdb->get_var(
+			$wpdb->prepare(
+				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+				'attachment',
+				$image_mime_like
+			)
+		);
 
 		if ( $total_attachments == 0 ) {
 			error_log( 'MSH Usage Index: No image attachments found' );
@@ -142,19 +160,21 @@ class MSH_Image_Usage_Index {
 		error_log( "MSH Usage Index: Found {$total_attachments} total image attachments to process" );
 
 		$offset = 0;
-		while ( $offset < $total_attachments ) {
-			$attachments = $wpdb->get_results(
-				$wpdb->prepare(
-					"
-                SELECT ID FROM {$wpdb->posts}
-                WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
-                ORDER BY ID
-                LIMIT %d OFFSET %d
-            ",
-					$batch_size,
-					$offset
-				)
-			);
+			while ( $offset < $total_attachments ) {
+				$attachments = $wpdb->get_results(
+					$wpdb->prepare(
+						"
+	                SELECT ID FROM {$wpdb->posts}
+	                WHERE post_type = %s AND post_mime_type LIKE %s
+	                ORDER BY ID
+	                LIMIT %d OFFSET %d
+	            ",
+						'attachment',
+						$image_mime_like,
+						$batch_size,
+						$offset
+					)
+				);
 
 			foreach ( $attachments as $attachment ) {
 				try {
@@ -219,6 +239,8 @@ class MSH_Image_Usage_Index {
 
 			global $wpdb;
 
+			$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 			$offset     = isset( $_POST['offset'] ) ? max( 0, intval( $_POST['offset'] ) ) : 0;
 			$batch_size = isset( $_POST['batch_size'] ) ? intval( $_POST['batch_size'] ) : 25;
 			if ( $batch_size < 1 ) {
@@ -231,7 +253,11 @@ class MSH_Image_Usage_Index {
 			$force_rebuild = ! empty( $_POST['force_rebuild'] ) && $_POST['force_rebuild'] === 'true';
 
 			$total_attachments = (int) $wpdb->get_var(
-				"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'"
+				$wpdb->prepare(
+					"SELECT COUNT(*) FROM {$wpdb->posts} WHERE post_type = %s AND post_mime_type LIKE %s",
+					'attachment',
+					$image_mime_like
+				)
 			);
 
 			if ( $total_attachments === 0 ) {
@@ -323,9 +349,11 @@ class MSH_Image_Usage_Index {
 			$attachments = $wpdb->get_results(
 				$wpdb->prepare(
 					"SELECT ID FROM {$wpdb->posts}
-                 WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
+                 WHERE post_type = %s AND post_mime_type LIKE %s
                  ORDER BY ID
                  LIMIT %d OFFSET %d",
+					'attachment',
+					$image_mime_like,
 					$batch_size,
 					$offset
 				)
@@ -1029,21 +1057,27 @@ class MSH_Image_Usage_Index {
 	public function get_orphaned_attachment_summary( $limit = 50 ) {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		$limit = max( 1, absint( $limit ) );
 
 		$count = (int) $wpdb->get_var(
-			"
+			$wpdb->prepare(
+				"
             SELECT COUNT(*)
             FROM {$wpdb->posts} p
             LEFT JOIN {$wpdb->postmeta} status ON status.post_id = p.ID AND status.meta_key = '_msh_usage_status'
-            WHERE p.post_type = 'attachment'
-              AND p.post_mime_type LIKE 'image/%'
+            WHERE p.post_type = %s
+              AND p.post_mime_type LIKE %s
               AND NOT EXISTS (
                 SELECT 1 FROM {$this->index_table} idx
                 WHERE idx.attachment_id = p.ID
               )
               AND (status.meta_value IS NULL OR status.meta_value = 'orphan')
-        "
+        ",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		$items = array();
@@ -1056,8 +1090,8 @@ class MSH_Image_Usage_Index {
                      LEFT JOIN {$wpdb->postmeta} pm
                         ON pm.post_id = p.ID AND pm.meta_key = '_wp_attached_file'
                      LEFT JOIN {$wpdb->postmeta} status ON status.post_id = p.ID AND status.meta_key = '_msh_usage_status'
-                     WHERE p.post_type = 'attachment'
-                       AND p.post_mime_type LIKE 'image/%'
+                     WHERE p.post_type = %s
+                       AND p.post_mime_type LIKE %s
                        AND NOT EXISTS (
                            SELECT 1 FROM {$this->index_table} idx
                            WHERE idx.attachment_id = p.ID
@@ -1065,6 +1099,8 @@ class MSH_Image_Usage_Index {
                        AND (status.meta_value IS NULL OR status.meta_value = 'orphan')
                      ORDER BY p.post_date DESC
                      LIMIT %d",
+					'attachment',
+					$image_mime_like,
 					$limit
 				)
 			);
@@ -1098,6 +1134,8 @@ class MSH_Image_Usage_Index {
 	public function get_derived_attachment_summary( $limit = 25 ) {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		$limit = max( 1, absint( $limit ) );
 
 		$rows = $wpdb->get_results(
@@ -1107,10 +1145,12 @@ class MSH_Image_Usage_Index {
                  INNER JOIN {$wpdb->postmeta} status ON status.post_id = p.ID AND status.meta_key = '_msh_usage_status' AND status.meta_value = 'derived'
                  LEFT JOIN {$wpdb->postmeta} parent ON parent.post_id = p.ID AND parent.meta_key = '_msh_usage_parent'
                  LEFT JOIN {$wpdb->postmeta} pm ON pm.post_id = p.ID AND pm.meta_key = '_wp_attached_file'
-                 WHERE p.post_type = 'attachment'
-                   AND p.post_mime_type LIKE 'image/%'
+                 WHERE p.post_type = %s
+                   AND p.post_mime_type LIKE %s
                  ORDER BY p.post_date DESC
                  LIMIT %d",
+				'attachment',
+				$image_mime_like,
 				$limit
 			)
 		);
@@ -1281,11 +1321,17 @@ class MSH_Image_Usage_Index {
 	private function rebuild_usage_status_index() {
 		global $wpdb;
 
+		$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
 		$attachments = $wpdb->get_results(
-			"
+			$wpdb->prepare(
+				"
             SELECT ID FROM {$wpdb->posts}
-            WHERE post_type = 'attachment' AND post_mime_type LIKE 'image/%'
-        "
+            WHERE post_type = %s AND post_mime_type LIKE %s
+        ",
+				'attachment',
+				$image_mime_like
+			)
 		);
 
 		if ( empty( $attachments ) ) {

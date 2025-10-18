@@ -836,15 +836,22 @@ class MSH_Media_Cleanup {
 			// Use simple, fast queries
 			global $wpdb;
 
-			// Simple count query - include all images including SVG
-			$total_images = $wpdb->get_var(
-				"
-                SELECT COUNT(*) 
-                FROM {$wpdb->posts} 
-                WHERE post_type = 'attachment'
-                AND post_mime_type LIKE 'image/%'
-            "
-			);
+				// Prepare LIKE pattern for image mime types
+				$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
+				// Simple count query - include all images including SVG
+				$total_images = $wpdb->get_var(
+					$wpdb->prepare(
+						"
+	                SELECT COUNT(*) 
+	                FROM {$wpdb->posts} 
+	                WHERE post_type = %s
+	                AND post_mime_type LIKE %s
+	            ",
+						'attachment',
+						$image_mime_like
+					)
+				);
 
 			if ( ! $total_images ) {
 				wp_send_json_error( array( 'message' => 'No images found in database' ) );
@@ -1006,24 +1013,31 @@ class MSH_Media_Cleanup {
 
 			global $wpdb;
 
-			// Get ALL images at once - no batching
-			$all_images = $wpdb->get_results(
-				"
-                SELECT 
-                    p.ID,
-                    p.post_title,
-                    p.post_date,
-                    pm.meta_value as file_path
-                FROM {$wpdb->posts} p
-                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attached_file'
-                WHERE p.post_type = 'attachment'
-                AND p.post_mime_type LIKE 'image/%'
-                AND pm.meta_value IS NOT NULL
-                AND pm.meta_value != ''
-                ORDER BY p.post_date DESC
-            ",
-				ARRAY_A
-			);
+				// Prepare LIKE pattern for image mime types
+				$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
+				// Get ALL images at once - no batching
+				$all_images = $wpdb->get_results(
+					$wpdb->prepare(
+						"
+	                SELECT 
+	                    p.ID,
+	                    p.post_title,
+	                    p.post_date,
+	                    pm.meta_value as file_path
+	                FROM {$wpdb->posts} p
+	                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attached_file'
+	                WHERE p.post_type = %s
+	                AND p.post_mime_type LIKE %s
+	                AND pm.meta_value IS NOT NULL
+	                AND pm.meta_value != ''
+	                ORDER BY p.post_date DESC
+	            ",
+						'attachment',
+						$image_mime_like
+					),
+					ARRAY_A
+				);
 
 			if ( empty( $all_images ) ) {
 				wp_send_json_error( array( 'message' => 'No images found' ) );
@@ -1203,47 +1217,61 @@ class MSH_Media_Cleanup {
 
 			global $wpdb;
 
-			// Get total count of images needing hashes
-			$total_needing_hash = $wpdb->get_var(
-				"
-                SELECT COUNT(*) FROM {$wpdb->posts} p
-                LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-                    AND pm.meta_key = '_msh_file_hash'
-                WHERE p.post_type = 'attachment'
-                AND p.post_mime_type LIKE 'image/%'
-                AND (pm.meta_value IS NULL OR pm.meta_value = '')
-            "
-			);
+				// Prepare LIKE pattern for image mime types
+				$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
 
-			if ( $total_needing_hash == 0 ) {
-				wp_send_json_success(
-					array(
-						'completed'    => true,
-						'message'      => 'All images have cached hashes',
-						'total_cached' => $wpdb->get_var(
-							"
-                        SELECT COUNT(*) FROM {$wpdb->postmeta}
-                        WHERE meta_key = '_msh_file_hash'
-                        AND meta_value != ''
-                    "
-						),
+				// Get total count of images needing hashes
+			$total_needing_hash = $wpdb->get_var(
+				$wpdb->prepare(
+					"
+	                SELECT COUNT(*) FROM {$wpdb->posts} p
+	                LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+	                    AND pm.meta_key = '_msh_file_hash'
+	                WHERE p.post_type = %s
+	                AND p.post_mime_type LIKE %s
+	                AND (pm.meta_value IS NULL OR pm.meta_value = '')
+	            ",
+						'attachment',
+						$image_mime_like
 					)
 				);
-				return;
-			}
 
-			// Get batch of images without hashes (limit 100 per request)
-			$images_needing_hash = $wpdb->get_col(
-				"
-                SELECT p.ID FROM {$wpdb->posts} p
-                LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
-                    AND pm.meta_key = '_msh_file_hash'
-                WHERE p.post_type = 'attachment'
-                AND p.post_mime_type LIKE 'image/%'
-                AND (pm.meta_value IS NULL OR pm.meta_value = '')
-                LIMIT 100
-            "
-			);
+			if ( $total_needing_hash == 0 ) {
+					wp_send_json_success(
+						array(
+							'completed'    => true,
+							'message'      => 'All images have cached hashes',
+							'total_cached' => $wpdb->get_var(
+								$wpdb->prepare(
+									"
+	                        SELECT COUNT(*) FROM {$wpdb->postmeta}
+	                        WHERE meta_key = %s
+	                        AND meta_value != ''
+	                    ",
+									'_msh_file_hash'
+								)
+							),
+						)
+					);
+					return;
+				}
+
+				// Get batch of images without hashes (limit 100 per request)
+				$images_needing_hash = $wpdb->get_col(
+					$wpdb->prepare(
+						"
+	                SELECT p.ID FROM {$wpdb->posts} p
+	                LEFT JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id
+	                    AND pm.meta_key = '_msh_file_hash'
+	                WHERE p.post_type = %s
+	                AND p.post_mime_type LIKE %s
+	                AND (pm.meta_value IS NULL OR pm.meta_value = '')
+	                LIMIT 100
+	            ",
+						'attachment',
+						$image_mime_like
+					)
+				);
 
 			if ( empty( $images_needing_hash ) ) {
 				wp_send_json_success(
@@ -2260,17 +2288,23 @@ class MSH_Media_Cleanup {
 
 			error_log( 'MSH DUPLICATE: Starting Quick Duplicate Scan - FULL LIBRARY content-based detection' );
 
-			$total_images = $wpdb->get_var(
-				"
-                SELECT COUNT(*)
-                FROM {$wpdb->posts} p
-                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attached_file'
-                WHERE p.post_type = 'attachment'
-                AND p.post_mime_type LIKE 'image/%'
-                AND pm.meta_value != ''
-                AND pm.meta_value IS NOT NULL
-            "
-			);
+				$image_mime_like = $wpdb->esc_like( 'image/' ) . '%';
+
+				$total_images = $wpdb->get_var(
+					$wpdb->prepare(
+						"
+	                SELECT COUNT(*)
+	                FROM {$wpdb->posts} p
+	                INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attached_file'
+	                WHERE p.post_type = %s
+	                AND p.post_mime_type LIKE %s
+	                AND pm.meta_value != ''
+	                AND pm.meta_value IS NOT NULL
+	            ",
+						'attachment',
+						$image_mime_like
+					)
+				);
 
 			error_log( "MSH DUPLICATE: Full library scan - {$total_images} total images to analyze" );
 
@@ -2278,8 +2312,9 @@ class MSH_Media_Cleanup {
 			$memory_in_mb = intval( $memory_limit );
 			$chunk_size   = $memory_in_mb > 256 ? 500 : 200;
 
-			$all_images = $wpdb->get_results(
-				"
+				$all_images = $wpdb->get_results(
+					$wpdb->prepare(
+						"
                 SELECT
                     p.ID,
                     p.post_title,
@@ -2288,14 +2323,17 @@ class MSH_Media_Cleanup {
                 FROM {$wpdb->posts} p
                 INNER JOIN {$wpdb->postmeta} pm ON p.ID = pm.post_id AND pm.meta_key = '_wp_attached_file'
                 LEFT JOIN {$wpdb->postmeta} pm_size ON p.ID = pm_size.post_id AND pm_size.meta_key = '_wp_attachment_metadata'
-                WHERE p.post_type = 'attachment'
-                AND p.post_mime_type LIKE 'image/%'
+                WHERE p.post_type = %s
+                AND p.post_mime_type LIKE %s
                 AND pm.meta_value != ''
                 AND pm.meta_value IS NOT NULL
                 ORDER BY p.post_date DESC
             ",
-				ARRAY_A
-			);
+						'attachment',
+						$image_mime_like
+					),
+					ARRAY_A
+				);
 
 			error_log( 'MSH DUPLICATE: Loaded ' . count( $all_images ) . ' images for content-based analysis' );
 

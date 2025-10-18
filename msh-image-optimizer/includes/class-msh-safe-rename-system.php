@@ -67,6 +67,44 @@ class MSH_Safe_Rename_System {
 		update_option( 'msh_rename_log_table_version', '1' );
 	}
 
+	/**
+	 * Initialize WP_Filesystem
+	 *
+	 * @return bool True if filesystem is available
+	 */
+	private function init_filesystem() {
+		global $wp_filesystem;
+
+		if ( ! $wp_filesystem ) {
+			if ( ! function_exists( 'WP_Filesystem' ) ) {
+				require_once ABSPATH . 'wp-admin/includes/file.php';
+			}
+			WP_Filesystem();
+		}
+
+		return isset( $wp_filesystem );
+	}
+
+	/**
+	 * Validate path is within uploads directory
+	 *
+	 * @param string $path Path to validate
+	 * @return bool True if path is safe
+	 */
+	private function is_safe_path( $path ) {
+		$uploads = wp_get_upload_dir();
+		$uploads_root = wp_normalize_path( $uploads['basedir'] );
+		$normalized = wp_normalize_path( $path );
+
+		// Get real path to resolve symlinks
+		$real_path = realpath( $path );
+		if ( $real_path ) {
+			$normalized = wp_normalize_path( $real_path );
+		}
+
+		return str_starts_with( $normalized, $uploads_root );
+	}
+
 	public function rename_attachment( $attachment_id, $new_filename, $test_mode = false ) {
 		$this->test_mode         = (bool) $test_mode;
 		$this->last_replacements = 0;
@@ -158,12 +196,17 @@ class MSH_Safe_Rename_System {
 		$new_path    = isset( $rename['new_path'] ) ? $rename['new_path'] : '';
 		$backup_path = isset( $rename['backup_path'] ) ? $rename['backup_path'] : '';
 
-		if ( $new_path && file_exists( $new_path ) ) {
-			@unlink( $new_path );
+		// Clean up new file if it exists
+		if ( $new_path && file_exists( $new_path ) && $this->is_safe_path( $new_path ) ) {
+			wp_delete_file( $new_path );
 		}
 
-		if ( $backup_path && file_exists( $backup_path ) ) {
-			@rename( $backup_path, $original_path );
+		// Restore backup
+		if ( $backup_path && file_exists( $backup_path ) && $this->is_safe_path( $backup_path ) && $this->is_safe_path( $original_path ) ) {
+			if ( $this->init_filesystem() ) {
+				global $wp_filesystem;
+				$wp_filesystem->move( $backup_path, $original_path, true );
+			}
 		}
 
 		update_attached_file( $attachment_id, $original_path );
@@ -298,30 +341,43 @@ class MSH_Safe_Rename_System {
 			return new WP_Error( 'backup_failed', 'Unable to create backup: ' . ( $error['message'] ?? 'Unknown error' ) );
 		}
 
-		// CRITICAL: Perform the actual rename WITHOUT error suppression
+		// CRITICAL: Perform the actual rename using WP_Filesystem
 		error_log( 'MSH Rename: Attempting rename from ' . $old_path . ' to ' . $new_path );
-		$rename_result = rename( $old_path, $new_path );
+
+		if ( ! $this->init_filesystem() ) {
+			error_log( 'MSH Rename: Failed to initialize WP_Filesystem' );
+			return new WP_Error( 'filesystem_error', 'Could not initialize filesystem' );
+		}
+
+		global $wp_filesystem;
+		$rename_result = $wp_filesystem->move( $old_path, $new_path, true );
 
 		if ( ! $rename_result ) {
-			$error = error_get_last();
-			error_log( 'MSH Rename: Rename failed - ' . ( $error['message'] ?? 'Unknown error' ) );
+			error_log( 'MSH Rename: Rename failed via WP_Filesystem' );
 
 			// Try alternative: copy then delete
 			error_log( 'MSH Rename: Trying copy+delete fallback' );
 			if ( copy( $old_path, $new_path ) ) {
-				if ( unlink( $old_path ) ) {
+				if ( $this->is_safe_path( $old_path ) ) {
+					wp_delete_file( $old_path );
 					error_log( 'MSH Rename: Copy+delete fallback succeeded' );
 					$rename_result = true;
 				} else {
 					// Copy worked but delete failed - clean up the copy
-					unlink( $new_path );
-					unlink( $backup_path );
-					$delete_error = error_get_last();
-					error_log( 'MSH Rename: Could not delete original after copy - ' . ( $delete_error['message'] ?? 'Unknown' ) );
-					return new WP_Error( 'rename_failed', 'Could not complete rename operation: ' . ( $delete_error['message'] ?? 'Permission denied' ) );
+					if ( $this->is_safe_path( $new_path ) ) {
+						wp_delete_file( $new_path );
+					}
+					if ( $this->is_safe_path( $backup_path ) ) {
+						wp_delete_file( $backup_path );
+					}
+					error_log( 'MSH Rename: Could not delete original after copy - path validation failed' );
+					return new WP_Error( 'rename_failed', 'Could not complete rename operation: path validation failed' );
 				}
 			} else {
-				unlink( $backup_path ); // Clean up backup
+				// Clean up backup
+				if ( $this->is_safe_path( $backup_path ) ) {
+					wp_delete_file( $backup_path );
+				}
 				$copy_error = error_get_last();
 				return new WP_Error( 'rename_failed', 'Unable to rename file: ' . ( $copy_error['message'] ?? 'Unknown error' ) );
 			}
@@ -350,17 +406,22 @@ class MSH_Safe_Rename_System {
 				$size_backup = $backup_dir . '/' . basename( $old_size_path ) . '.' . time();
 				copy( $old_size_path, $size_backup );
 
-				// Rename thumbnail WITHOUT error suppression
-				if ( ! rename( $old_size_path, $new_size_path ) ) {
-					// Try copy + delete
-					if ( copy( $old_size_path, $new_size_path ) ) {
-						unlink( $old_size_path );
-						error_log( 'MSH Rename: Thumbnail renamed via copy+delete: ' . basename( $old_size_path ) );
+				// Rename thumbnail using WP_Filesystem
+				if ( $this->init_filesystem() ) {
+					global $wp_filesystem;
+					$thumb_result = $wp_filesystem->move( $old_size_path, $new_size_path, true );
+
+					if ( ! $thumb_result ) {
+						// Try copy + delete fallback
+						if ( copy( $old_size_path, $new_size_path ) && $this->is_safe_path( $old_size_path ) ) {
+							wp_delete_file( $old_size_path );
+							error_log( 'MSH Rename: Thumbnail renamed via copy+delete: ' . basename( $old_size_path ) );
+						} else {
+							error_log( 'MSH Rename: Failed to rename thumbnail ' . basename( $old_size_path ) );
+						}
 					} else {
-						error_log( 'MSH Rename: Failed to rename thumbnail ' . basename( $old_size_path ) );
+						error_log( 'MSH Rename: Thumbnail renamed successfully: ' . basename( $old_size_path ) );
 					}
-				} else {
-					error_log( 'MSH Rename: Thumbnail renamed successfully: ' . basename( $old_size_path ) );
 				}
 			}
 		}
@@ -429,26 +490,39 @@ class MSH_Safe_Rename_System {
 		// Apply permission fixes
 		$this->fix_local_permissions( $test_file );
 
-		// Test rename
+		// Test rename using WP_Filesystem
 		$new_name = $upload_dir['basedir'] . '/test-renamed-' . time() . '.txt';
-		$result   = rename( $test_file, $new_name );
+
+		if ( ! $this->init_filesystem() ) {
+			if ( file_exists( $test_file ) && $this->is_safe_path( $test_file ) ) {
+				wp_delete_file( $test_file );
+			}
+			return array(
+				'success' => false,
+				'message' => 'Filesystem initialization failed',
+			);
+		}
+
+		global $wp_filesystem;
+		$result = $wp_filesystem->move( $test_file, $new_name, true );
 
 		if ( $result ) {
 			error_log( 'MSH Test: SUCCESS - File renamed to ' . $new_name );
-			unlink( $new_name ); // Clean up
+			if ( $this->is_safe_path( $new_name ) ) {
+				wp_delete_file( $new_name ); // Clean up
+			}
 			return array(
 				'success' => true,
 				'message' => 'Rename test successful',
 			);
 		} else {
-			$error = error_get_last();
-			error_log( 'MSH Test: FAILED - ' . ( $error['message'] ?? 'Unknown error' ) );
-			if ( file_exists( $test_file ) ) {
-				unlink( $test_file ); // Clean up
+			error_log( 'MSH Test: FAILED - WP_Filesystem move returned false' );
+			if ( file_exists( $test_file ) && $this->is_safe_path( $test_file ) ) {
+				wp_delete_file( $test_file ); // Clean up
 			}
 			return array(
 				'success' => false,
-				'message' => 'Rename test failed: ' . ( $error['message'] ?? 'Unknown error' ),
+				'message' => 'Rename test failed: WP_Filesystem operation failed',
 			);
 		}
 	}
@@ -488,7 +562,15 @@ class MSH_Safe_Rename_System {
 		}
 
 		$backup_path = trailingslashit( $backup_dir ) . basename( $path ) . '.' . time();
-		if ( @rename( $path, $backup_path ) ) {
+
+		// Use WP_Filesystem for backup
+		$backup_success = false;
+		if ( $this->init_filesystem() ) {
+			global $wp_filesystem;
+			$backup_success = $wp_filesystem->move( $path, $backup_path, true );
+		}
+
+		if ( $backup_success ) {
 			// Schedule cleanup (suppress errors to prevent log spam)
 			@wp_schedule_single_event( time() + $this->backup_retention, 'msh_cleanup_rename_backup', array( $backup_path ) );
 			return $backup_path;
@@ -718,8 +800,8 @@ class MSH_Safe_Rename_System {
 			return;
 		}
 
-		if ( file_exists( $real ) ) {
-			@unlink( $real );
+		if ( file_exists( $real ) && $this->is_safe_path( $real ) ) {
+			wp_delete_file( $real );
 		}
 
 		$dir = dirname( $real );
@@ -760,8 +842,13 @@ class MSH_Safe_Rename_System {
 			$timestamp = (int) end( $parts );
 
 			if ( $timestamp > 0 && $timestamp < $cutoff_time ) {
-				if ( @unlink( $file ) ) {
-					++$cleaned;
+				if ( $this->is_safe_path( $file ) ) {
+					$result = wp_delete_file( $file );
+					if ( $result !== false ) {
+						++$cleaned;
+					} else {
+						++$errors;
+					}
 				} else {
 					++$errors;
 				}
