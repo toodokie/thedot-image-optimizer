@@ -273,7 +273,7 @@ class MSH_Image_Optimizer_Admin {
                 'indexStatusQueued' => __('Usage index building…', 'msh-image-optimizer'),
                 'indexStatusNotBuilt' => __('Usage index not built yet', 'msh-image-optimizer'),
                 'onboardingResetConfirm' => __('Reset the saved context? This will clear all onboarding answers.', 'msh-image-optimizer'),
-                'onboardingResetDone' => __('Context cleared. You can complete the setup whenever you're ready.', 'msh-image-optimizer'),
+                'onboardingResetDone' => __('Context cleared. You can complete the setup whenever you\'re ready.', 'msh-image-optimizer'),
                 // Status labels
                 'supported' => __('Supported', 'msh-image-optimizer'),
                 'notSupported' => __('Not Supported', 'msh-image-optimizer'),
