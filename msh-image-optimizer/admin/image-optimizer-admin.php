@@ -386,8 +386,8 @@ class MSH_Image_Optimizer_Admin {
 				<div id="msh-onboarding-container">
 					<div id="msh-onboarding-form" class="msh-onboarding-wizard">
 						<div class="wizard-header">
-							<h2><?php _e( 'Set Up Your Image Optimizer', 'msh-image-optimizer' ); ?></h2>
-							<p><?php _e( 'Share a few business details so metadata, reports, and future AI features stay on brand.', 'msh-image-optimizer' ); ?></p>
+							<h2><?php esc_html_e( 'Set Up Your Image Optimizer', 'msh-image-optimizer' ); ?></h2>
+							<p><?php esc_html_e( 'Share a few business details so metadata, reports, and future AI features stay on brand.', 'msh-image-optimizer' ); ?></p>
 							<div class="wizard-progress">
 								<div class="wizard-progress-track">
 									<div class="wizard-progress-bar" id="onboarding-progress-bar"></div>
@@ -398,134 +398,134 @@ class MSH_Image_Optimizer_Admin {
 						<div class="wizard-message" id="onboarding-message" role="alert" style="display:none;"></div>
 						<form id="msh-onboarding-form-element">
 							<div class="onboarding-step" data-step="1">
-								<h3><?php _e( 'Business Identity', 'msh-image-optimizer' ); ?></h3>
-								<p class="step-description"><?php _e( 'Used across optimizer summaries, logs, and future AI prompts.', 'msh-image-optimizer' ); ?></p>
-								<label for="msh_business_name"><?php _e( 'Business Name*', 'msh-image-optimizer' ); ?></label>
+								<h3><?php esc_html_e( 'Business Identity', 'msh-image-optimizer' ); ?></h3>
+								<p class="step-description"><?php esc_html_e( 'Used across optimizer summaries, logs, and future AI prompts.', 'msh-image-optimizer' ); ?></p>
+								<label for="msh_business_name"><?php esc_html_e( 'Business Name*', 'msh-image-optimizer' ); ?></label>
 								<input type="text" id="msh_business_name" name="business_name" class="msh-input" required />
 
-								<label for="msh_industry"><?php _e( 'Industry*', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_industry"><?php esc_html_e( 'Industry*', 'msh-image-optimizer' ); ?></label>
 								<select id="msh_industry" name="industry" class="msh-select" required>
-									<option value=""><?php _e( 'Select industry…', 'msh-image-optimizer' ); ?></option>
+									<option value=""><?php esc_html_e( 'Select industry…', 'msh-image-optimizer' ); ?></option>
 									<optgroup label="<?php esc_attr_e( 'Professional Services', 'msh-image-optimizer' ); ?>">
-										<option value="legal"><?php _e( 'Legal Services', 'msh-image-optimizer' ); ?></option>
-										<option value="accounting"><?php _e( 'Accounting & Tax', 'msh-image-optimizer' ); ?></option>
-										<option value="consulting"><?php _e( 'Business Consulting', 'msh-image-optimizer' ); ?></option>
-										<option value="marketing"><?php _e( 'Marketing Agency', 'msh-image-optimizer' ); ?></option>
-										<option value="web_design"><?php _e( 'Web Design / Development', 'msh-image-optimizer' ); ?></option>
+										<option value="legal"><?php esc_html_e( 'Legal Services', 'msh-image-optimizer' ); ?></option>
+										<option value="accounting"><?php esc_html_e( 'Accounting & Tax', 'msh-image-optimizer' ); ?></option>
+										<option value="consulting"><?php esc_html_e( 'Business Consulting', 'msh-image-optimizer' ); ?></option>
+										<option value="marketing"><?php esc_html_e( 'Marketing Agency', 'msh-image-optimizer' ); ?></option>
+										<option value="web_design"><?php esc_html_e( 'Web Design / Development', 'msh-image-optimizer' ); ?></option>
 									</optgroup>
 									<optgroup label="<?php esc_attr_e( 'Home Services', 'msh-image-optimizer' ); ?>">
-										<option value="plumbing"><?php _e( 'Plumbing', 'msh-image-optimizer' ); ?></option>
-										<option value="hvac"><?php _e( 'HVAC', 'msh-image-optimizer' ); ?></option>
-										<option value="electrical"><?php _e( 'Electrical', 'msh-image-optimizer' ); ?></option>
-										<option value="renovation"><?php _e( 'Renovation / Construction', 'msh-image-optimizer' ); ?></option>
+										<option value="plumbing"><?php esc_html_e( 'Plumbing', 'msh-image-optimizer' ); ?></option>
+										<option value="hvac"><?php esc_html_e( 'HVAC', 'msh-image-optimizer' ); ?></option>
+										<option value="electrical"><?php esc_html_e( 'Electrical', 'msh-image-optimizer' ); ?></option>
+										<option value="renovation"><?php esc_html_e( 'Renovation / Construction', 'msh-image-optimizer' ); ?></option>
 									</optgroup>
 									<optgroup label="<?php esc_attr_e( 'Healthcare', 'msh-image-optimizer' ); ?>">
-										<option value="dental"><?php _e( 'Dental', 'msh-image-optimizer' ); ?></option>
-										<option value="medical"><?php _e( 'Medical Practice', 'msh-image-optimizer' ); ?></option>
-										<option value="therapy"><?php _e( 'Therapy / Counseling', 'msh-image-optimizer' ); ?></option>
-										<option value="wellness"><?php _e( 'Wellness / Alternative', 'msh-image-optimizer' ); ?></option>
+										<option value="dental"><?php esc_html_e( 'Dental', 'msh-image-optimizer' ); ?></option>
+										<option value="medical"><?php esc_html_e( 'Medical Practice', 'msh-image-optimizer' ); ?></option>
+										<option value="therapy"><?php esc_html_e( 'Therapy / Counseling', 'msh-image-optimizer' ); ?></option>
+										<option value="wellness"><?php esc_html_e( 'Wellness / Alternative', 'msh-image-optimizer' ); ?></option>
 									</optgroup>
 									<optgroup label="<?php esc_attr_e( 'Retail & E-commerce', 'msh-image-optimizer' ); ?>">
-										<option value="online_store"><?php _e( 'Online Store', 'msh-image-optimizer' ); ?></option>
-										<option value="local_retail"><?php _e( 'Local Retail', 'msh-image-optimizer' ); ?></option>
-										<option value="specialty"><?php _e( 'Specialty Products', 'msh-image-optimizer' ); ?></option>
+										<option value="online_store"><?php esc_html_e( 'Online Store', 'msh-image-optimizer' ); ?></option>
+										<option value="local_retail"><?php esc_html_e( 'Local Retail', 'msh-image-optimizer' ); ?></option>
+										<option value="specialty"><?php esc_html_e( 'Specialty Products', 'msh-image-optimizer' ); ?></option>
 									</optgroup>
-									<option value="other"><?php _e( 'Other / Not listed', 'msh-image-optimizer' ); ?></option>
+									<option value="other"><?php esc_html_e( 'Other / Not listed', 'msh-image-optimizer' ); ?></option>
 								</select>
 
-								<label for="msh_business_type"><?php _e( 'Business Type*', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_business_type"><?php esc_html_e( 'Business Type*', 'msh-image-optimizer' ); ?></label>
 								<select id="msh_business_type" name="business_type" class="msh-select" required>
-									<option value=""><?php _e( 'Select business type…', 'msh-image-optimizer' ); ?></option>
-									<option value="local_service"><?php _e( 'Local Service Provider', 'msh-image-optimizer' ); ?></option>
-									<option value="online_service"><?php _e( 'Online Service Provider', 'msh-image-optimizer' ); ?></option>
-									<option value="ecommerce"><?php _e( 'E-commerce', 'msh-image-optimizer' ); ?></option>
-									<option value="saas"><?php _e( 'SaaS / Software', 'msh-image-optimizer' ); ?></option>
-									<option value="b2b"><?php _e( 'B2B Services', 'msh-image-optimizer' ); ?></option>
-									<option value="b2c"><?php _e( 'B2C Services', 'msh-image-optimizer' ); ?></option>
-									<option value="nonprofit"><?php _e( 'Non-profit / Public Sector', 'msh-image-optimizer' ); ?></option>
+									<option value=""><?php esc_html_e( 'Select business type…', 'msh-image-optimizer' ); ?></option>
+									<option value="local_service"><?php esc_html_e( 'Local Service Provider', 'msh-image-optimizer' ); ?></option>
+									<option value="online_service"><?php esc_html_e( 'Online Service Provider', 'msh-image-optimizer' ); ?></option>
+									<option value="ecommerce"><?php esc_html_e( 'E-commerce', 'msh-image-optimizer' ); ?></option>
+									<option value="saas"><?php esc_html_e( 'SaaS / Software', 'msh-image-optimizer' ); ?></option>
+									<option value="b2b"><?php esc_html_e( 'B2B Services', 'msh-image-optimizer' ); ?></option>
+									<option value="b2c"><?php esc_html_e( 'B2C Services', 'msh-image-optimizer' ); ?></option>
+									<option value="nonprofit"><?php esc_html_e( 'Non-profit / Public Sector', 'msh-image-optimizer' ); ?></option>
 								</select>
 							</div>
 
 							<div class="onboarding-step" data-step="2">
-								<h3><?php _e( 'Target Audience', 'msh-image-optimizer' ); ?></h3>
-								<p class="step-description"><?php _e( 'Helps the optimizer speak to the right people and surface relevant keywords.', 'msh-image-optimizer' ); ?></p>
-								<label for="msh_target_audience"><?php _e( 'Ideal customer*', 'msh-image-optimizer' ); ?></label>
+								<h3><?php esc_html_e( 'Target Audience', 'msh-image-optimizer' ); ?></h3>
+								<p class="step-description"><?php esc_html_e( 'Helps the optimizer speak to the right people and surface relevant keywords.', 'msh-image-optimizer' ); ?></p>
+								<label for="msh_target_audience"><?php esc_html_e( 'Ideal customer*', 'msh-image-optimizer' ); ?></label>
 								<input type="text" id="msh_target_audience" name="target_audience" class="msh-input" placeholder="<?php esc_attr_e( 'e.g., Homeowners aged 35-65, Small business owners, Tech startups', 'msh-image-optimizer' ); ?>" required />
 
-								<label for="msh_pain_points"><?php _e( 'Problems you solve', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_pain_points"><?php esc_html_e( 'Problems you solve', 'msh-image-optimizer' ); ?></label>
 								<textarea id="msh_pain_points" name="pain_points" class="msh-textarea" rows="3" placeholder="<?php esc_attr_e( 'e.g., Same-day emergency repairs, Streamlined accounting, Custom treatment plans', 'msh-image-optimizer' ); ?>"></textarea>
 
-								<label for="msh_demographics"><?php _e( 'Demographics (optional)', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_demographics"><?php esc_html_e( 'Demographics (optional)', 'msh-image-optimizer' ); ?></label>
 								<input type="text" id="msh_demographics" name="demographics" class="msh-input" placeholder="<?php esc_attr_e( 'e.g., Income $50k+, College educated, Urban professionals', 'msh-image-optimizer' ); ?>" />
 							</div>
 
 							<div class="onboarding-step" data-step="3">
-								<h3><?php _e( 'Brand Voice & Value', 'msh-image-optimizer' ); ?></h3>
-								<p class="step-description"><?php _e( 'We’ll match metadata suggestions to your brand personality and highlight what makes you different.', 'msh-image-optimizer' ); ?></p>
-								<span class="field-label"><?php _e( 'Brand voice*', 'msh-image-optimizer' ); ?></span>
+								<h3><?php esc_html_e( 'Brand Voice & Value', 'msh-image-optimizer' ); ?></h3>
+								<p class="step-description"><?php esc_html_e( 'We’ll match metadata suggestions to your brand personality and highlight what makes you different.', 'msh-image-optimizer' ); ?></p>
+								<span class="field-label"><?php esc_html_e( 'Brand voice*', 'msh-image-optimizer' ); ?></span>
 								<div class="radio-grid">
 									<label>
 										<input type="radio" name="brand_voice" value="professional" required />
-										<strong><?php _e( 'Professional', 'msh-image-optimizer' ); ?></strong>
-										<span><?php _e( 'Formal, expert, authoritative', 'msh-image-optimizer' ); ?></span>
+										<strong><?php esc_html_e( 'Professional', 'msh-image-optimizer' ); ?></strong>
+										<span><?php esc_html_e( 'Formal, expert, authoritative', 'msh-image-optimizer' ); ?></span>
 									</label>
 									<label>
 										<input type="radio" name="brand_voice" value="friendly" />
-										<strong><?php _e( 'Friendly', 'msh-image-optimizer' ); ?></strong>
-										<span><?php _e( 'Approachable, helpful, warm', 'msh-image-optimizer' ); ?></span>
+										<strong><?php esc_html_e( 'Friendly', 'msh-image-optimizer' ); ?></strong>
+										<span><?php esc_html_e( 'Approachable, helpful, warm', 'msh-image-optimizer' ); ?></span>
 									</label>
 									<label>
 										<input type="radio" name="brand_voice" value="casual" />
-										<strong><?php _e( 'Casual', 'msh-image-optimizer' ); ?></strong>
-										<span><?php _e( 'Conversational and relaxed', 'msh-image-optimizer' ); ?></span>
+										<strong><?php esc_html_e( 'Casual', 'msh-image-optimizer' ); ?></strong>
+										<span><?php esc_html_e( 'Conversational and relaxed', 'msh-image-optimizer' ); ?></span>
 									</label>
 									<label>
 										<input type="radio" name="brand_voice" value="technical" />
-										<strong><?php _e( 'Technical', 'msh-image-optimizer' ); ?></strong>
-										<span><?php _e( 'Detailed, precise, specialist', 'msh-image-optimizer' ); ?></span>
+										<strong><?php esc_html_e( 'Technical', 'msh-image-optimizer' ); ?></strong>
+										<span><?php esc_html_e( 'Detailed, precise, specialist', 'msh-image-optimizer' ); ?></span>
 									</label>
 								</div>
 
-								<label for="msh_uvp"><?php _e( 'What makes you different?*', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_uvp"><?php esc_html_e( 'What makes you different?*', 'msh-image-optimizer' ); ?></label>
 								<textarea id="msh_uvp" name="uvp" class="msh-textarea" rows="3" placeholder="<?php esc_attr_e( 'e.g., 24/7 emergency team, 20 years experience, Free consultations, Same-day delivery', 'msh-image-optimizer' ); ?>" required></textarea>
 
-								<label for="msh_cta_preference"><?php _e( 'Call-to-action style', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_cta_preference"><?php esc_html_e( 'Call-to-action style', 'msh-image-optimizer' ); ?></label>
 								<select id="msh_cta_preference" name="cta_preference" class="msh-select">
-									<option value="soft"><?php _e( 'Helpful / soft reminders', 'msh-image-optimizer' ); ?></option>
-									<option value="balanced"><?php _e( 'Neutral / informative', 'msh-image-optimizer' ); ?></option>
-									<option value="direct"><?php _e( 'Direct / action-focused', 'msh-image-optimizer' ); ?></option>
+									<option value="soft"><?php esc_html_e( 'Helpful / soft reminders', 'msh-image-optimizer' ); ?></option>
+									<option value="balanced"><?php esc_html_e( 'Neutral / informative', 'msh-image-optimizer' ); ?></option>
+									<option value="direct"><?php esc_html_e( 'Direct / action-focused', 'msh-image-optimizer' ); ?></option>
 								</select>
 							</div>
 
 							<div class="onboarding-step" data-step="4">
-								<h3><?php _e( 'Location & Service Area', 'msh-image-optimizer' ); ?></h3>
-								<p class="step-description"><?php _e( 'Used for local SEO hints and AI localisation. Leave blank if not location specific.', 'msh-image-optimizer' ); ?></p>
-								<label for="msh_location_city"><?php _e( 'City', 'msh-image-optimizer' ); ?></label>
+								<h3><?php esc_html_e( 'Location & Service Area', 'msh-image-optimizer' ); ?></h3>
+								<p class="step-description"><?php esc_html_e( 'Used for local SEO hints and AI localisation. Leave blank if not location specific.', 'msh-image-optimizer' ); ?></p>
+								<label for="msh_location_city"><?php esc_html_e( 'City', 'msh-image-optimizer' ); ?></label>
 								<input type="text" id="msh_location_city" name="city" class="msh-input" placeholder="<?php esc_attr_e( 'e.g., Toronto', 'msh-image-optimizer' ); ?>" />
 
-								<label for="msh_location_region"><?php _e( 'Province / Region', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_location_region"><?php esc_html_e( 'Province / Region', 'msh-image-optimizer' ); ?></label>
 								<input type="text" id="msh_location_region" name="region" class="msh-input" placeholder="<?php esc_attr_e( 'e.g., Ontario', 'msh-image-optimizer' ); ?>" />
 
-								<label for="msh_location_country"><?php _e( 'Country', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_location_country"><?php esc_html_e( 'Country', 'msh-image-optimizer' ); ?></label>
 								<input type="text" id="msh_location_country" name="country" class="msh-input" placeholder="<?php esc_attr_e( 'e.g., Canada', 'msh-image-optimizer' ); ?>" />
 
-								<label for="msh_service_area"><?php _e( 'Service area', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_service_area"><?php esc_html_e( 'Service area', 'msh-image-optimizer' ); ?></label>
 								<input type="text" id="msh_service_area" name="service_area" class="msh-input" placeholder="<?php esc_attr_e( 'e.g., Greater Toronto Area, Nationwide, Remote', 'msh-image-optimizer' ); ?>" />
 
 								<label class="checkbox-inline">
 									<input type="checkbox" id="msh_ai_interest" name="ai_interest" value="1" />
-									<?php _e( 'Keep me posted about AI metadata and duplicate detection features', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'Keep me posted about AI metadata and duplicate detection features', 'msh-image-optimizer' ); ?>
 								</label>
 
-								<p class="step-description small-print"><?php _e( 'Saving completes the setup. You can edit these details at any time.', 'msh-image-optimizer' ); ?></p>
+								<p class="step-description small-print"><?php esc_html_e( 'Saving completes the setup. You can edit these details at any time.', 'msh-image-optimizer' ); ?></p>
 							</div>
 						</form>
 						<div class="wizard-navigation">
-							<button type="button" class="button button-dot-secondary wizard-prev" disabled><?php _e( 'Back', 'msh-image-optimizer' ); ?></button>
+							<button type="button" class="button button-dot-secondary wizard-prev" disabled><?php esc_html_e( 'Back', 'msh-image-optimizer' ); ?></button>
 							<div class="wizard-nav-spacer"></div>
-							<button type="button" class="button wizard-next button-dot-primary"><?php _e( 'Next', 'msh-image-optimizer' ); ?></button>
+							<button type="button" class="button wizard-next button-dot-primary"><?php esc_html_e( 'Next', 'msh-image-optimizer' ); ?></button>
 							<button type="button" class="button button-dot-primary wizard-save" style="display:none;">
-								<?php _e( 'Save Context', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Save Context', 'msh-image-optimizer' ); ?>
 							</button>
 						</div>
 					</div>
@@ -533,13 +533,13 @@ class MSH_Image_Optimizer_Admin {
 					<div id="msh-onboarding-summary" class="msh-onboarding-summary" style="display:none;">
 						<details class="summary-collapsible" open>
 							<summary class="summary-header">
-								<h2><?php _e( 'Optimization Context', 'msh-image-optimizer' ); ?></h2>
+								<h2><?php esc_html_e( 'Optimization Context', 'msh-image-optimizer' ); ?></h2>
 								<p class="summary-active-label" id="summary-active-label"><?php echo esc_html( $active_label ); ?></p>
 							</summary>
 							<div class="summary-content">
-								<p class="summary-description"><?php _e( 'These preferences drive metadata suggestions, reports, and upcoming AI enhancements. Manage additional profiles (landing pages, multilingual) from Settings.', 'msh-image-optimizer' ); ?></p>
+								<p class="summary-description"><?php esc_html_e( 'These preferences drive metadata suggestions, reports, and upcoming AI enhancements. Manage additional profiles (landing pages, multilingual) from Settings.', 'msh-image-optimizer' ); ?></p>
 								<div class="summary-context-switcher">
-							<label for="msh-context-selector"><?php _e( 'Active Context', 'msh-image-optimizer' ); ?></label>
+							<label for="msh-context-selector"><?php esc_html_e( 'Active Context', 'msh-image-optimizer' ); ?></label>
 							<select id="msh-context-selector" class="msh-select">
 								<option value="primary" <?php selected( $active_profile, 'primary' ); ?>>
 									<?php echo esc_html( sprintf( __( 'Primary – %s', 'msh-image-optimizer' ), $primary_label ) ); ?>
@@ -554,60 +554,60 @@ class MSH_Image_Optimizer_Admin {
 								<?php endforeach; ?>
 							</select>
 							<p class="summary-context-note">
-								<?php _e( 'Switch profiles without leaving the dashboard. Updates apply instantly across optimization workflows and AI prompts.', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Switch profiles without leaving the dashboard. Updates apply instantly across optimization workflows and AI prompts.', 'msh-image-optimizer' ); ?>
 							</p>
 						</div>
 						<div class="summary-index-status">
-							<span class="summary-index-status-label"><?php _e( 'Usage Index', 'msh-image-optimizer' ); ?></span>
+							<span class="summary-index-status-label"><?php esc_html_e( 'Usage Index', 'msh-image-optimizer' ); ?></span>
 							<span class="summary-index-status-value" id="summary-index-status-value"></span>
 						</div>
 						<dl class="summary-grid">
 							<div>
-								<dt><?php _e( 'Business Name', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Business Name', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-business-name">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'Industry', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Industry', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-industry">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'Business Type', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Business Type', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-business-type">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'Target Audience', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Target Audience', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-target-audience">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'Pain Points', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Pain Points', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-pain-points">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'Brand Voice', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Brand Voice', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-brand-voice">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'Value Proposition', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Value Proposition', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-uvp">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'CTA Style', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'CTA Style', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-cta">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'Location', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'Location', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-location">&mdash;</dd>
 							</div>
 							<div>
-								<dt><?php _e( 'AI Updates', 'msh-image-optimizer' ); ?></dt>
+								<dt><?php esc_html_e( 'AI Updates', 'msh-image-optimizer' ); ?></dt>
 								<dd id="summary-ai-interest">&mdash;</dd>
 							</div>
 						</dl>
 						<div class="summary-actions">
 							<a href="<?php echo esc_url( admin_url( 'options-general.php?page=msh-image-optimizer-settings' ) ); ?>" class="button button-dot-primary summary-settings">
-								<?php _e( 'Open Settings', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Open Settings', 'msh-image-optimizer' ); ?>
 							</a>
-							<button type="button" class="button button-dot-secondary summary-reset"><?php _e( 'Reset', 'msh-image-optimizer' ); ?></button>
+							<button type="button" class="button button-dot-secondary summary-reset"><?php esc_html_e( 'Reset', 'msh-image-optimizer' ); ?></button>
 						</div>
 							</div><!-- .summary-content -->
 						</details><!-- .summary-collapsible -->
@@ -619,120 +619,120 @@ class MSH_Image_Optimizer_Admin {
 					<div class="ai-modal-overlay"></div>
 					<div class="ai-modal-content">
 						<div class="ai-modal-header">
-							<h3><?php _e( 'Confirm AI Metadata Regeneration', 'msh-image-optimizer' ); ?></h3>
+							<h3><?php esc_html_e( 'Confirm AI Metadata Regeneration', 'msh-image-optimizer' ); ?></h3>
 							<button type="button" class="ai-modal-close" aria-label="<?php esc_attr_e( 'Close', 'msh-image-optimizer' ); ?>">×</button>
 						</div>
 
 						<div class="ai-modal-body">
 							<p class="ai-modal-description">
-								<?php _e( 'Configure how you want to regenerate metadata for your images. This will use AI to analyze images and generate SEO-optimized metadata.', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Configure how you want to regenerate metadata for your images. This will use AI to analyze images and generate SEO-optimized metadata.', 'msh-image-optimizer' ); ?>
 							</p>
 
 							<div class="ai-modal-section">
-								<label class="ai-modal-label"><?php _e( 'Selection Scope', 'msh-image-optimizer' ); ?></label>
+								<label class="ai-modal-label"><?php esc_html_e( 'Selection Scope', 'msh-image-optimizer' ); ?></label>
 								<div class="ai-radio-group">
 									<label>
 										<input type="radio" name="ai_scope" value="all" checked>
-										<span><?php _e( 'All images in media library', 'msh-image-optimizer' ); ?></span>
+										<span><?php esc_html_e( 'All images in media library', 'msh-image-optimizer' ); ?></span>
 										<span class="ai-radio-count" id="ai-scope-all-count">(0 images)</span>
 									</label>
 									<label>
 										<input type="radio" name="ai_scope" value="published">
-										<span><?php _e( 'Only published images', 'msh-image-optimizer' ); ?></span>
+										<span><?php esc_html_e( 'Only published images', 'msh-image-optimizer' ); ?></span>
 										<span class="ai-radio-count" id="ai-scope-published-count">(0 images)</span>
 									</label>
 									<label>
 										<input type="radio" name="ai_scope" value="missing">
-										<span><?php _e( 'Images with missing metadata', 'msh-image-optimizer' ); ?></span>
+										<span><?php esc_html_e( 'Images with missing metadata', 'msh-image-optimizer' ); ?></span>
 										<span class="ai-radio-count" id="ai-scope-missing-count">(0 images)</span>
 									</label>
 								</div>
 							</div>
 
 							<div class="ai-modal-section">
-								<label class="ai-modal-label"><?php _e( 'Regeneration Mode', 'msh-image-optimizer' ); ?></label>
+								<label class="ai-modal-label"><?php esc_html_e( 'Regeneration Mode', 'msh-image-optimizer' ); ?></label>
 								<div class="ai-radio-group">
 									<label>
 										<input type="radio" name="ai_mode" value="fill-empty" checked>
-										<span><?php _e( 'Fill empty fields only', 'msh-image-optimizer' ); ?></span>
-										<small class="ai-radio-help"><?php _e( 'Only generate metadata for fields that are currently empty', 'msh-image-optimizer' ); ?></small>
+										<span><?php esc_html_e( 'Fill empty fields only', 'msh-image-optimizer' ); ?></span>
+										<small class="ai-radio-help"><?php esc_html_e( 'Only generate metadata for fields that are currently empty', 'msh-image-optimizer' ); ?></small>
 									</label>
 									<label>
 										<input type="radio" name="ai_mode" value="overwrite">
-										<span><?php _e( 'Overwrite all metadata', 'msh-image-optimizer' ); ?></span>
-										<small class="ai-radio-help"><?php _e( 'Replace existing metadata with AI-generated content (backup created)', 'msh-image-optimizer' ); ?></small>
+										<span><?php esc_html_e( 'Overwrite all metadata', 'msh-image-optimizer' ); ?></span>
+										<small class="ai-radio-help"><?php esc_html_e( 'Replace existing metadata with AI-generated content (backup created)', 'msh-image-optimizer' ); ?></small>
 									</label>
 								</div>
 							</div>
 
 							<div class="ai-modal-section">
-								<label class="ai-modal-label"><?php _e( 'Fields to Generate', 'msh-image-optimizer' ); ?></label>
+								<label class="ai-modal-label"><?php esc_html_e( 'Fields to Generate', 'msh-image-optimizer' ); ?></label>
 								<div class="ai-checkbox-group">
 									<label>
 										<input type="checkbox" name="ai_fields[]" value="title" checked>
-										<span><?php _e( 'Title', 'msh-image-optimizer' ); ?></span>
+										<span><?php esc_html_e( 'Title', 'msh-image-optimizer' ); ?></span>
 									</label>
 									<label>
 										<input type="checkbox" name="ai_fields[]" value="alt_text" checked>
-										<span><?php _e( 'Alt Text', 'msh-image-optimizer' ); ?></span>
+										<span><?php esc_html_e( 'Alt Text', 'msh-image-optimizer' ); ?></span>
 									</label>
 									<label>
 										<input type="checkbox" name="ai_fields[]" value="caption" checked>
-										<span><?php _e( 'Caption', 'msh-image-optimizer' ); ?></span>
+										<span><?php esc_html_e( 'Caption', 'msh-image-optimizer' ); ?></span>
 									</label>
 									<label>
 										<input type="checkbox" name="ai_fields[]" value="description" checked>
-										<span><?php _e( 'Description', 'msh-image-optimizer' ); ?></span>
+										<span><?php esc_html_e( 'Description', 'msh-image-optimizer' ); ?></span>
 									</label>
 								</div>
 							</div>
 
 							<div class="ai-modal-section">
-								<h4 class="ai-modal-label"><?php _e( 'Output Language', 'msh-image-optimizer' ); ?></h4>
+								<h4 class="ai-modal-label"><?php esc_html_e( 'Output Language', 'msh-image-optimizer' ); ?></h4>
 								<label for="ai-language-select" class="screen-reader-text">
-									<?php _e( 'Generate metadata in', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'Generate metadata in', 'msh-image-optimizer' ); ?>
 								</label>
 								<select id="ai-language-select" name="ai_language" class="ai-language-selector">
-									<option value="auto"><?php _e( 'Auto (Site/Profile Default)', 'msh-image-optimizer' ); ?></option>
-									<option value="en"><?php _e( 'English', 'msh-image-optimizer' ); ?></option>
-									<option value="es"><?php _e( 'Spanish (Español)', 'msh-image-optimizer' ); ?></option>
-									<option value="fr"><?php _e( 'French (Français)', 'msh-image-optimizer' ); ?></option>
-									<option value="de"><?php _e( 'German (Deutsch)', 'msh-image-optimizer' ); ?></option>
-									<option value="pt"><?php _e( 'Portuguese (Português)', 'msh-image-optimizer' ); ?></option>
-									<option value="it"><?php _e( 'Italian (Italiano)', 'msh-image-optimizer' ); ?></option>
+									<option value="auto"><?php esc_html_e( 'Auto (Site/Profile Default)', 'msh-image-optimizer' ); ?></option>
+									<option value="en"><?php esc_html_e( 'English', 'msh-image-optimizer' ); ?></option>
+									<option value="es"><?php esc_html_e( 'Spanish (Español)', 'msh-image-optimizer' ); ?></option>
+									<option value="fr"><?php esc_html_e( 'French (Français)', 'msh-image-optimizer' ); ?></option>
+									<option value="de"><?php esc_html_e( 'German (Deutsch)', 'msh-image-optimizer' ); ?></option>
+									<option value="pt"><?php esc_html_e( 'Portuguese (Português)', 'msh-image-optimizer' ); ?></option>
+									<option value="it"><?php esc_html_e( 'Italian (Italiano)', 'msh-image-optimizer' ); ?></option>
 								</select>
 								<p class="ai-field-description">
-									<?php _e( 'AI will generate titles, ALT text, and descriptions in the selected language.', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'AI will generate titles, ALT text, and descriptions in the selected language.', 'msh-image-optimizer' ); ?>
 								</p>
 							</div>
 
 							<div class="ai-modal-estimate" id="ai-modal-estimate">
 								<div class="ai-estimate-row">
-									<span class="ai-estimate-label"><?php _e( 'Images to process:', 'msh-image-optimizer' ); ?></span>
+									<span class="ai-estimate-label"><?php esc_html_e( 'Images to process:', 'msh-image-optimizer' ); ?></span>
 									<span class="ai-estimate-value" id="ai-estimate-count">-</span>
 								</div>
 								<div class="ai-estimate-row">
-									<span class="ai-estimate-label"><?php _e( 'Estimated credits:', 'msh-image-optimizer' ); ?></span>
+									<span class="ai-estimate-label"><?php esc_html_e( 'Estimated credits:', 'msh-image-optimizer' ); ?></span>
 									<span class="ai-estimate-value" id="ai-estimate-credits">-</span>
 								</div>
 								<div class="ai-estimate-row">
-									<span class="ai-estimate-label"><?php _e( 'Credits available:', 'msh-image-optimizer' ); ?></span>
+									<span class="ai-estimate-label"><?php esc_html_e( 'Credits available:', 'msh-image-optimizer' ); ?></span>
 									<span class="ai-estimate-value" id="ai-estimate-available">-</span>
 								</div>
 							</div>
 
 							<div class="ai-modal-warning" id="ai-insufficient-credits" style="display: none;">
-								<strong><?php _e( 'Insufficient Credits', 'msh-image-optimizer' ); ?></strong>
-								<p><?php _e( 'You do not have enough credits to process all selected images. Please reduce the selection scope or upgrade your plan.', 'msh-image-optimizer' ); ?></p>
+								<strong><?php esc_html_e( 'Insufficient Credits', 'msh-image-optimizer' ); ?></strong>
+								<p><?php esc_html_e( 'You do not have enough credits to process all selected images. Please reduce the selection scope or upgrade your plan.', 'msh-image-optimizer' ); ?></p>
 							</div>
 						</div>
 
 						<div class="ai-modal-footer">
 							<button type="button" id="ai-modal-cancel" class="button button-dot-secondary">
-								<?php _e( 'Cancel', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Cancel', 'msh-image-optimizer' ); ?>
 							</button>
 							<button type="button" id="ai-modal-start" class="button button-dot-primary">
-								<?php _e( 'Start Regeneration', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Start Regeneration', 'msh-image-optimizer' ); ?>
 							</button>
 						</div>
 					</div>
@@ -743,7 +743,7 @@ class MSH_Image_Optimizer_Admin {
 					<div class="ai-modal-overlay"></div>
 					<div class="ai-modal-content" style="max-width: 500px;">
 						<div class="ai-modal-header">
-							<h3><?php _e( 'Manual Edits Detected', 'msh-image-optimizer' ); ?></h3>
+							<h3><?php esc_html_e( 'Manual Edits Detected', 'msh-image-optimizer' ); ?></h3>
 							<button type="button" class="ai-manual-warning-close" aria-label="<?php esc_attr_e( 'Close', 'msh-image-optimizer' ); ?>">×</button>
 						</div>
 
@@ -752,16 +752,16 @@ class MSH_Image_Optimizer_Admin {
 								<!-- Message will be populated by JavaScript -->
 							</p>
 							<p style="margin-top: 15px; color: #666; font-size: 14px;">
-								<?php _e( 'AI Regeneration will stage new metadata but won\'t overwrite your manual changes unless you explicitly apply it during the Optimize step.', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'AI Regeneration will stage new metadata but won\'t overwrite your manual changes unless you explicitly apply it during the Optimize step.', 'msh-image-optimizer' ); ?>
 							</p>
 						</div>
 
 						<div class="ai-modal-footer">
 							<button type="button" id="ai-manual-warning-cancel" class="button button-dot-secondary">
-								<?php _e( 'Cancel', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Cancel', 'msh-image-optimizer' ); ?>
 							</button>
 							<button type="button" id="ai-manual-warning-continue" class="button button-dot-primary">
-								<?php _e( 'Continue', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Continue', 'msh-image-optimizer' ); ?>
 							</button>
 						</div>
 					</div>
@@ -769,7 +769,7 @@ class MSH_Image_Optimizer_Admin {
 
 				<!-- Progress Overview -->
 				<div class="msh-progress-section">
-					<h2><?php _e( 'Image Optimization Progress', 'msh-image-optimizer' ); ?></h2>
+					<h2><?php esc_html_e( 'Image Optimization Progress', 'msh-image-optimizer' ); ?></h2>
 					<p style="margin-bottom: 15px; color: #666; font-size: 14px;">
 						<strong>Image Optimization:</strong> Converts images to WebP, adds ALT text, improves SEO metadata for published images.<br>
 						<strong>Duplicate Cleanup:</strong> Removes unused duplicate files to clean up media library (separate process).
@@ -777,19 +777,19 @@ class MSH_Image_Optimizer_Admin {
 					<div class="progress-stats">
 						<div class="stat-box">
 							<span class="stat-number" id="total-images">-</span>
-							<span class="stat-label"><?php _e( 'Total Published Images', 'msh-image-optimizer' ); ?></span>
+							<span class="stat-label"><?php esc_html_e( 'Total Published Images', 'msh-image-optimizer' ); ?></span>
 						</div>
 						<div class="stat-box">
 							<span class="stat-number" id="optimized-images">-</span>
-							<span class="stat-label"><?php _e( 'Optimized', 'msh-image-optimizer' ); ?></span>
+							<span class="stat-label"><?php esc_html_e( 'Optimized', 'msh-image-optimizer' ); ?></span>
 						</div>
 						<div class="stat-box">
 							<span class="stat-number" id="remaining-images">-</span>
-							<span class="stat-label"><?php _e( 'Remaining', 'msh-image-optimizer' ); ?></span>
+							<span class="stat-label"><?php esc_html_e( 'Remaining', 'msh-image-optimizer' ); ?></span>
 						</div>
 						<div class="stat-box">
 							<span class="stat-number" id="progress-percentage">-</span>
-							<span class="stat-label"><?php _e( 'Complete', 'msh-image-optimizer' ); ?></span>
+							<span class="stat-label"><?php esc_html_e( 'Complete', 'msh-image-optimizer' ); ?></span>
 						</div>
 					</div>
 					<div class="progress-bar">
@@ -801,7 +801,7 @@ class MSH_Image_Optimizer_Admin {
 
 				<!-- Step 1: Image Optimization -->
 				<div class="msh-actions-section">
-					<h2 style="color: #35332f;"><?php _e( 'Step 1: Optimize Published Images', 'msh-image-optimizer' ); ?></h2>
+					<h2 style="color: #35332f;"><?php esc_html_e( 'Step 1: Optimize Published Images', 'msh-image-optimizer' ); ?></h2>
 					<div class="msh-ai-toggle-section">
 						<div class="msh-rename-settings-section ai-toggle-panel">
 							<div class="rename-setting-card">
@@ -811,7 +811,7 @@ class MSH_Image_Optimizer_Admin {
 												<?php checked( get_option( 'msh_ai_mode', 'manual' ) !== 'manual' ); ?>>
 										<span class="rename-toggle-slider"></span>
 										<div class="rename-toggle-text">
-											<strong><?php _e( 'Enable AI Metadata Suggestions', 'msh-image-optimizer' ); ?></strong>
+											<strong><?php esc_html_e( 'Enable AI Metadata Suggestions', 'msh-image-optimizer' ); ?></strong>
 										</div>
 									</label>
 									<div id="ai-mode-status-indicator" class="rename-status ai-mode-status">
@@ -835,12 +835,12 @@ class MSH_Image_Optimizer_Admin {
 							<div class="rename-setting-card">
 								<div class="notification-setting-content">
 									<div class="notification-copy">
-										<strong><?php _e( 'Desktop Notifications', 'msh-image-optimizer' ); ?></strong>
-										<p><?php _e( 'Get an OS notification when optimization finishes so you can work in other tabs.', 'msh-image-optimizer' ); ?></p>
+										<strong><?php esc_html_e( 'Desktop Notifications', 'msh-image-optimizer' ); ?></strong>
+										<p><?php esc_html_e( 'Get an OS notification when optimization finishes so you can work in other tabs.', 'msh-image-optimizer' ); ?></p>
 									</div>
 									<div class="notification-actions">
 										<button type="button" class="button button-dot-secondary" id="enable-desktop-notifications">
-											<?php _e( 'Enable Notifications', 'msh-image-optimizer' ); ?>
+											<?php esc_html_e( 'Enable Notifications', 'msh-image-optimizer' ); ?>
 										</button>
 										<span class="notification-status-text" id="notification-status-text"></span>
 									</div>
@@ -851,13 +851,13 @@ class MSH_Image_Optimizer_Admin {
 					<p style="margin-bottom: 15px; color: #35332f; font-size: 14px; background: #faf9f6; padding: 10px; border-radius: 4px;">
 						<strong>RECOMMENDED FIRST:</strong> Optimize your published images with WebP conversion, proper ALT text, and SEO improvements before cleaning duplicates.
 					</p>
-					<p class="msh-inline-note" style="margin-top: 4px;"><em><?php _e( 'We scan published content (pages, posts, widgets) and include images that are in use, plus auto-include newer SVG icons so they never get missed.', 'msh-image-optimizer' ); ?></em></p>
-					<p class="msh-inline-note"><em><?php _e( 'Smart Indexing: Files are indexed automatically when renamed for optimal performance', 'msh-image-optimizer' ); ?></em></p>
+					<p class="msh-inline-note" style="margin-top: 4px;"><em><?php esc_html_e( 'We scan published content (pages, posts, widgets) and include images that are in use, plus auto-include newer SVG icons so they never get missed.', 'msh-image-optimizer' ); ?></em></p>
+					<p class="msh-inline-note"><em><?php esc_html_e( 'Smart Indexing: Files are indexed automatically when renamed for optimal performance', 'msh-image-optimizer' ); ?></em></p>
 					<div class="msh-rename-settings-section step-rename-settings">
 						<div class="rename-important-callout">
-							<strong><?php _e( 'File renaming powers Step 1', 'msh-image-optimizer' ); ?></strong>
-							<p><?php _e( 'Turn this on when you want Analyze & Apply to generate clean, SEO-friendly filenames. Leave it off for audit-only runs where URLs must stay untouched.', 'msh-image-optimizer' ); ?></p>
-							<p><?php _e( 'We check this toggle before every optimization task, so you are always in control of when filename updates happen.', 'msh-image-optimizer' ); ?></p>
+							<strong><?php esc_html_e( 'File renaming powers Step 1', 'msh-image-optimizer' ); ?></strong>
+							<p><?php esc_html_e( 'Turn this on when you want Analyze & Apply to generate clean, SEO-friendly filenames. Leave it off for audit-only runs where URLs must stay untouched.', 'msh-image-optimizer' ); ?></p>
+							<p><?php esc_html_e( 'We check this toggle before every optimization task, so you are always in control of when filename updates happen.', 'msh-image-optimizer' ); ?></p>
 						</div>
 						<div class="rename-setting-card">
 							<div class="rename-setting-content">
@@ -866,9 +866,9 @@ class MSH_Image_Optimizer_Admin {
 											<?php checked( get_option( 'msh_enable_file_rename', '0' ), '1' ); ?>>
 									<span class="rename-toggle-slider"></span>
 									<div class="rename-toggle-text">
-										<strong><?php _e( 'Enable File Renaming', 'msh-image-optimizer' ); ?></strong>
+										<strong><?php esc_html_e( 'Enable File Renaming', 'msh-image-optimizer' ); ?></strong>
 										<span class="rename-toggle-description">
-											<?php _e( 'Provides optimized filenames when Apply Suggestions runs. Requires usage index to prevent broken links.', 'msh-image-optimizer' ); ?>
+											<?php esc_html_e( 'Provides optimized filenames when Apply Suggestions runs. Requires usage index to prevent broken links.', 'msh-image-optimizer' ); ?>
 										</span>
 									</div>
 								</label>
@@ -896,44 +896,44 @@ class MSH_Image_Optimizer_Admin {
 					<details class="msh-ai-regen-section-inline summary-collapsible step-rename-settings" id="ai-regen-dashboard">
 						<summary class="summary-header ai-regen-summary">
 							<div class="summary-title-group">
-								<h3><?php _e( 'AI Metadata Regeneration (Advanced)', 'msh-image-optimizer' ); ?></h3>
-								<p class="summary-description ai-regen-summary-helper"><?php _e( 'Use this when you want AI-generated suggestions to appear in the results table before applying.', 'msh-image-optimizer' ); ?></p>
+								<h3><?php esc_html_e( 'AI Metadata Regeneration (Advanced)', 'msh-image-optimizer' ); ?></h3>
+								<p class="summary-description ai-regen-summary-helper"><?php esc_html_e( 'Use this when you want AI-generated suggestions to appear in the results table before applying.', 'msh-image-optimizer' ); ?></p>
 							</div>
 						</summary>
 						<div class="summary-content ai-regen-inline-content">
 							<p class="ai-regen-help-text">
-								<?php _e( 'Use AI to bulk-regenerate metadata for existing images. This analyzes images with OpenAI Vision and overwrites metadata.', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Use AI to bulk-regenerate metadata for existing images. This analyzes images with OpenAI Vision and overwrites metadata.', 'msh-image-optimizer' ); ?>
 							</p>
 							<div class="ai-when-to-use">
-								<strong><?php _e( 'When to use this:', 'msh-image-optimizer' ); ?></strong>
+								<strong><?php esc_html_e( 'When to use this:', 'msh-image-optimizer' ); ?></strong>
 								<ul>
-									<li><?php _e( 'You have old images with poor/missing metadata', 'msh-image-optimizer' ); ?></li>
-									<li><?php _e( 'You want to bulk-update metadata for your entire library', 'msh-image-optimizer' ); ?></li>
-									<li><?php _e( 'You\'ve changed business context and need fresh SEO content', 'msh-image-optimizer' ); ?></li>
+									<li><?php esc_html_e( 'You have old images with poor/missing metadata', 'msh-image-optimizer' ); ?></li>
+									<li><?php esc_html_e( 'You want to bulk-update metadata for your entire library', 'msh-image-optimizer' ); ?></li>
+									<li><?php esc_html_e( 'You\'ve changed business context and need fresh SEO content', 'msh-image-optimizer' ); ?></li>
 								</ul>
 							</div>
 							<div class="ai-regen-stats-inline">
 								<div class="ai-stat-inline">
-									<span class="ai-stat-inline-label"><?php _e( 'Credits:', 'msh-image-optimizer' ); ?></span>
+									<span class="ai-stat-inline-label"><?php esc_html_e( 'Credits:', 'msh-image-optimizer' ); ?></span>
 									<span class="ai-stat-inline-value" id="ai-credits-available">-</span>
 									<span class="ai-stat-inline-sublabel" id="ai-plan-tier">-</span>
 								</div>
 								<div class="ai-stat-inline">
-									<span class="ai-stat-inline-label"><?php _e( 'Last Run:', 'msh-image-optimizer' ); ?></span>
+									<span class="ai-stat-inline-label"><?php esc_html_e( 'Last Run:', 'msh-image-optimizer' ); ?></span>
 									<span class="ai-stat-inline-value" id="ai-last-run"><?php esc_html_e( 'Never', 'msh-image-optimizer' ); ?></span>
 								</div>
 								<div class="ai-stat-inline">
-									<span class="ai-stat-inline-label"><?php _e( 'This Month:', 'msh-image-optimizer' ); ?></span>
+									<span class="ai-stat-inline-label"><?php esc_html_e( 'This Month:', 'msh-image-optimizer' ); ?></span>
 									<span class="ai-stat-inline-value" id="ai-credits-used-month">-</span>
-									<span class="ai-stat-inline-sublabel"><?php _e( 'credits used', 'msh-image-optimizer' ); ?></span>
+									<span class="ai-stat-inline-sublabel"><?php esc_html_e( 'credits used', 'msh-image-optimizer' ); ?></span>
 								</div>
 							</div>
 							<div class="ai-regen-actions-inline">
 								<button id="start-ai-regeneration" class="button button-dot-primary">
-									<?php _e( 'Regenerate Metadata with AI', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'Regenerate Metadata with AI', 'msh-image-optimizer' ); ?>
 								</button>
 								<a href="<?php echo esc_url( admin_url( 'options-general.php?page=msh-image-optimizer-settings&tab=ai' ) ); ?>" class="button button-dot-secondary">
-									<?php _e( 'AI Settings', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'AI Settings', 'msh-image-optimizer' ); ?>
 								</a>
 							</div>
 
@@ -943,17 +943,17 @@ class MSH_Image_Optimizer_Admin {
 
 					<div class="action-buttons step-actions">
 						<button id="analyze-images" class="button button-dot-primary">
-							<?php _e( 'Analyze Published Images', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Analyze Published Images', 'msh-image-optimizer' ); ?>
 						</button>
 						<button id="apply-filename-suggestions" class="button button-dot-primary" disabled>
-							<?php _e( 'Apply Filename Suggestions', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Apply Filename Suggestions', 'msh-image-optimizer' ); ?>
 						</button>
 						<div class="step-actions__secondary">
 							<button id="verify-webp-status" class="button button-dot-secondary">
-								<?php _e( 'Verify WebP Status', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Verify WebP Status', 'msh-image-optimizer' ); ?>
 							</button>
 							<button id="reset-optimization" class="button button-dot-secondary">
-								<?php _e( 'Reset Optimization Flags', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Reset Optimization Flags', 'msh-image-optimizer' ); ?>
 							</button>
 						</div>
 					</div>
@@ -961,55 +961,55 @@ class MSH_Image_Optimizer_Admin {
 
 				<!-- Step 1: Optimization Activity Log -->
 				<div class="msh-log-section step1-log" style="display: none;">
-					<h3><?php _e( 'Optimization Activity', 'msh-image-optimizer' ); ?></h3>
+					<h3><?php esc_html_e( 'Optimization Activity', 'msh-image-optimizer' ); ?></h3>
 					<div class="log-container">
-						<textarea id="optimization-log" readonly placeholder="<?php _e( 'Optimization activity will appear here...', 'msh-image-optimizer' ); ?>"></textarea>
+						<textarea id="optimization-log" readonly placeholder="<?php esc_html_e( 'Optimization activity will appear here...', 'msh-image-optimizer' ); ?>"></textarea>
 					</div>
 				</div>
 
 				<!-- Results Display -->
 				<div class="msh-results-section" style="display: none;">
-					<h2 class="results-title"><?php _e( 'Analysis Results', 'msh-image-optimizer' ); ?></h2>
+					<h2 class="results-title"><?php esc_html_e( 'Analysis Results', 'msh-image-optimizer' ); ?></h2>
 
 					<!-- Modern Filters -->
 					<div class="filter-controls">
 						<div class="filter-group">
-							<label class="filter-label"><?php _e( 'Status:', 'msh-image-optimizer' ); ?></label>
+							<label class="filter-label"><?php esc_html_e( 'Status:', 'msh-image-optimizer' ); ?></label>
 							<select class="filter-control filter-select" data-filter-type="status">
-								<option value="all"><?php _e( 'All Images', 'msh-image-optimizer' ); ?></option>
-								<option value="needs_optimization"><?php _e( 'Needs Optimization', 'msh-image-optimizer' ); ?></option>
-								<option value="optimized"><?php _e( 'Optimized', 'msh-image-optimizer' ); ?></option>
+								<option value="all"><?php esc_html_e( 'All Images', 'msh-image-optimizer' ); ?></option>
+								<option value="needs_optimization"><?php esc_html_e( 'Needs Optimization', 'msh-image-optimizer' ); ?></option>
+								<option value="optimized"><?php esc_html_e( 'Optimized', 'msh-image-optimizer' ); ?></option>
 							</select>
 						</div>
 						<div class="filter-group">
-							<label class="filter-label"><?php _e( 'Priority:', 'msh-image-optimizer' ); ?></label>
+							<label class="filter-label"><?php esc_html_e( 'Priority:', 'msh-image-optimizer' ); ?></label>
 							<select class="filter-control filter-select" data-filter-type="priority">
-								<option value="all"><?php _e( 'All Priorities', 'msh-image-optimizer' ); ?></option>
-								<option value="high"><?php _e( 'High (15+)', 'msh-image-optimizer' ); ?></option>
-								<option value="medium"><?php _e( 'Medium (10-14)', 'msh-image-optimizer' ); ?></option>
-								<option value="low"><?php _e( 'Low (0-9)', 'msh-image-optimizer' ); ?></option>
+								<option value="all"><?php esc_html_e( 'All Priorities', 'msh-image-optimizer' ); ?></option>
+								<option value="high"><?php esc_html_e( 'High (15+)', 'msh-image-optimizer' ); ?></option>
+								<option value="medium"><?php esc_html_e( 'Medium (10-14)', 'msh-image-optimizer' ); ?></option>
+								<option value="low"><?php esc_html_e( 'Low (0-9)', 'msh-image-optimizer' ); ?></option>
 							</select>
 						</div>
 						<div class="filter-group">
-							<label class="filter-label"><?php _e( 'Filename:', 'msh-image-optimizer' ); ?></label>
+							<label class="filter-label"><?php esc_html_e( 'Filename:', 'msh-image-optimizer' ); ?></label>
 							<select class="filter-control filter-select" data-filter-type="filename">
-								<option value="all"><?php _e( 'All Files', 'msh-image-optimizer' ); ?></option>
-								<option value="has_suggestion"><?php _e( 'Has Filename Suggestion', 'msh-image-optimizer' ); ?></option>
-								<option value="no_suggestion"><?php _e( 'No Filename Suggestion', 'msh-image-optimizer' ); ?></option>
+								<option value="all"><?php esc_html_e( 'All Files', 'msh-image-optimizer' ); ?></option>
+								<option value="has_suggestion"><?php esc_html_e( 'Has Filename Suggestion', 'msh-image-optimizer' ); ?></option>
+								<option value="no_suggestion"><?php esc_html_e( 'No Filename Suggestion', 'msh-image-optimizer' ); ?></option>
 							</select>
 						</div>
 						<div class="filter-group">
-							<label class="filter-label"><?php _e( 'Issues:', 'msh-image-optimizer' ); ?></label>
+							<label class="filter-label"><?php esc_html_e( 'Issues:', 'msh-image-optimizer' ); ?></label>
 							<select class="filter-control filter-select" data-filter-type="issues">
-								<option value="all"><?php _e( 'All Issues', 'msh-image-optimizer' ); ?></option>
-								<option value="missing_alt"><?php _e( 'Missing ALT Text', 'msh-image-optimizer' ); ?></option>
-								<option value="no_webp"><?php _e( 'No WebP', 'msh-image-optimizer' ); ?></option>
-								<option value="large_size"><?php _e( 'Large File Size', 'msh-image-optimizer' ); ?></option>
+								<option value="all"><?php esc_html_e( 'All Issues', 'msh-image-optimizer' ); ?></option>
+								<option value="missing_alt"><?php esc_html_e( 'Missing ALT Text', 'msh-image-optimizer' ); ?></option>
+								<option value="no_webp"><?php esc_html_e( 'No WebP', 'msh-image-optimizer' ); ?></option>
+								<option value="large_size"><?php esc_html_e( 'Large File Size', 'msh-image-optimizer' ); ?></option>
 							</select>
 						</div>
 						<div class="filter-actions">
 							<span class="results-count" id="results-count">0 images</span>
-							<button id="clear-filters" class="button button-secondary"><?php _e( 'Clear', 'msh-image-optimizer' ); ?></button>
+							<button id="clear-filters" class="button button-secondary"><?php esc_html_e( 'Clear', 'msh-image-optimizer' ); ?></button>
 						</div>
 					</div>
 
@@ -1017,9 +1017,9 @@ class MSH_Image_Optimizer_Admin {
 					<div class="bulk-actions">
 						<label class="select-all-label">
 							<input type="checkbox" id="select-all" class="select-all-checkbox">
-							<?php _e( 'Select All', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Select All', 'msh-image-optimizer' ); ?>
 						</label>
-						<button id="optimize-selected" class="button" disabled><?php _e( 'Optimize Selected', 'msh-image-optimizer' ); ?></button>
+						<button id="optimize-selected" class="button" disabled><?php esc_html_e( 'Optimize Selected', 'msh-image-optimizer' ); ?></button>
 						<span class="selected-count" id="selected-count">0 selected</span>
 					</div>
 
@@ -1039,33 +1039,33 @@ class MSH_Image_Optimizer_Admin {
 							<thead>
 								<tr>
 									<th class="select-column"><input type="checkbox" id="select-all-header"></th>
-									<th class="image-column"><?php _e( 'Image', 'msh-image-optimizer' ); ?></th>
+									<th class="image-column"><?php esc_html_e( 'Image', 'msh-image-optimizer' ); ?></th>
 									<th class="filename-column sortable" data-sort-key="filename">
 										<button type="button" class="sort-trigger">
-											<span class="sort-label"><?php _e( 'Filename', 'msh-image-optimizer' ); ?></span>
+											<span class="sort-label"><?php esc_html_e( 'Filename', 'msh-image-optimizer' ); ?></span>
 											<span class="sort-indicator" aria-hidden="true"></span>
 										</button>
 									</th>
-									<th class="context-column"><?php _e( 'Content Category', 'msh-image-optimizer' ); ?></th>
-									<th class="status-column"><?php _e( 'Status', 'msh-image-optimizer' ); ?></th>
+									<th class="context-column"><?php esc_html_e( 'Content Category', 'msh-image-optimizer' ); ?></th>
+									<th class="status-column"><?php esc_html_e( 'Status', 'msh-image-optimizer' ); ?></th>
 									<th class="priority-column sortable" data-sort-key="priority">
 										<button type="button" class="sort-trigger">
-											<span class="sort-label"><?php _e( 'Priority', 'msh-image-optimizer' ); ?></span>
+											<span class="sort-label"><?php esc_html_e( 'Priority', 'msh-image-optimizer' ); ?></span>
 											<span class="sort-indicator" aria-hidden="true"></span>
 										</button>
 									</th>
 									<th class="size-column sortable" data-sort-key="size">
 										<button type="button" class="sort-trigger">
-											<span class="sort-label"><?php _e( 'Size', 'msh-image-optimizer' ); ?></span>
+											<span class="sort-label"><?php esc_html_e( 'Size', 'msh-image-optimizer' ); ?></span>
 											<span class="sort-indicator" aria-hidden="true"></span>
 										</button>
 									</th>
-									<th class="actions-column"><?php _e( 'Actions', 'msh-image-optimizer' ); ?></th>
+									<th class="actions-column"><?php esc_html_e( 'Actions', 'msh-image-optimizer' ); ?></th>
 								</tr>
 							</thead>
 							<tbody id="results-tbody">
 								<tr class="no-results-row">
-									<td colspan="8" class="no-results"><?php _e( 'Click "Analyze Published Images" to begin analysis.', 'msh-image-optimizer' ); ?></td>
+									<td colspan="8" class="no-results"><?php esc_html_e( 'Click "Analyze Published Images" to begin analysis.', 'msh-image-optimizer' ); ?></td>
 								</tr>
 							</tbody>
 						</table>
@@ -1074,59 +1074,59 @@ class MSH_Image_Optimizer_Admin {
 
 				<!-- Step 2: Duplicate Management -->
 				<div class="msh-actions-section">
-					<h2 style="color: #35332f;"><?php _e( 'Step 2: Clean Up Duplicate Images', 'msh-image-optimizer' ); ?></h2>
+					<h2 style="color: #35332f;"><?php esc_html_e( 'Step 2: Clean Up Duplicate Images', 'msh-image-optimizer' ); ?></h2>
 					<p class="step-description">
-						<strong><?php _e( 'AFTER OPTIMIZATION', 'msh-image-optimizer' ); ?>:</strong> <?php _e( 'Find and safely remove duplicate images to free up storage space and organize your media library.', 'msh-image-optimizer' ); ?>
+						<strong><?php esc_html_e( 'AFTER OPTIMIZATION', 'msh-image-optimizer' ); ?>:</strong> <?php esc_html_e( 'Find and safely remove duplicate images to free up storage space and organize your media library.', 'msh-image-optimizer' ); ?>
 					</p>
 					<div class="duplicate-legend" aria-label="<?php esc_attr_e( 'Duplicate detection methods', 'msh-image-optimizer' ); ?>">
 						<span class="legend-item legend-item--hash">
 							<span class="legend-icon legend-icon--hash" aria-hidden="true"></span>
-							<span class="legend-label"><?php _e( 'MD5 exact matches', 'msh-image-optimizer' ); ?></span>
+							<span class="legend-label"><?php esc_html_e( 'MD5 exact matches', 'msh-image-optimizer' ); ?></span>
 						</span>
 						<span class="legend-item legend-item--visual">
 							<span class="legend-icon legend-icon--visual" aria-hidden="true"></span>
-							<span class="legend-label"><?php _e( 'Perceptual (visually similar)', 'msh-image-optimizer' ); ?></span>
+							<span class="legend-label"><?php esc_html_e( 'Perceptual (visually similar)', 'msh-image-optimizer' ); ?></span>
 						</span>
 						<span class="legend-item legend-item--filename">
 							<span class="legend-icon legend-icon--filename" aria-hidden="true"></span>
-							<span class="legend-label"><?php _e( 'Filename-based matches', 'msh-image-optimizer' ); ?></span>
+							<span class="legend-label"><?php esc_html_e( 'Filename-based matches', 'msh-image-optimizer' ); ?></span>
 						</span>
 					</div>
 					<div class="action-buttons step-actions">
 						<button id="visual-similarity-scan" class="button button-dot-primary">
-							<?php _e( 'Visual Similarity Scan', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Visual Similarity Scan', 'msh-image-optimizer' ); ?>
 						</button>
 						<button id="quick-duplicate-scan" class="button button-dot-secondary">
-							<?php _e( 'Quick Duplicate Scan', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Quick Duplicate Scan', 'msh-image-optimizer' ); ?>
 						</button>
 						<button id="full-library-scan" class="button button-dot-secondary">
-							<?php _e( 'Deep Library Scan', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Deep Library Scan', 'msh-image-optimizer' ); ?>
 						</button>
 						<button id="test-cleanup" class="button button-dot-secondary">
-							<?php _e( 'Test Connection', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Test Connection', 'msh-image-optimizer' ); ?>
 						</button>
 					</div>
 				</div>
 
 				<!-- Step 2: Duplicate Cleanup Activity Log -->
 				<div class="msh-log-section step2-log" style="display: none;">
-					<h3><?php _e( 'Duplicate Cleanup Activity', 'msh-image-optimizer' ); ?></h3>
+					<h3><?php esc_html_e( 'Duplicate Cleanup Activity', 'msh-image-optimizer' ); ?></h3>
 					<div class="log-container">
-						<textarea id="duplicate-log" readonly placeholder="<?php _e( 'Duplicate cleanup activity will appear here...', 'msh-image-optimizer' ); ?>"></textarea>
+						<textarea id="duplicate-log" readonly placeholder="<?php esc_html_e( 'Duplicate cleanup activity will appear here...', 'msh-image-optimizer' ); ?>"></textarea>
 					</div>
 				</div>
 
 				<!-- Advanced Tools (Developers) -->
 				<div class="msh-advanced-section">
-					<h2><?php _e( 'Advanced Tools (Developers)', 'msh-image-optimizer' ); ?></h2>
-					<p><?php _e( 'Optional workflows for power users. Safe to ignore for day-to-day optimization.', 'msh-image-optimizer' ); ?></p>
+					<h2><?php esc_html_e( 'Advanced Tools (Developers)', 'msh-image-optimizer' ); ?></h2>
+					<p><?php esc_html_e( 'Optional workflows for power users. Safe to ignore for day-to-day optimization.', 'msh-image-optimizer' ); ?></p>
 
 					<div class="advanced-stack">
 						<div class="index-status-card">
 							<div class="index-status-info">
 								<div class="index-health-copy">
 									<div>
-										<span class="index-status-label"><?php _e( 'Usage Index:', 'msh-image-optimizer' ); ?></span>
+										<span class="index-status-label"><?php esc_html_e( 'Usage Index:', 'msh-image-optimizer' ); ?></span>
 										<span id="index-health-badge" class="index-health-badge">Loading...</span>
 									</div>
 									<span id="index-status-summary" class="index-status-value">&mdash;</span>
@@ -1134,68 +1134,68 @@ class MSH_Image_Optimizer_Admin {
 								<div id="index-last-updated" class="index-status-timestamp"></div>
 								<div id="index-queue-warning" class="index-queue-warning" style="display: none;"></div>
 								<div class="index-table-mix">
-									<div class="index-mix-heading"><?php _e( 'Reference Distribution', 'msh-image-optimizer' ); ?></div>
+									<div class="index-mix-heading"><?php esc_html_e( 'Reference Distribution', 'msh-image-optimizer' ); ?></div>
 									<div id="index-mix-bar" class="index-mix-bar">
 										<span class="index-mix-segment posts" style="width: 33%;" title="Posts"></span>
 										<span class="index-mix-segment meta" style="width: 33%;" title="Post Meta"></span>
 										<span class="index-mix-segment options" style="width: 34%;" title="Options"></span>
 									</div>
 									<div class="index-mix-legend">
-										<span><span class="index-mix-swatch posts"></span><?php _e( 'Posts:', 'msh-image-optimizer' ); ?> <span id="mix-posts-count">0</span></span>
-										<span><span class="index-mix-swatch meta"></span><?php _e( 'Meta:', 'msh-image-optimizer' ); ?> <span id="mix-meta-count">0</span></span>
-										<span><span class="index-mix-swatch options"></span><?php _e( 'Options:', 'msh-image-optimizer' ); ?> <span id="mix-options-count">0</span></span>
+										<span><span class="index-mix-swatch posts"></span><?php esc_html_e( 'Posts:', 'msh-image-optimizer' ); ?> <span id="mix-posts-count">0</span></span>
+										<span><span class="index-mix-swatch meta"></span><?php esc_html_e( 'Meta:', 'msh-image-optimizer' ); ?> <span id="mix-meta-count">0</span></span>
+										<span><span class="index-mix-swatch options"></span><?php esc_html_e( 'Options:', 'msh-image-optimizer' ); ?> <span id="mix-options-count">0</span></span>
 									</div>
 								</div>
 								<div class="index-scheduler-details">
-									<div><strong><?php _e( 'Queue Status:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-status-detail">&mdash;</span></div>
-									<div><strong><?php _e( 'Mode:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-mode-detail">&mdash;</span></div>
-									<div><strong><?php _e( 'Pending Jobs:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-pending-detail">&mdash;</span></div>
-									<div><strong><?php _e( 'Processed:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-processed-detail">&mdash;</span></div>
-									<div><strong><?php _e( 'Queued At:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-queued-detail">&mdash;</span></div>
-									<div><strong><?php _e( 'Last Activity:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-activity-detail">&mdash;</span></div>
-									<div><strong><?php _e( 'Next Run:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-next-run-detail">&mdash;</span></div>
+									<div><strong><?php esc_html_e( 'Queue Status:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-status-detail">&mdash;</span></div>
+									<div><strong><?php esc_html_e( 'Mode:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-mode-detail">&mdash;</span></div>
+									<div><strong><?php esc_html_e( 'Pending Jobs:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-pending-detail">&mdash;</span></div>
+									<div><strong><?php esc_html_e( 'Processed:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-processed-detail">&mdash;</span></div>
+									<div><strong><?php esc_html_e( 'Queued At:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-queued-detail">&mdash;</span></div>
+									<div><strong><?php esc_html_e( 'Last Activity:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-activity-detail">&mdash;</span></div>
+									<div><strong><?php esc_html_e( 'Next Run:', 'msh-image-optimizer' ); ?></strong> <span id="scheduler-next-run-detail">&mdash;</span></div>
 									<div class="scheduler-attachments" style="display:none;">
-										<strong><?php _e( 'Attachments Re-indexed:', 'msh-image-optimizer' ); ?></strong>
+										<strong><?php esc_html_e( 'Attachments Re-indexed:', 'msh-image-optimizer' ); ?></strong>
 										<ul id="scheduler-processed-list"></ul>
 									</div>
 								</div>
 							</div>
 							<div class="index-status-actions">
 								<button id="rebuild-usage-index" class="button button-dot-secondary">
-									<?php _e( 'Smart Build Index', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'Smart Build Index', 'msh-image-optimizer' ); ?>
 								</button>
 								<button id="force-rebuild-usage-index" class="button button-dot-primary">
-									<?php _e( 'Force Rebuild', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'Force Rebuild', 'msh-image-optimizer' ); ?>
 								</button>
 								<button id="view-orphan-list" class="button button-dot-secondary" style="display: none;">
-									<?php _e( 'View Orphan List', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'View Orphan List', 'msh-image-optimizer' ); ?>
 								</button>
 								<button id="cleanup-orphans" class="button button-dot-secondary" style="display: none;">
-									<?php _e( 'Clean Orphans', 'msh-image-optimizer' ); ?>
+									<?php esc_html_e( 'Clean Orphans', 'msh-image-optimizer' ); ?>
 								</button>
 						<div class="index-button-help">
-							<div><strong><?php _e( 'Automatic monitoring:', 'msh-image-optimizer' ); ?></strong> <?php _e( 'New uploads and edits are queued automatically—no manual action needed under normal use.', 'msh-image-optimizer' ); ?></div>
-							<div><strong><?php _e( 'Smart Build:', 'msh-image-optimizer' ); ?></strong> <?php _e( 'Background refresh for out-of-sync entries or after large content edits (fast, incremental).', 'msh-image-optimizer' ); ?></div>
-							<div><strong><?php _e( 'Force Rebuild:', 'msh-image-optimizer' ); ?></strong> <?php _e( 'Background full rebuild for troubleshooting or post-migration validation (slower, comprehensive).', 'msh-image-optimizer' ); ?></div>
+							<div><strong><?php esc_html_e( 'Automatic monitoring:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'New uploads and edits are queued automatically—no manual action needed under normal use.', 'msh-image-optimizer' ); ?></div>
+							<div><strong><?php esc_html_e( 'Smart Build:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'Background refresh for out-of-sync entries or after large content edits (fast, incremental).', 'msh-image-optimizer' ); ?></div>
+							<div><strong><?php esc_html_e( 'Force Rebuild:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'Background full rebuild for troubleshooting or post-migration validation (slower, comprehensive).', 'msh-image-optimizer' ); ?></div>
 						</div>
 					</div>
 				</div>
 
 				<!-- WebP delivery status (advanced readout) -->
 				<div class="msh-webp-status-section advanced-widget">
-					<h3><?php _e( 'WebP Delivery Status', 'msh-image-optimizer' ); ?></h3>
-					<p class="webp-status-description"><?php _e( 'Reference dashboard showing the current detection method and delivery state. No action is typically required.', 'msh-image-optimizer' ); ?></p>
+					<h3><?php esc_html_e( 'WebP Delivery Status', 'msh-image-optimizer' ); ?></h3>
+					<p class="webp-status-description"><?php esc_html_e( 'Reference dashboard showing the current detection method and delivery state. No action is typically required.', 'msh-image-optimizer' ); ?></p>
 					<div id="webp-status-display">
 						<div class="webp-status-item">
-							<span class="status-label"><?php _e( 'Browser Support:', 'msh-image-optimizer' ); ?></span>
+							<span class="status-label"><?php esc_html_e( 'Browser Support:', 'msh-image-optimizer' ); ?></span>
 							<span id="webp-browser-support" class="status-value">Detecting...</span>
 						</div>
 						<div class="webp-status-item">
-							<span class="status-label"><?php _e( 'Detection Method:', 'msh-image-optimizer' ); ?></span>
+							<span class="status-label"><?php esc_html_e( 'Detection Method:', 'msh-image-optimizer' ); ?></span>
 							<span id="webp-detection-method" class="status-value">JavaScript + Cookie</span>
 						</div>
 						<div class="webp-status-item">
-							<span class="status-label"><?php _e( 'Delivery Status:', 'msh-image-optimizer' ); ?></span>
+							<span class="status-label"><?php esc_html_e( 'Delivery Status:', 'msh-image-optimizer' ); ?></span>
 							<span id="webp-delivery-status" class="status-value"><?php esc_html_e( 'Active', 'msh-image-optimizer' ); ?></span>
 						</div>
 					</div>
@@ -1208,9 +1208,9 @@ class MSH_Image_Optimizer_Admin {
 				<!-- Processing Modal -->
 				<div id="processing-modal" class="processing-modal" style="display: none;">
 					<div class="modal-content">
-						<h3 id="modal-title"><?php _e( 'Processing...', 'msh-image-optimizer' ); ?></h3>
+						<h3 id="modal-title"><?php esc_html_e( 'Processing...', 'msh-image-optimizer' ); ?></h3>
 						<div class="modal-spinner"></div>
-						<p id="modal-status"><?php _e( 'Please wait while we process your request.', 'msh-image-optimizer' ); ?></p>
+						<p id="modal-status"><?php esc_html_e( 'Please wait while we process your request.', 'msh-image-optimizer' ); ?></p>
 						<div id="modal-progress">
 							<div class="progress-bar">
 								<div class="progress-fill" id="modal-progress-fill" style="width: 0%"></div>
@@ -1218,7 +1218,7 @@ class MSH_Image_Optimizer_Admin {
 							<span id="modal-progress-text">0%</span>
 						</div>
 						<button type="button" id="modal-dismiss" class="button button-dot-secondary" style="display: none; margin-top: 12px;">
-							<?php _e( 'Dismiss', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Dismiss', 'msh-image-optimizer' ); ?>
 						</button>
 					</div>
 				</div>
