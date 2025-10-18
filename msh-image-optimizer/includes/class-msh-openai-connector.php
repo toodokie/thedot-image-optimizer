@@ -81,7 +81,13 @@ class MSH_OpenAI_Connector {
 
         // Build AI prompt with enabled features
         $features = !empty($payload['features']) ? $payload['features'] : array();
-        $prompt = $this->build_vision_prompt($business_name, $industry, $location, $uvp, $features);
+        $ai_options = !empty($payload['ai_options']) ? $payload['ai_options'] : [];
+        $language_choice = isset($ai_options['language']) ? strtolower((string) $ai_options['language']) : 'auto';
+        $resolved_language = $this->normalize_language_choice($language_choice, $ai_options, $context);
+
+        error_log('[MSH OpenAI] Language selected: ' . $resolved_language);
+
+        $prompt = $this->build_vision_prompt($business_name, $industry, $location, $uvp, $features, $resolved_language);
 
         // Call OpenAI Vision API
         $response = $this->call_openai_vision($image_url, $prompt, $api_key);
@@ -157,12 +163,21 @@ class MSH_OpenAI_Connector {
     /**
      * Build vision analysis prompt based on enabled features
      */
-    private function build_vision_prompt($business_name, $industry, $location, $uvp, $features = array()) {
+    private function build_vision_prompt($business_name, $industry, $location, $uvp, $features = array(), $language = 'en') {
         $location_text = !empty($location) ? " in {$location}" : '';
         $uvp_text = !empty($uvp) ? "\n\nBusiness value proposition: {$uvp}" : '';
 
         // Check if filename generation is enabled
         $filename_enabled = in_array('filename', $features, true);
+        $language_names = [
+            'en' => 'English',
+            'es' => 'Spanish',
+            'fr' => 'French',
+            'de' => 'German',
+            'pt' => 'Portuguese',
+            'it' => 'Italian',
+        ];
+        $language_label = isset($language_names[$language]) ? $language_names[$language] : 'English';
 
         // Build JSON schema based on enabled features
         $json_fields = array(
@@ -173,6 +188,7 @@ class MSH_OpenAI_Connector {
         );
 
         $requirements = array(
+            '- Language: ' . $language_label,
             '- Title: Include what\'s visible in the image + business name',
             '- Alt text: Describe the image for screen readers, be specific',
             '- Caption: Short, punchy description',
@@ -201,6 +217,65 @@ Requirements:
 - Only relate the image to the business IF it's clearly relevant to {$industry}
 - Use professional, industry-appropriate language when relevant
 - Return ONLY valid JSON, no markdown or explanation";
+    }
+
+    /**
+     * Normalize the language choice coming from the UI/AI options.
+     *
+     * @param string $language Selected language (or 'auto').
+     * @param array  $ai_options AI options array.
+     * @param array  $context Context payload.
+     * @return string Resolved language code.
+     */
+    private function normalize_language_choice($language, $ai_options, $context) {
+        $language = strtolower((string) $language);
+        $supported = ['en', 'es', 'fr', 'de', 'pt', 'it'];
+
+        if ($language === 'auto' || !in_array($language, $supported, true)) {
+            $language = $this->resolve_auto_language($ai_options, $context);
+        }
+
+        if (!in_array($language, $supported, true)) {
+            $language = 'en';
+        }
+
+        return $language;
+    }
+
+    /**
+     * Resolve the automatic language selection based on profile or site locale.
+     *
+     * @param array $ai_options AI options array.
+     * @param array $context Context payload.
+     * @return string Language code.
+     */
+    private function resolve_auto_language($ai_options, $context) {
+        $candidates = [];
+
+        if (!empty($ai_options['profile_locale'])) {
+            $candidates[] = $ai_options['profile_locale'];
+        }
+
+        if (!empty($context['locale'])) {
+            $candidates[] = $context['locale'];
+        }
+
+        if (empty($candidates)) {
+            $candidates[] = get_locale();
+        }
+
+        foreach ($candidates as $candidate) {
+            if (!$candidate) {
+                continue;
+            }
+            $short = strtolower((string) $candidate);
+            $parts = preg_split('/[-_]/', $short);
+            if (!empty($parts[0])) {
+                return $parts[0];
+            }
+        }
+
+        return 'en';
     }
 
     /**

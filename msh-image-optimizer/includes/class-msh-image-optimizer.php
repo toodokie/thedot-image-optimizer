@@ -7028,6 +7028,9 @@ class MSH_Image_Optimizer {
         $ai_scope = isset($_POST['ai_scope']) ? sanitize_text_field($_POST['ai_scope']) : null;
         $ai_mode = isset($_POST['ai_mode']) ? sanitize_text_field($_POST['ai_mode']) : 'fill-empty';
         $ai_fields = isset($_POST['ai_fields']) && is_array($_POST['ai_fields']) ? array_map('sanitize_text_field', $_POST['ai_fields']) : [];
+        $ai_language = isset($_POST['ai_language']) ? sanitize_text_field($_POST['ai_language']) : 'auto';
+        $active_profile_record = MSH_Image_Optimizer_Context_Helper::get_active_profile();
+        $profile_locale = isset($active_profile_record['locale']) ? sanitize_text_field($active_profile_record['locale']) : '';
         $is_ai_regeneration = !empty($ai_scope);
 
         // Skip cache for AI regeneration
@@ -7113,7 +7116,9 @@ class MSH_Image_Optimizer {
                     $ai_options = [
                         'ai_regeneration' => true,
                         'ai_mode' => $ai_mode,
-                        'ai_fields' => $ai_fields
+                        'ai_fields' => $ai_fields,
+                        'language' => $ai_language,
+                        'profile_locale' => $profile_locale
                     ];
                 }
 

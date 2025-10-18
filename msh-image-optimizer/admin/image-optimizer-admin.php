@@ -291,6 +291,9 @@ class MSH_Image_Optimizer_Admin {
                 'wizardPending' => __('Pending', 'msh-image-optimizer'),
                 // Progress states
                 'ready' => __('Ready', 'msh-image-optimizer'),
+                // Language selector
+                'languageAuto' => __('Auto (Site/Profile Default)', 'msh-image-optimizer'),
+                'languageSelectorDescription' => __('AI will generate titles, ALT text, and descriptions in the selected language.', 'msh-image-optimizer'),
                 // WebP detection
                 'javascriptDetection' => __('JavaScript Detection', 'msh-image-optimizer'),
                 'cookieJavascript' => __('Cookie + JavaScript', 'msh-image-optimizer')
@@ -655,6 +658,25 @@ class MSH_Image_Optimizer_Admin {
                                         <span><?php _e('Description', 'msh-image-optimizer'); ?></span>
                                     </label>
                                 </div>
+                            </div>
+
+                            <div class="ai-modal-section">
+                                <h4 class="ai-modal-label"><?php _e('Output Language', 'msh-image-optimizer'); ?></h4>
+                                <label for="ai-language-select" class="screen-reader-text">
+                                    <?php _e('Generate metadata in', 'msh-image-optimizer'); ?>
+                                </label>
+                                <select id="ai-language-select" name="ai_language" class="ai-language-selector">
+                                    <option value="auto"><?php _e('Auto (Site/Profile Default)', 'msh-image-optimizer'); ?></option>
+                                    <option value="en"><?php _e('English', 'msh-image-optimizer'); ?></option>
+                                    <option value="es"><?php _e('Spanish (Español)', 'msh-image-optimizer'); ?></option>
+                                    <option value="fr"><?php _e('French (Français)', 'msh-image-optimizer'); ?></option>
+                                    <option value="de"><?php _e('German (Deutsch)', 'msh-image-optimizer'); ?></option>
+                                    <option value="pt"><?php _e('Portuguese (Português)', 'msh-image-optimizer'); ?></option>
+                                    <option value="it"><?php _e('Italian (Italiano)', 'msh-image-optimizer'); ?></option>
+                                </select>
+                                <p class="ai-field-description">
+                                    <?php _e('AI will generate titles, ALT text, and descriptions in the selected language.', 'msh-image-optimizer'); ?>
+                                </p>
                             </div>
 
                             <div class="ai-modal-estimate" id="ai-modal-estimate">

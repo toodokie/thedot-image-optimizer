@@ -5971,6 +5971,7 @@
     const AIRegeneration = {
         pollInterval: null,
         pollFrequency: 2000, // 2 seconds
+        lastLanguageProfileId: null,
 
         init() {
             this.initDashboard();
@@ -6004,10 +6005,19 @@
         initModal() {
             const $modal = $('#ai-regen-modal');
             const $warningModal = $('#ai-manual-edit-warning-modal');
+            const $languageSelect = $('#ai-language-select');
+
+            if ($languageSelect.length) {
+                $languageSelect.on('change', () => {
+                    $languageSelect.data('user-selected', true);
+                    this.lastLanguageProfileId = window.mshImageOptimizer?.activeProfile || 'primary';
+                });
+            }
 
             // Open modal handler
             $('#start-ai-regeneration').on('click', () => {
                 $modal.fadeIn(200);
+                this.applyDefaultLanguage();
                 this.loadModalCounts();
                 this.updateEstimate();
             });
@@ -6044,8 +6054,60 @@
 
         openModal() {
             $('#ai-regen-modal').fadeIn(200);
+            this.applyDefaultLanguage();
             this.loadModalCounts();
             this.updateEstimate();
+        },
+
+        applyDefaultLanguage() {
+            const $languageSelect = $('#ai-language-select');
+            if (!$languageSelect.length) {
+                return;
+            }
+
+            const activeProfileId = window.mshImageOptimizer?.activeProfile || 'primary';
+            const userSelected = $languageSelect.data('user-selected');
+
+            if (userSelected && this.lastLanguageProfileId === activeProfileId) {
+                return;
+            }
+
+            const allowedLanguages = ['auto', 'en', 'es', 'fr', 'de', 'pt', 'it'];
+            const defaultLanguage = this.getDefaultLanguage();
+            const normalized = allowedLanguages.includes(defaultLanguage) ? defaultLanguage : 'auto';
+            $languageSelect.val(normalized);
+            $languageSelect.data('user-selected', false);
+            this.lastLanguageProfileId = activeProfileId;
+        },
+
+        getDefaultLanguage() {
+            const profiles = Array.isArray(window.mshImageOptimizer?.contextProfiles)
+                ? window.mshImageOptimizer.contextProfiles
+                : [];
+            const activeProfileId = window.mshImageOptimizer?.activeProfile || 'primary';
+            let locale = '';
+
+            if (activeProfileId === 'primary') {
+                locale = window.mshImageOptimizer?.onboardingContext?.locale || '';
+            } else {
+                const profile = profiles.find((item) => item && item.id === activeProfileId);
+                locale = profile?.locale || '';
+            }
+
+            if (!locale) {
+                locale = window.mshImageOptimizer?.onboardingContext?.locale || '';
+            }
+
+            if (!locale) {
+                locale = document.documentElement?.lang || '';
+            }
+
+            if (!locale) {
+                return 'auto';
+            }
+
+            const normalized = locale.split(/[-_]/)[0].toLowerCase();
+            return normalized || 'auto';
         },
 
         loadModalCounts() {
@@ -6118,6 +6180,7 @@
             const fields = $('input[name="ai_fields[]"]:checked').map(function() {
                 return $(this).val();
             }).get();
+            const language = $('#ai-language-select').val() || 'auto';
 
             if (fields.length === 0) {
                 alert('Please select at least one field to generate.');
@@ -6125,7 +6188,7 @@
             }
 
             // Store parameters for later use
-            this.pendingRegenerationParams = { scope, mode, fields };
+            this.pendingRegenerationParams = { scope, mode, fields, language };
 
             // Run preflight check for manual edits
             this.checkForManualEdits(scope);
@@ -6166,7 +6229,7 @@
         },
 
         proceedWithRegeneration() {
-            const { scope, mode, fields } = this.pendingRegenerationParams;
+            const { scope, mode, fields, language } = this.pendingRegenerationParams;
 
             // Show progress modal using brand design system
             UI.showProgressModal(
@@ -6187,7 +6250,8 @@
                     force_refresh: 'true',
                     ai_scope: scope,
                     ai_mode: mode,
-                    ai_fields: fields
+                    ai_fields: fields,
+                    ai_language: language
                 },
                 success: (response) => {
                     if (response.success) {

@@ -36,6 +36,7 @@ class MSH_Image_Optimizer_Context_Helper {
             'region' => isset($context['region']) ? sanitize_text_field($context['region']) : '',
             'country' => isset($context['country']) ? sanitize_text_field($context['country']) : '',
             'service_area' => isset($context['service_area']) ? sanitize_text_field($context['service_area']) : '',
+            'locale' => isset($context['locale']) ? sanitize_text_field($context['locale']) : '',
             'ai_interest' => !empty($context['ai_interest']),
         );
 
