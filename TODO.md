@@ -53,6 +53,55 @@ _Last updated: October 17, 2025_
 - Onboarding wizard (locale selection, templates, glossary upload)
 - JSON fallback when AI unavailable
 
+## Code Quality & Maintenance
+
+### Completed
+- ✅ PHP 8.4 nullable parameter fix (`?array` syntax)
+- ✅ PHPCBF auto-formatting (44,401 violations fixed - 94% reduction)
+- ✅ Public API documentation (core classes)
+
+### Deferred (Low Priority - Future Sprints)
+
+**Remaining PHPCS Violations: 2,640 errors + 627 warnings**
+
+These are cosmetic/style issues that don't affect functionality:
+
+#### Yoda Conditions (537 violations)
+- **Issue:** `if ( $var === 'value' )` should be `if ( 'value' === $var )`
+- **Impact:** Cosmetic - WordPress style preference
+- **Effort:** 2-3 hours (scriptable but needs careful testing)
+- **Priority:** Low
+
+#### Inline Comment Punctuation (810 violations)
+- **Issue:** Comments don't end with periods
+- **Impact:** Cosmetic only
+- **Effort:** 1 hour (scriptable)
+- **Priority:** Low
+
+#### Function Docblocks (232 missing @param tags, 223 missing comments)
+- **Issue:** Private/protected methods lack complete documentation
+- **Impact:** Developer experience (already done for public API)
+- **Effort:** 3-4 hours
+- **Priority:** Medium (nice to have)
+
+#### Other Style Issues
+- Missing translators comments (162)
+- Variable comments (73)
+- File comments (13)
+- **Impact:** Cosmetic
+- **Effort:** 2-3 hours
+- **Priority:** Low
+
+**Total Deferred Effort:** ~10-15 hours
+
+**Recommendation:** Address during maintenance sprints between feature releases. Not blocking any functionality.
+
+**Track Progress:**
+```bash
+# Run periodic checks
+vendor/bin/phpcs -d memory_limit=512M --standard=WordPress --report=summary msh-image-optimizer/includes/ msh-image-optimizer/admin/
+```
+
 ## Cross-cutting Requirements
 - Protected glossary & named entities (never translate brand terms)
 - Locale tone profiles with preferred terminology

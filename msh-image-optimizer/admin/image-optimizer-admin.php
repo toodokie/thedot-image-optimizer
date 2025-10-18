@@ -10,6 +10,11 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class MSH_Image_Optimizer_Admin {
 
+	/**
+	 * Register admin hooks for menus, assets, and AJAX handlers.
+	 *
+	 * @since 1.2.0
+	 */
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
@@ -20,7 +25,11 @@ class MSH_Image_Optimizer_Admin {
 	}
 
 	/**
-	 * Add favicon to admin pages
+	 * Output favicon links for the optimizer admin page.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function add_admin_favicon() {
 		$screen = get_current_screen();
@@ -91,7 +100,11 @@ class MSH_Image_Optimizer_Admin {
 	}
 
 	/**
-	 * Add admin menu page
+	 * Register the optimizer admin menu entry under Media.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function add_admin_menu() {
 		add_media_page(
@@ -104,7 +117,12 @@ class MSH_Image_Optimizer_Admin {
 	}
 
 	/**
-	 * Enqueue admin scripts and styles
+	 * Enqueue scripts, styles, and localisation data for the admin UI.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $hook Current admin page hook suffix.
+	 * @return void
 	 */
 	public function enqueue_admin_scripts( $hook ) {
 		if ( 'media_page_msh-image-optimizer' !== $hook ) {
@@ -314,7 +332,11 @@ class MSH_Image_Optimizer_Admin {
 	}
 
 	/**
-	 * Admin page content - COMPLETE ORIGINAL VERSION
+	 * Render the primary admin interface for the optimizer plugin.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function admin_page() {
 		$primary_context = MSH_Image_Optimizer_Context_Helper::sanitize_context(
@@ -1207,6 +1229,13 @@ class MSH_Image_Optimizer_Admin {
 		<?php
 	}
 
+	/**
+	 * AJAX handler: persist onboarding context submitted from the admin UI.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function ajax_save_onboarding_context() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
 
@@ -1286,6 +1315,13 @@ class MSH_Image_Optimizer_Admin {
 		);
 	}
 
+	/**
+	 * AJAX handler: reset the onboarding context to default values.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function ajax_reset_onboarding_context() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
 
@@ -1321,6 +1357,13 @@ class MSH_Image_Optimizer_Admin {
 		);
 	}
 
+	/**
+	 * AJAX handler: switch the active context profile for optimisation.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function ajax_set_active_context_profile() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
 

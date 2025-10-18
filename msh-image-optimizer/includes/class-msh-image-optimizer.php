@@ -203,6 +203,11 @@ class MSH_Contextual_Meta_Generator {
 		'general'                => array( 'service', 'professional' ),
 	);
 
+	/**
+	 * Initialise the contextual meta generator and hook shutdown logging.
+	 *
+	 * @since 1.2.0
+	 */
 	public function __construct() {
 		$this->hydrate_active_context();
 		$this->current_season = $this->detect_current_season();
@@ -279,6 +284,13 @@ class MSH_Contextual_Meta_Generator {
 		}
 	}
 
+	/**
+	 * Retrieve the cached context signature for comparison purposes.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return string Context signature hash.
+	 */
 	public function get_context_signature() {
 		if ( empty( $this->context_signature ) && class_exists( 'MSH_Image_Optimizer_Context_Helper' ) ) {
 			$this->context_signature = MSH_Image_Optimizer_Context_Helper::get_active_context_signature( $this->active_context );
@@ -579,6 +591,13 @@ class MSH_Contextual_Meta_Generator {
 		return max( 1, (int) $diff->format( '%a' ) );
 	}
 
+	/**
+	 * Enable batch processing mode and snapshot the current season.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function enable_batch_mode() {
 		if ( $this->batch_mode ) {
 			return;
@@ -588,11 +607,25 @@ class MSH_Contextual_Meta_Generator {
 		$this->batch_mode   = true;
 	}
 
+	/**
+	 * Disable batch processing mode and clear the cached season.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function disable_batch_mode() {
 		$this->batch_mode   = false;
 		$this->batch_season = null;
 	}
 
+	/**
+	 * Log cache hit statistics when debugging is enabled.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function log_cache_stats() {
 		if ( ! defined( 'WP_DEBUG' ) || ! WP_DEBUG ) {
 			return;
@@ -637,10 +670,25 @@ class MSH_Contextual_Meta_Generator {
 		);
 	}
 
+	/**
+	 * Resolve the current season, optionally bypassing cached values.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param bool $force_refresh Optional. Whether to bypass the cache. Default false.
+	 * @return string Season slug (winter, spring, summer, fall).
+	 */
 	public function get_current_season( $force_refresh = false ) {
 		return $this->detect_current_season( $force_refresh );
 	}
 
+	/**
+	 * Clear the cached season and recalculate the current value.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return bool True on success.
+	 */
 	public function clear_season_cache() {
 		delete_transient( $this->get_season_cache_key() );
 		$this->season_cache   = null;
@@ -649,6 +697,15 @@ class MSH_Contextual_Meta_Generator {
 		return true;
 	}
 
+	/**
+	 * Persist a manual season override for downstream content generation.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $season Season slug to store.
+	 * @param int    $ttl    Optional. Cache duration in seconds. Default DAY_IN_SECONDS.
+	 * @return bool True when the season was stored, false for invalid input.
+	 */
 	public function set_season( $season, $ttl = DAY_IN_SECONDS ) {
 		$season        = strtolower( (string) $season );
 		$valid_seasons = array( 'winter', 'spring', 'summer', 'fall' );
@@ -1093,6 +1150,18 @@ class MSH_Contextual_Meta_Generator {
 		return false;
 	}
 
+	/**
+	 * Determine the context profile for a given attachment.
+	 *
+	 * Resolves manual overrides, inferred context, and supporting metadata that
+	 * drive downstream AI generation decisions.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int  $attachment_id Attachment identifier.
+	 * @param bool $ignore_manual Optional. Whether to ignore manual overrides. Default false.
+	 * @return array Resolved context data.
+	 */
 	public function detect_context( $attachment_id, $ignore_manual = false ) {
 		$this->ensure_fresh_context();
 		$this->hydrate_active_context();
@@ -1545,6 +1614,14 @@ class MSH_Contextual_Meta_Generator {
 		return implode( '-', $filtered );
 	}
 
+	/**
+	 * Turn a service slug into a human readable label.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $service Service slug.
+	 * @return string Formatted label.
+	 */
 	public function format_service_label( $service ) {
 		$this->ensure_fresh_context();
 		if ( empty( $service ) ) {
@@ -1819,6 +1896,19 @@ class MSH_Contextual_Meta_Generator {
 		return $title . $variants[ $index ];
 	}
 
+	/**
+	 * Build metadata for an attachment based on contextual signals.
+	 *
+	 * Attempts AI generation first, falling back to heuristic builders for each
+	 * supported context type.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int   $attachment_id Attachment identifier.
+	 * @param array $context       Context payload describing the asset.
+	 * @param array $ai_options    Optional. Settings to pass to AI generation.
+	 * @return array|null Associative array of meta fields or null when skipped.
+	 */
 	public function generate_meta_fields( $attachment_id, array $context, $ai_options = array() ) {
 		$this->ensure_fresh_context();
 		$this->hydrate_active_context();
@@ -1874,6 +1964,16 @@ class MSH_Contextual_Meta_Generator {
 		}
 	}
 
+	/**
+	 * Generate a sanitized filename slug for an attachment.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int         $attachment_id Attachment identifier.
+	 * @param array       $context       Context payload describing the asset.
+	 * @param string|null $extension     Optional. File extension for legacy paths.
+	 * @return string Slug without extension.
+	 */
 	public function generate_filename_slug( $attachment_id, array $context, $extension = null ) {
 		$this->ensure_fresh_context();
 		$this->hydrate_active_context();
@@ -5233,6 +5333,13 @@ class MSH_Image_Optimizer {
 		update_post_meta( $attachment_id, 'msh_context_needs_refresh', '1' );
 	}
 
+	/**
+	 * Flag every image attachment so context-driven metadata regenerates.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function mark_all_attachments_for_context_refresh() {
 		global $wpdb;
 
@@ -5254,6 +5361,15 @@ class MSH_Image_Optimizer {
 		}
 	}
 
+	/**
+	 * React to context signature changes by forcing regeneration.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param string $previous_signature Previous context signature.
+	 * @param string $new_signature      Updated context signature.
+	 * @return void
+	 */
 	public function handle_context_signature_change( $previous_signature, $new_signature ) {
 		$previous_signature = (string) $previous_signature;
 		$new_signature      = (string) $new_signature;
@@ -5353,6 +5469,13 @@ class MSH_Image_Optimizer {
 		);
 	}
 
+	/**
+	 * Retrieve the singleton instance of the optimizer.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return MSH_Image_Optimizer Instance of the optimizer.
+	 */
 	public static function get_instance() {
 		if ( null === self::$instance ) {
 			self::$instance = new self();
@@ -5361,6 +5484,11 @@ class MSH_Image_Optimizer {
 		return self::$instance;
 	}
 
+	/**
+	 * Register AJAX endpoints and prime dependencies.
+	 *
+	 * @since 1.2.0
+	 */
 	public function __construct() {
 		if ( null !== self::$instance ) {
 			return;
@@ -5406,6 +5534,13 @@ class MSH_Image_Optimizer {
 		add_filter( 'attachment_fields_to_save', array( $this, 'save_context_attachment_field' ), 10, 2 );
 	}
 
+	/**
+	 * Prime the contextual generator's season cache early in the request.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function prime_season_cache() {
 		if ( ! ( $this->contextual_meta_generator instanceof MSH_Contextual_Meta_Generator ) ) {
 			$this->contextual_meta_generator = new MSH_Contextual_Meta_Generator();
@@ -5557,7 +5692,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Get all published images that need optimization
+	 * Retrieve all image attachments eligible for optimisation.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return array[] List of attachment records keyed by column name.
 	 */
 	public function get_published_images() {
 		// TEMP: Disable caching to debug file analysis issues
@@ -5967,7 +6106,13 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Analyze single image for optimization potential
+	 * Analyse an individual attachment and return optimisation insights.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int   $attachment_id Attachment identifier.
+	 * @param array $ai_options    Optional. AI generation context to include in the response.
+	 * @return array Analysis payload describing current optimisation state.
 	 */
 	public function analyze_single_image( $attachment_id, $ai_options = array() ) {
 		$metadata = wp_get_attachment_metadata( $attachment_id );
@@ -6864,7 +7009,13 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Attachment field for manual context selection
+	 * Inject the manual context selector into the attachment modal.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param array   $form_fields Existing attachment form fields.
+	 * @param WP_Post $post        Attachment object being edited.
+	 * @return array Modified form fields.
 	 */
 	public function add_context_attachment_field( $form_fields, $post ) {
 		if ( strpos( $post->post_mime_type, 'image/' ) !== 0 ) {
@@ -7002,7 +7153,13 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Save manual context selection
+	 * Persist the manual context selection from the attachment modal.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param array $post       Raw attachment post data.
+	 * @param array $attachment Attachment form submission data.
+	 * @return array Filtered post data.
 	 */
 	public function save_context_attachment_field( $post, $attachment ) {
 		if ( isset( $attachment['msh_context'] ) ) {
@@ -7196,7 +7353,11 @@ class MSH_Image_Optimizer {
 
 
 	/**
-	 * AJAX handler for image analysis
+	 * AJAX handler: analyse library images and return optimisation status.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_analyze_images() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -7380,7 +7541,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler for batch optimization
+	 * AJAX handler: optimise a provided list of attachment IDs.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_optimize_batch() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -7419,7 +7584,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler for High Priority optimization (15+)
+	 * AJAX handler: optimise the queue of high-priority attachments.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_optimize_high_priority() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -7477,7 +7646,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler for Medium Priority optimization (10-14)
+	 * AJAX handler: process the medium-priority optimisation queue.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_optimize_medium_priority() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -7535,7 +7708,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler for All Remaining optimization
+	 * AJAX handler: run optimisation across the remaining queue.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_optimize_all_remaining() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -7939,7 +8116,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX: Update manual context selection directly from analyzer UI
+	 * AJAX handler: persist manual context updates from the analyser UI.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_update_context() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8050,7 +8231,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler for progress tracking
+	 * AJAX handler: report overall optimisation progress metrics.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_get_progress() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8090,7 +8275,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to reset optimization flags (allows re-optimization with improved logic)
+	 * AJAX handler: clear optimisation flags to re-run processing.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_reset_optimization() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8118,7 +8307,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Apply filename suggestions in batch with automatic batch processing
+	 * AJAX handler: apply queued filename suggestions in batches.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_apply_filename_suggestions() {
 		$this->log_debug( 'MSH Safe Rename: Batch apply function called' );
@@ -8493,7 +8686,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to save individual filename suggestion
+	 * AJAX handler: persist a single filename suggestion for review.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_save_filename_suggestion() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8544,7 +8741,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to remove filename suggestion (keep current name)
+	 * AJAX handler: discard a stored filename suggestion.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_remove_filename_suggestion() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8579,7 +8780,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to preview meta text generation
+	 * AJAX handler: preview regenerated metadata for an attachment.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_preview_meta_text() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8615,7 +8820,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to save edited meta text
+	 * AJAX handler: persist manually edited metadata fields.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_save_edited_meta() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8695,7 +8904,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Clear bad suggestions (missing extensions or for already-renamed files)
+	 * AJAX handler: remove stale or invalid filename suggestions.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_clear_bad_suggestions() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8722,7 +8935,12 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Auto-generate filename suggestion when new image is uploaded
+	 * Generate filename suggestions automatically for fresh uploads.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int $attachment_id Newly uploaded attachment ID.
+	 * @return void
 	 */
 	public function generate_suggestion_for_new_upload( $attachment_id ) {
 		// Only process images
@@ -8777,7 +8995,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to build the image usage index
+	 * AJAX handler: rebuild or warm the image usage index table.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_build_usage_index() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8952,7 +9174,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Get attachment count for UI display
+	 * AJAX handler: return the total number of image attachments.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_get_attachment_count() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -8977,7 +9203,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * Get remaining unindexed attachment count
+	 * AJAX handler: report how many attachments still require indexing.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_get_remaining_count() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -9014,7 +9244,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to check system capabilities (Imagick, etc.)
+	 * AJAX handler: report server capabilities required for optimisation.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_check_capabilities() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -9080,6 +9314,13 @@ class MSH_Image_Optimizer {
 		return $result;
 	}
 
+	/**
+	 * AJAX handler: enable or disable the safe rename subsystem.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function ajax_toggle_file_rename() {
 		check_ajax_referer( 'msh_toggle_file_rename', 'nonce' );
 
@@ -9097,6 +9338,13 @@ class MSH_Image_Optimizer {
 		);
 	}
 
+	/**
+	 * AJAX handler: switch the AI metadata mode between manual and assist.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
+	 */
 	public function ajax_toggle_ai_mode() {
 		check_ajax_referer( 'msh_toggle_ai_mode', 'nonce' );
 
@@ -9121,7 +9369,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to accept and apply a filename suggestion for a single image
+	 * AJAX handler: accept and apply a stored filename suggestion.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_accept_filename_suggestion() {
 		$this->log_debug( 'MSH Accept Debug: Starting ajax_accept_filename_suggestion' );
@@ -9192,7 +9444,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX handler to reject/dismiss a filename suggestion for a single image
+	 * AJAX handler: dismiss a filename suggestion without renaming.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_reject_filename_suggestion() {
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
@@ -9226,7 +9482,11 @@ class MSH_Image_Optimizer {
 	}
 
 	/**
-	 * AJAX: Verify WebP status for all optimized images
+	 * AJAX handler: verify the WebP conversion status for optimised media.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @return void
 	 */
 	public function ajax_verify_webp_status() {
 		// Debug logging removed for production
@@ -9366,6 +9626,15 @@ class MSH_Image_Optimizer {
 		return $results;
 	}
 
+	/**
+	 * Optimise a list of attachments when invoked via WP-CLI.
+	 *
+	 * @since 1.2.0
+	 *
+	 * @param int[] $attachment_ids Attachment IDs to process.
+	 * @param array $args           Optional. Flags provided by the CLI command.
+	 * @return array Summary of optimisation outcomes.
+	 */
 	public function optimize_attachments_cli( array $attachment_ids, array $args = array() ) {
 		$summary = array(
 			'processed' => 0,
