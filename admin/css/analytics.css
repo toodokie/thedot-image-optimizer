@@ -1,0 +1,439 @@
+/**
+ * Context Analytics Dashboard Styles - BRAND COMPLIANT
+ * Monochrome palette with neon yellow accents only
+ *
+ * @package MSH_Image_Optimizer
+ * @since 2.0.0
+ */
+
+/* ============================================
+   GLOBAL PAGE STYLES
+   ============================================ */
+#wpcontent, #wpbody, #wpbody-content {
+	background-color: #FAF9F6;
+}
+
+.msh-analytics-page {
+	max-width: 1400px;
+	background-color: #FAF9F6;
+	font-family: 'ff-real-text-pro', Arial, sans-serif;
+	color: #35332f;
+	padding: 20px;
+}
+
+/* ============================================
+   TYPOGRAPHY HIERARCHY
+   ============================================ */
+.msh-analytics-page h1 {
+	font-family: 'futura-pt', Arial, sans-serif !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.08em !important;
+	font-size: 24px !important;
+	font-weight: 400 !important;
+	color: #35332f !important;
+	margin-bottom: 24px;
+}
+
+.msh-analytics-page h2,
+.msh-analytics-widget h2 {
+	font-family: 'futura-pt', Arial, sans-serif !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.08em !important;
+	font-size: 18px !important;
+	font-weight: 400 !important;
+	color: #35332f !important;
+	margin: 0 0 15px;
+	border-bottom: 1px solid #ddd;
+	padding-bottom: 10px;
+}
+
+.msh-card-header h3 {
+	font-family: 'futura-pt', Arial, sans-serif !important;
+	text-transform: uppercase !important;
+	letter-spacing: 0.08em !important;
+	font-size: 12px !important;
+	font-weight: 400 !important;
+	color: #8b8883 !important;
+	margin: 0 0 10px;
+}
+
+.msh-analytics-widget .description {
+	font-family: 'ff-real-text-pro', Arial, sans-serif;
+	font-size: 13px;
+	color: #8b8883;
+	margin: -10px 0 15px;
+}
+
+/* ============================================
+   OVERVIEW CARDS
+   ============================================ */
+.msh-analytics-cards {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 20px;
+	margin: 20px 0 30px;
+}
+
+.msh-card {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 12px;
+	padding: 24px;
+	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+	transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.msh-card:hover {
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(218, 255, 0, 0.15);
+}
+
+.msh-card-value {
+	font-family: 'futura-pt', Arial, sans-serif;
+	font-size: 36px;
+	font-weight: 400;
+	color: #35332f;
+	margin: 10px 0;
+	line-height: 1;
+}
+
+.msh-card-footer {
+	font-family: 'ff-real-text-pro', Arial, sans-serif;
+	font-size: 13px;
+	color: #8b8883;
+	margin-top: 10px;
+}
+
+/* ============================================
+   LAYOUT GRID
+   ============================================ */
+.msh-analytics-grid {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 20px;
+	margin-top: 20px;
+}
+
+@media (max-width: 1200px) {
+	.msh-analytics-grid {
+		grid-template-columns: 1fr;
+	}
+}
+
+.msh-analytics-column {
+	display: flex;
+	flex-direction: column;
+	gap: 20px;
+}
+
+/* ============================================
+   ANALYTICS WIDGETS
+   ============================================ */
+.msh-analytics-widget {
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 12px;
+	padding: 24px;
+	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+}
+
+/* ============================================
+   INTENT DISTRIBUTION - MONOCHROME
+   ============================================ */
+.msh-intent-chart {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.msh-intent-row {
+	display: grid;
+	grid-template-columns: 140px 1fr 120px;
+	gap: 10px;
+	align-items: center;
+}
+
+.msh-intent-label {
+	font-family: 'futura-pt', Arial, sans-serif;
+	font-size: 13px;
+	font-weight: 400;
+	color: #35332f;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+}
+
+.msh-intent-bar {
+	background: #f0f0f0;
+	border-radius: 12px;
+	height: 24px;
+	overflow: hidden;
+	border: 1px solid #e0e0e0;
+}
+
+.msh-intent-fill {
+	height: 100%;
+	border-radius: 12px;
+	transition: width 0.3s ease;
+}
+
+/* Monochrome gradients - darkest to lightest charcoal */
+.msh-intent-fill.msh-intent-on-topic {
+	background: linear-gradient(90deg, #35332f 0%, #4a4945 100%);
+}
+
+.msh-intent-fill.msh-intent-off-topic {
+	background: linear-gradient(90deg, #8b8883 0%, #a09d99 100%);
+}
+
+.msh-intent-fill.msh-intent-unknown {
+	background: linear-gradient(90deg, #c0bdb9 0%, #d4d2ce 100%);
+}
+
+.msh-intent-count {
+	font-family: 'ff-real-text-pro', Arial, sans-serif;
+	font-size: 13px;
+	color: #8b8883;
+	text-align: right;
+}
+
+/* ============================================
+   QUALITY DISTRIBUTION - MONOCHROME
+   ============================================ */
+.msh-quality-chart {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+}
+
+.msh-quality-row {
+	display: grid;
+	grid-template-columns: 160px 1fr 120px;
+	gap: 10px;
+	align-items: center;
+}
+
+.msh-quality-bar {
+	background: #f0f0f0;
+	border-radius: 12px;
+	height: 24px;
+	overflow: hidden;
+	border: 1px solid #e0e0e0;
+}
+
+.msh-quality-fill {
+	height: 100%;
+	border-radius: 12px;
+	transition: width 0.3s ease;
+}
+
+/* Monochrome quality scale - excellent to poor */
+.msh-quality-fill.msh-quality-excellent {
+	background: linear-gradient(90deg, #35332f 0%, #4a4945 100%);
+}
+
+.msh-quality-fill.msh-quality-good {
+	background: linear-gradient(90deg, #5a5854 0%, #6e6b67 100%);
+}
+
+.msh-quality-fill.msh-quality-fair {
+	background: linear-gradient(90deg, #8b8883 0%, #a09d99 100%);
+}
+
+.msh-quality-fill.msh-quality-poor {
+	background: linear-gradient(90deg, #c0bdb9 0%, #d4d2ce 100%);
+}
+
+.msh-quality-count {
+	font-family: 'ff-real-text-pro', Arial, sans-serif;
+	font-size: 13px;
+	color: #8b8883;
+	text-align: right;
+}
+
+/* ============================================
+   BADGES - MONOCHROME WITH YELLOW ACCENT
+   ============================================ */
+.msh-badge {
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-family: 'futura-pt', Arial, sans-serif;
+	font-size: 11px;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.msh-badge-excellent {
+	background: #35332f;
+	color: #daff00;
+	border: 1px solid #35332f;
+}
+
+.msh-badge-good {
+	background: #fff;
+	color: #35332f;
+	border: 1px solid #35332f;
+}
+
+.msh-badge-fair {
+	background: #f0f0f0;
+	color: #35332f;
+	border: 1px solid #8b8883;
+}
+
+.msh-badge-poor {
+	background: #fff;
+	color: #8b8883;
+	border: 1px solid #ddd;
+}
+
+.msh-intent-badge {
+	display: inline-block;
+	padding: 4px 10px;
+	border-radius: 12px;
+	font-family: 'futura-pt', Arial, sans-serif;
+	font-size: 11px;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+}
+
+.msh-intent-badge.msh-intent-on-topic {
+	background: #35332f;
+	color: #daff00;
+	border: 1px solid #35332f;
+}
+
+.msh-intent-badge.msh-intent-off-topic {
+	background: #f0f0f0;
+	color: #35332f;
+	border: 1px solid #8b8883;
+}
+
+.msh-intent-badge.msh-intent-unknown {
+	background: #fff;
+	color: #8b8883;
+	border: 1px solid #ddd;
+}
+
+/* ============================================
+   TABLES
+   ============================================ */
+.msh-analytics-widget table {
+	margin-top: 10px;
+	width: 100%;
+	border-collapse: collapse;
+	font-family: 'ff-real-text-pro', Arial, sans-serif;
+}
+
+.msh-analytics-widget table th {
+	font-family: 'futura-pt', Arial, sans-serif;
+	font-weight: 400;
+	font-size: 12px;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #35332f;
+	text-align: left;
+	padding: 12px 8px;
+	border-bottom: 2px solid #ddd;
+}
+
+.msh-analytics-widget table td {
+	padding: 12px 8px;
+	vertical-align: middle;
+	color: #35332f;
+	font-size: 14px;
+	border-bottom: 1px solid #f0f0f0;
+}
+
+.msh-analytics-widget table tr:hover {
+	background-color: #faf9f6;
+}
+
+.msh-analytics-widget table a {
+	text-decoration: none;
+	color: #35332f;
+	font-weight: 500;
+	border-bottom: 1px solid transparent;
+	transition: border-color 0.2s ease;
+}
+
+.msh-analytics-widget table a:hover {
+	color: #35332f;
+	border-bottom-color: #daff00;
+	text-decoration: none;
+}
+
+/* ============================================
+   KEYWORD CLOUD - MONOCHROME WITH YELLOW HOVER
+   ============================================ */
+.msh-keyword-cloud {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 10px;
+	padding: 10px 0;
+}
+
+.msh-keyword-tag {
+	display: inline-block;
+	padding: 8px 16px;
+	background: #fff;
+	border: 1px solid #ddd;
+	border-radius: 12px;
+	color: #35332f;
+	font-family: 'futura-pt', Arial, sans-serif;
+	font-size: 13px;
+	font-weight: 400;
+	text-transform: uppercase;
+	letter-spacing: 0.05em;
+	transition: all 0.2s ease;
+	cursor: default;
+}
+
+.msh-keyword-tag:hover {
+	background: #daff00;
+	color: #35332f;
+	border-color: #daff00;
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(218, 255, 0, 0.3);
+}
+
+.msh-keyword-count {
+	font-size: 0.85em;
+	opacity: 0.7;
+	margin-left: 4px;
+}
+
+/* ============================================
+   LOADING STATES
+   ============================================ */
+.msh-analytics-loading {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	padding: 40px;
+	color: #8b8883;
+	font-family: 'futura-pt', Arial, sans-serif;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	font-size: 14px;
+}
+
+/* ============================================
+   EMPTY STATES
+   ============================================ */
+.msh-analytics-empty {
+	text-align: center;
+	padding: 40px 20px;
+	color: #8b8883;
+	font-family: 'ff-real-text-pro', Arial, sans-serif;
+}
+
+.msh-analytics-empty h3 {
+	font-family: 'futura-pt', Arial, sans-serif;
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
+	color: #35332f;
+	margin-bottom: 12px;
+}

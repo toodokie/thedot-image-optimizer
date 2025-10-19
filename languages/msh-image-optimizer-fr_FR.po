@@ -1,0 +1,4310 @@
+# Copyright (C) 2025 Main Street Health
+# This file is distributed under the GPL v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: MSH Image Optimizer 1.2.0\n"
+"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/msh-image-optimizer\n"
+"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Language-Team: fr_FR <translate@example.com>\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"POT-Creation-Date: 2025-10-17T23:58:28+00:00\n"
+"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
+"X-Generator: WP-CLI 2.12.0\n"
+"X-Domain: msh-image-optimizer\n"
+
+#. Plugin Name of the plugin
+#: msh-image-optimizer.php
+msgid "MSH Image Optimizer"
+msgstr ""
+
+#. Plugin URI of the plugin
+#: msh-image-optimizer.php
+msgid "https://github.com/toodokie/thedot-image-optimizer"
+msgstr ""
+
+#. Description of the plugin
+#: msh-image-optimizer.php
+msgid "Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking."
+msgstr ""
+
+#. Author of the plugin
+#: msh-image-optimizer.php
+msgid "Main Street Health"
+msgstr ""
+
+#. Author URI of the plugin
+#: msh-image-optimizer.php
+msgid "https://github.com/toodokie"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:234
+#: msh-image-optimizer/admin/image-optimizer-admin.php:234
+msgid "Analyzing images..."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:235
+#: msh-image-optimizer/admin/image-optimizer-admin.php:235
+msgid "Optimizing images..."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:236
+#: msh-image-optimizer/admin/image-optimizer-admin.php:236
+msgid "Optimization complete!"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:237
+#: msh-image-optimizer/admin/image-optimizer-admin.php:237
+msgid "An error occurred. Please try again."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:238
+#: msh-image-optimizer/admin/image-optimizer-admin.php:238
+msgid "Healthy"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:239
+#: msh-image-optimizer/admin/image-optimizer-admin.php:239
+msgid "Queued"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:240
+#: msh-image-optimizer/admin/image-optimizer-admin.php:240
+msgid "Attention"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:241
+#: msh-image-optimizer/admin/image-optimizer-admin.php:241
+msgid "Not Built"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:242
+#: msh-image-optimizer/admin/image-optimizer-admin.php:242
+msgid "Background indexing in progress - attachments queued for processing"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:243
+#: msh-image-optimizer/admin/image-optimizer-admin.php:243
+msgid "Background refresh queued; no action needed unless jobs pile up."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:244
+#: msh-image-optimizer/admin/image-optimizer-admin.php:244
+msgid "Orphaned entries detected - references to deleted attachments"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:245
+#: admin/image-optimizer-admin.php:1122
+#: msh-image-optimizer/admin/image-optimizer-admin.php:245
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1102
+msgid "View Orphan List"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:246
+#: msh-image-optimizer/admin/image-optimizer-admin.php:246
+msgid "Hide Orphan List"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:247
+#: msh-image-optimizer/admin/image-optimizer-admin.php:247
+msgid "No orphaned attachments detected."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:248
+#: msh-image-optimizer/admin/image-optimizer-admin.php:248
+msgid "Derived copies (alternate formats)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:249
+#: msh-image-optimizer/admin/image-optimizer-admin.php:249
+msgid "Alternate formats detected; these mirror another attachment."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:250
+#: admin/image-optimizer-admin.php:1215
+#: msh-image-optimizer/admin/image-optimizer-admin.php:250
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1195
+msgid "Please complete the required fields before continuing."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:251
+#: admin/image-optimizer-admin.php:1253
+#: msh-image-optimizer/admin/image-optimizer-admin.php:251
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1233
+msgid "Setup saved successfully."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:252
+#: msh-image-optimizer/admin/image-optimizer-admin.php:252
+msgid "Unable to save the setup right now. Please try again."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:253
+#: msh-image-optimizer/admin/image-optimizer-admin.php:253
+msgid "Unable to reset the setup right now. Please try again."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:254
+#: msh-image-optimizer/admin/image-optimizer-admin.php:254
+#, php-format
+msgid "Step %1$d of %2$d"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:255
+#: msh-image-optimizer/admin/image-optimizer-admin.php:255
+msgid "Setup complete"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:256
+#: includes/class-msh-context-helper.php:136
+#: msh-image-optimizer/admin/image-optimizer-admin.php:256
+#: msh-image-optimizer/includes/class-msh-context-helper.php:136
+#, php-format
+msgid "Demographics: %s"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:257
+#: includes/class-msh-context-helper.php:183
+#: msh-image-optimizer/admin/image-optimizer-admin.php:257
+#: msh-image-optimizer/includes/class-msh-context-helper.php:183
+#, php-format
+msgid "Service area: %s"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:258
+#: includes/class-msh-context-helper.php:195
+#: msh-image-optimizer/admin/image-optimizer-admin.php:258
+#: msh-image-optimizer/includes/class-msh-context-helper.php:195
+msgid "Not specified"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:259
+#: includes/class-msh-context-helper.php:151
+#: msh-image-optimizer/admin/image-optimizer-admin.php:259
+#: msh-image-optimizer/includes/class-msh-context-helper.php:151
+msgid "Subscribed to updates"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:260
+#: includes/class-msh-context-helper.php:152
+#: msh-image-optimizer/admin/image-optimizer-admin.php:260
+#: msh-image-optimizer/includes/class-msh-context-helper.php:152
+msgid "No updates requested"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:261
+#: admin/image-optimizer-admin.php:773
+#: msh-image-optimizer/admin/image-optimizer-admin.php:261
+#: msh-image-optimizer/admin/image-optimizer-admin.php:753
+msgid "✓ AI suggestions enabled"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:262
+#: admin/image-optimizer-admin.php:775
+#: msh-image-optimizer/admin/image-optimizer-admin.php:262
+#: msh-image-optimizer/admin/image-optimizer-admin.php:755
+msgid "AI suggestions disabled"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:263
+#: msh-image-optimizer/admin/image-optimizer-admin.php:263
+msgid "Unable to update AI setting. Please try again."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:264
+#: admin/image-optimizer-admin.php:1357
+#: msh-image-optimizer/admin/image-optimizer-admin.php:264
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1337
+msgid "Active context updated."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:265
+#: msh-image-optimizer/admin/image-optimizer-admin.php:265
+msgid "Unable to change the active context right now."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:266
+#: admin/image-optimizer-admin.php:512
+#: admin/image-optimizer-settings.php:273
+#: msh-image-optimizer/admin/image-optimizer-admin.php:266
+#: msh-image-optimizer/admin/image-optimizer-admin.php:492
+#: msh-image-optimizer/admin/image-optimizer-settings.php:273
+msgid "Active Context"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:267
+#: msh-image-optimizer/admin/image-optimizer-admin.php:267
+msgid "Switch profiles to keep metadata, automation, and AI prompts aligned."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:268
+#: admin/image-optimizer-admin.php:325
+#: admin/image-optimizer-admin.php:515
+#: admin/image-optimizer-admin.php:1328
+#: admin/image-optimizer-settings.php:281
+#: msh-image-optimizer/admin/image-optimizer-admin.php:268
+#: msh-image-optimizer/admin/image-optimizer-admin.php:305
+#: msh-image-optimizer/admin/image-optimizer-admin.php:495
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1308
+#: msh-image-optimizer/admin/image-optimizer-settings.php:281
+#, php-format
+msgid "Primary – %s"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:269
+#: admin/image-optimizer-admin.php:327
+#: admin/image-optimizer-admin.php:522
+#: admin/image-optimizer-admin.php:1336
+#: admin/image-optimizer-settings.php:290
+#: msh-image-optimizer/admin/image-optimizer-admin.php:269
+#: msh-image-optimizer/admin/image-optimizer-admin.php:307
+#: msh-image-optimizer/admin/image-optimizer-admin.php:502
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1316
+#: msh-image-optimizer/admin/image-optimizer-settings.php:290
+#, php-format
+msgid "Profile – %s"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:270
+#: admin/image-optimizer-admin.php:323
+#: admin/image-optimizer-admin.php:1329
+#: admin/image-optimizer-settings.php:167
+#: admin/image-optimizer-settings.php:278
+#: includes/class-msh-context-helper.php:277
+#: msh-image-optimizer/admin/image-optimizer-admin.php:270
+#: msh-image-optimizer/admin/image-optimizer-admin.php:303
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1309
+#: msh-image-optimizer/admin/image-optimizer-settings.php:167
+#: msh-image-optimizer/admin/image-optimizer-settings.php:278
+#: msh-image-optimizer/includes/class-msh-context-helper.php:277
+msgid "Primary Context"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:271
+#: admin/image-optimizer-admin.php:328
+#: admin/image-optimizer-admin.php:519
+#: admin/image-optimizer-admin.php:1337
+#: admin/image-optimizer-settings.php:287
+#: includes/class-msh-context-helper.php:269
+#: msh-image-optimizer/admin/image-optimizer-admin.php:271
+#: msh-image-optimizer/admin/image-optimizer-admin.php:308
+#: msh-image-optimizer/admin/image-optimizer-admin.php:499
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1317
+#: msh-image-optimizer/admin/image-optimizer-settings.php:287
+#: msh-image-optimizer/includes/class-msh-context-helper.php:269
+msgid "Context profile"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:272
+#: msh-image-optimizer/admin/image-optimizer-admin.php:272
+#, php-format
+msgid "Usage index ready – last refreshed %s"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:273
+#: msh-image-optimizer/admin/image-optimizer-admin.php:273
+msgid "Usage index building…"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:274
+#: msh-image-optimizer/admin/image-optimizer-admin.php:274
+msgid "Usage index not built yet"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:275
+#: msh-image-optimizer/admin/image-optimizer-admin.php:275
+msgid "Reset the saved context? This will clear all onboarding answers."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:276
+msgid "Context cleared. You can complete the setup whenever you're ready."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:278
+msgid "Supported"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:279
+msgid "Not Supported"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:280
+#: admin/image-optimizer-admin.php:1150
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1130
+msgid "Active"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:281
+msgid "Inactive"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:282
+#: admin/image-optimizer-admin.php:874
+#: msh-image-optimizer/admin/image-optimizer-admin.php:854
+msgid "Never"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:284
+msgid "Save"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:285
+msgid "Edit"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:286
+msgid "Preview"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:288
+#: admin/image-optimizer-admin.php:743
+#: msh-image-optimizer/admin/image-optimizer-admin.php:723
+msgid "Complete"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:289
+msgid "In progress"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:290
+msgid "Coming soon"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:291
+msgid "Pending"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:293
+msgid "Ready"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:295
+msgid "JavaScript Detection"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:296
+msgid "Cookie + JavaScript"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:335
+#: admin/image-optimizer-settings.php:126
+#: msh-image-optimizer/admin/image-optimizer-admin.php:315
+#: msh-image-optimizer/admin/image-optimizer-settings.php:126
+msgid "The Dot Image Optimizer"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:340
+#: admin/image-optimizer-settings.php:131
+#: msh-image-optimizer/admin/image-optimizer-admin.php:320
+#: msh-image-optimizer/admin/image-optimizer-settings.php:131
+msgid "reach out for support"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:346
+#: admin/image-optimizer-settings.php:137
+#: msh-image-optimizer/admin/image-optimizer-admin.php:326
+#: msh-image-optimizer/admin/image-optimizer-settings.php:137
+msgid "visit our website"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:359
+#: msh-image-optimizer/admin/image-optimizer-admin.php:339
+msgid "Set Up Your Image Optimizer"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:360
+#: msh-image-optimizer/admin/image-optimizer-admin.php:340
+msgid "Share a few business details so metadata, reports, and future AI features stay on brand."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:371
+#: msh-image-optimizer/admin/image-optimizer-admin.php:351
+msgid "Business Identity"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:372
+#: msh-image-optimizer/admin/image-optimizer-admin.php:352
+msgid "Used across optimizer summaries, logs, and future AI prompts."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:373
+#: msh-image-optimizer/admin/image-optimizer-admin.php:353
+msgid "Business Name*"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:376
+#: msh-image-optimizer/admin/image-optimizer-admin.php:356
+msgid "Industry*"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:378
+#: msh-image-optimizer/admin/image-optimizer-admin.php:358
+msgid "Select industry…"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:379
+#: includes/class-msh-context-helper.php:77
+#: includes/class-msh-image-optimizer.php:3526
+#: msh-image-optimizer/admin/image-optimizer-admin.php:359
+#: msh-image-optimizer/includes/class-msh-context-helper.php:77
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3526
+msgid "Professional Services"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:380
+#: includes/class-msh-context-helper.php:56
+#: msh-image-optimizer/admin/image-optimizer-admin.php:360
+#: msh-image-optimizer/includes/class-msh-context-helper.php:56
+msgid "Legal Services"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:381
+#: includes/class-msh-context-helper.php:57
+#: msh-image-optimizer/admin/image-optimizer-admin.php:361
+#: msh-image-optimizer/includes/class-msh-context-helper.php:57
+msgid "Accounting & Tax"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:382
+#: includes/class-msh-context-helper.php:58
+#: msh-image-optimizer/admin/image-optimizer-admin.php:362
+#: msh-image-optimizer/includes/class-msh-context-helper.php:58
+msgid "Business Consulting"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:383
+#: includes/class-msh-context-helper.php:59
+#: includes/class-msh-image-optimizer.php:3061
+#: msh-image-optimizer/admin/image-optimizer-admin.php:363
+#: msh-image-optimizer/includes/class-msh-context-helper.php:59
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3061
+msgid "Marketing Agency"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:384
+#: includes/class-msh-context-helper.php:60
+#: msh-image-optimizer/admin/image-optimizer-admin.php:364
+#: msh-image-optimizer/includes/class-msh-context-helper.php:60
+msgid "Web Design / Development"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:386
+#: msh-image-optimizer/admin/image-optimizer-admin.php:366
+msgid "Home Services"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:387
+#: includes/class-msh-context-helper.php:61
+#: msh-image-optimizer/admin/image-optimizer-admin.php:367
+#: msh-image-optimizer/includes/class-msh-context-helper.php:61
+msgid "Plumbing"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:388
+#: includes/class-msh-context-helper.php:62
+#: msh-image-optimizer/admin/image-optimizer-admin.php:368
+#: msh-image-optimizer/includes/class-msh-context-helper.php:62
+msgid "HVAC"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:389
+#: includes/class-msh-context-helper.php:63
+#: msh-image-optimizer/admin/image-optimizer-admin.php:369
+#: msh-image-optimizer/includes/class-msh-context-helper.php:63
+msgid "Electrical"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:390
+#: includes/class-msh-context-helper.php:64
+#: msh-image-optimizer/admin/image-optimizer-admin.php:370
+#: msh-image-optimizer/includes/class-msh-context-helper.php:64
+msgid "Renovation / Construction"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:392
+#: msh-image-optimizer/admin/image-optimizer-admin.php:372
+msgid "Healthcare"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:393
+#: includes/class-msh-context-helper.php:65
+#: msh-image-optimizer/admin/image-optimizer-admin.php:373
+#: msh-image-optimizer/includes/class-msh-context-helper.php:65
+msgid "Dental"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:394
+#: includes/class-msh-context-helper.php:66
+#: includes/class-msh-image-optimizer.php:3301
+#: msh-image-optimizer/admin/image-optimizer-admin.php:374
+#: msh-image-optimizer/includes/class-msh-context-helper.php:66
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3301
+msgid "Medical Practice"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:395
+#: includes/class-msh-context-helper.php:67
+#: msh-image-optimizer/admin/image-optimizer-admin.php:375
+#: msh-image-optimizer/includes/class-msh-context-helper.php:67
+msgid "Therapy / Counseling"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:396
+#: includes/class-msh-context-helper.php:68
+#: msh-image-optimizer/admin/image-optimizer-admin.php:376
+#: msh-image-optimizer/includes/class-msh-context-helper.php:68
+msgid "Wellness / Alternative"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:398
+#: msh-image-optimizer/admin/image-optimizer-admin.php:378
+msgid "Retail & E-commerce"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:399
+#: includes/class-msh-context-helper.php:69
+#: includes/class-msh-image-optimizer.php:3157
+#: msh-image-optimizer/admin/image-optimizer-admin.php:379
+#: msh-image-optimizer/includes/class-msh-context-helper.php:69
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3157
+msgid "Online Store"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:400
+#: includes/class-msh-context-helper.php:70
+#: msh-image-optimizer/admin/image-optimizer-admin.php:380
+#: msh-image-optimizer/includes/class-msh-context-helper.php:70
+msgid "Local Retail"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:401
+#: includes/class-msh-context-helper.php:71
+#: msh-image-optimizer/admin/image-optimizer-admin.php:381
+#: msh-image-optimizer/includes/class-msh-context-helper.php:71
+msgid "Specialty Products"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:403
+#: includes/class-msh-context-helper.php:72
+#: msh-image-optimizer/admin/image-optimizer-admin.php:383
+#: msh-image-optimizer/includes/class-msh-context-helper.php:72
+msgid "Other / Not listed"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:406
+#: msh-image-optimizer/admin/image-optimizer-admin.php:386
+msgid "Business Type*"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:408
+#: msh-image-optimizer/admin/image-optimizer-admin.php:388
+msgid "Select business type…"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:409
+#: includes/class-msh-context-helper.php:75
+#: msh-image-optimizer/admin/image-optimizer-admin.php:389
+#: msh-image-optimizer/includes/class-msh-context-helper.php:75
+msgid "Local Service Provider"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:410
+#: includes/class-msh-context-helper.php:76
+#: msh-image-optimizer/admin/image-optimizer-admin.php:390
+#: msh-image-optimizer/includes/class-msh-context-helper.php:76
+msgid "Online Service Provider"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:411
+#: includes/class-msh-context-helper.php:78
+#: msh-image-optimizer/admin/image-optimizer-admin.php:391
+#: msh-image-optimizer/includes/class-msh-context-helper.php:78
+msgid "E-commerce"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:412
+#: includes/class-msh-context-helper.php:79
+#: msh-image-optimizer/admin/image-optimizer-admin.php:392
+#: msh-image-optimizer/includes/class-msh-context-helper.php:79
+msgid "SaaS / Software"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:413
+#: includes/class-msh-context-helper.php:80
+#: msh-image-optimizer/admin/image-optimizer-admin.php:393
+#: msh-image-optimizer/includes/class-msh-context-helper.php:80
+msgid "B2B Services"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:414
+#: includes/class-msh-context-helper.php:81
+#: msh-image-optimizer/admin/image-optimizer-admin.php:394
+#: msh-image-optimizer/includes/class-msh-context-helper.php:81
+msgid "B2C Services"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:415
+#: includes/class-msh-context-helper.php:82
+#: msh-image-optimizer/admin/image-optimizer-admin.php:395
+#: msh-image-optimizer/includes/class-msh-context-helper.php:82
+msgid "Non-profit / Public Sector"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:420
+#: admin/image-optimizer-admin.php:548
+#: msh-image-optimizer/admin/image-optimizer-admin.php:400
+#: msh-image-optimizer/admin/image-optimizer-admin.php:528
+msgid "Target Audience"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:421
+#: msh-image-optimizer/admin/image-optimizer-admin.php:401
+msgid "Helps the optimizer speak to the right people and surface relevant keywords."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:422
+#: msh-image-optimizer/admin/image-optimizer-admin.php:402
+msgid "Ideal customer*"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:423
+#: msh-image-optimizer/admin/image-optimizer-admin.php:403
+msgid "e.g., Homeowners aged 35-65, Small business owners, Tech startups"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:425
+#: admin/image-optimizer-settings.php:200
+#: admin/image-optimizer-settings.php:897
+#: msh-image-optimizer/admin/image-optimizer-admin.php:405
+#: msh-image-optimizer/admin/image-optimizer-settings.php:200
+#: msh-image-optimizer/admin/image-optimizer-settings.php:897
+msgid "Problems you solve"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:426
+#: msh-image-optimizer/admin/image-optimizer-admin.php:406
+msgid "e.g., Same-day emergency repairs, Streamlined accounting, Custom treatment plans"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:428
+#: admin/image-optimizer-settings.php:207
+#: admin/image-optimizer-settings.php:898
+#: msh-image-optimizer/admin/image-optimizer-admin.php:408
+#: msh-image-optimizer/admin/image-optimizer-settings.php:207
+#: msh-image-optimizer/admin/image-optimizer-settings.php:898
+msgid "Demographics (optional)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:429
+#: msh-image-optimizer/admin/image-optimizer-admin.php:409
+msgid "e.g., Income $50k+, College educated, Urban professionals"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:433
+#: msh-image-optimizer/admin/image-optimizer-admin.php:413
+msgid "Brand Voice & Value"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:434
+#: msh-image-optimizer/admin/image-optimizer-admin.php:414
+msgid "We’ll match metadata suggestions to your brand personality and highlight what makes you different."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:435
+#: msh-image-optimizer/admin/image-optimizer-admin.php:415
+msgid "Brand voice*"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:439
+#: includes/class-msh-context-helper.php:85
+#: msh-image-optimizer/admin/image-optimizer-admin.php:419
+#: msh-image-optimizer/includes/class-msh-context-helper.php:85
+msgid "Professional"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:440
+#: msh-image-optimizer/admin/image-optimizer-admin.php:420
+msgid "Formal, expert, authoritative"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:444
+#: includes/class-msh-context-helper.php:86
+#: msh-image-optimizer/admin/image-optimizer-admin.php:424
+#: msh-image-optimizer/includes/class-msh-context-helper.php:86
+msgid "Friendly"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:445
+#: msh-image-optimizer/admin/image-optimizer-admin.php:425
+msgid "Approachable, helpful, warm"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:449
+#: includes/class-msh-context-helper.php:87
+#: msh-image-optimizer/admin/image-optimizer-admin.php:429
+#: msh-image-optimizer/includes/class-msh-context-helper.php:87
+msgid "Casual"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:450
+#: msh-image-optimizer/admin/image-optimizer-admin.php:430
+msgid "Conversational and relaxed"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:454
+#: includes/class-msh-context-helper.php:88
+#: msh-image-optimizer/admin/image-optimizer-admin.php:434
+#: msh-image-optimizer/includes/class-msh-context-helper.php:88
+msgid "Technical"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:455
+#: msh-image-optimizer/admin/image-optimizer-admin.php:435
+msgid "Detailed, precise, specialist"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:459
+#: msh-image-optimizer/admin/image-optimizer-admin.php:439
+msgid "What makes you different?*"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:460
+#: msh-image-optimizer/admin/image-optimizer-admin.php:440
+msgid "e.g., 24/7 emergency team, 20 years experience, Free consultations, Same-day delivery"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:462
+#: admin/image-optimizer-settings.php:231
+#: admin/image-optimizer-settings.php:901
+#: msh-image-optimizer/admin/image-optimizer-admin.php:442
+#: msh-image-optimizer/admin/image-optimizer-settings.php:231
+#: msh-image-optimizer/admin/image-optimizer-settings.php:901
+msgid "Call-to-action style"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:464
+#: includes/class-msh-context-helper.php:91
+#: msh-image-optimizer/admin/image-optimizer-admin.php:444
+#: msh-image-optimizer/includes/class-msh-context-helper.php:91
+msgid "Helpful / soft reminders"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:465
+#: includes/class-msh-context-helper.php:92
+#: msh-image-optimizer/admin/image-optimizer-admin.php:445
+#: msh-image-optimizer/includes/class-msh-context-helper.php:92
+msgid "Neutral / informative"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:466
+#: includes/class-msh-context-helper.php:93
+#: msh-image-optimizer/admin/image-optimizer-admin.php:446
+#: msh-image-optimizer/includes/class-msh-context-helper.php:93
+msgid "Direct / action-focused"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:471
+#: msh-image-optimizer/admin/image-optimizer-admin.php:451
+msgid "Location & Service Area"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:472
+#: msh-image-optimizer/admin/image-optimizer-admin.php:452
+msgid "Used for local SEO hints and AI localisation. Leave blank if not location specific."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:473
+#: admin/image-optimizer-settings.php:239
+#: admin/image-optimizer-settings.php:902
+#: msh-image-optimizer/admin/image-optimizer-admin.php:453
+#: msh-image-optimizer/admin/image-optimizer-settings.php:239
+#: msh-image-optimizer/admin/image-optimizer-settings.php:902
+msgid "City"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:474
+#: msh-image-optimizer/admin/image-optimizer-admin.php:454
+msgid "e.g., Toronto"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:476
+#: admin/image-optimizer-settings.php:245
+#: admin/image-optimizer-settings.php:903
+#: msh-image-optimizer/admin/image-optimizer-admin.php:456
+#: msh-image-optimizer/admin/image-optimizer-settings.php:245
+#: msh-image-optimizer/admin/image-optimizer-settings.php:903
+msgid "Province / Region"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:477
+#: msh-image-optimizer/admin/image-optimizer-admin.php:457
+msgid "e.g., Ontario"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:479
+#: admin/image-optimizer-settings.php:251
+#: admin/image-optimizer-settings.php:904
+#: msh-image-optimizer/admin/image-optimizer-admin.php:459
+#: msh-image-optimizer/admin/image-optimizer-settings.php:251
+#: msh-image-optimizer/admin/image-optimizer-settings.php:904
+msgid "Country"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:480
+#: msh-image-optimizer/admin/image-optimizer-admin.php:460
+msgid "e.g., Canada"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:482
+#: admin/image-optimizer-settings.php:257
+#: admin/image-optimizer-settings.php:905
+#: msh-image-optimizer/admin/image-optimizer-admin.php:462
+#: msh-image-optimizer/admin/image-optimizer-settings.php:257
+#: msh-image-optimizer/admin/image-optimizer-settings.php:905
+msgid "Service area"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:483
+#: msh-image-optimizer/admin/image-optimizer-admin.php:463
+msgid "e.g., Greater Toronto Area, Nationwide, Remote"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:487
+#: msh-image-optimizer/admin/image-optimizer-admin.php:467
+msgid "Keep me posted about AI metadata and duplicate detection features"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:490
+#: msh-image-optimizer/admin/image-optimizer-admin.php:470
+msgid "Saving completes the setup. You can edit these details at any time."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:494
+#: msh-image-optimizer/admin/image-optimizer-admin.php:474
+msgid "Back"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:496
+#: msh-image-optimizer/admin/image-optimizer-admin.php:476
+msgid "Next"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:498
+#: msh-image-optimizer/admin/image-optimizer-admin.php:478
+msgid "Save Context"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:506
+#: msh-image-optimizer/admin/image-optimizer-admin.php:486
+msgid "Optimization Context"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:510
+#: msh-image-optimizer/admin/image-optimizer-admin.php:490
+msgid "These preferences drive metadata suggestions, reports, and upcoming AI enhancements. Manage additional profiles (landing pages, multilingual) from Settings."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:527
+#: msh-image-optimizer/admin/image-optimizer-admin.php:507
+msgid "Switch profiles without leaving the dashboard. Updates apply instantly across optimization workflows and AI prompts."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:531
+#: msh-image-optimizer/admin/image-optimizer-admin.php:511
+msgid "Usage Index"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:536
+#: admin/image-optimizer-settings.php:172
+#: admin/image-optimizer-settings.php:893
+#: msh-image-optimizer/admin/image-optimizer-admin.php:516
+#: msh-image-optimizer/admin/image-optimizer-settings.php:172
+#: msh-image-optimizer/admin/image-optimizer-settings.php:893
+msgid "Business Name"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:540
+#: admin/image-optimizer-settings.php:176
+#: admin/image-optimizer-settings.php:894
+#: msh-image-optimizer/admin/image-optimizer-admin.php:520
+#: msh-image-optimizer/admin/image-optimizer-settings.php:176
+#: msh-image-optimizer/admin/image-optimizer-settings.php:894
+msgid "Industry"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:544
+#: admin/image-optimizer-settings.php:184
+#: admin/image-optimizer-settings.php:895
+#: msh-image-optimizer/admin/image-optimizer-admin.php:524
+#: msh-image-optimizer/admin/image-optimizer-settings.php:184
+#: msh-image-optimizer/admin/image-optimizer-settings.php:895
+msgid "Business Type"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:552
+#: msh-image-optimizer/admin/image-optimizer-admin.php:532
+msgid "Pain Points"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:556
+#: msh-image-optimizer/admin/image-optimizer-admin.php:536
+msgid "Brand Voice"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:560
+#: msh-image-optimizer/admin/image-optimizer-admin.php:540
+msgid "Value Proposition"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:564
+#: msh-image-optimizer/admin/image-optimizer-admin.php:544
+msgid "CTA Style"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:568
+#: msh-image-optimizer/admin/image-optimizer-admin.php:548
+msgid "Location"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:572
+#: msh-image-optimizer/admin/image-optimizer-admin.php:552
+msgid "AI Updates"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:578
+#: msh-image-optimizer/admin/image-optimizer-admin.php:558
+msgid "Open Settings"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:580
+#: msh-image-optimizer/admin/image-optimizer-admin.php:560
+msgid "Reset"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:592
+#: msh-image-optimizer/admin/image-optimizer-admin.php:572
+msgid "Confirm AI Metadata Regeneration"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:593
+#: admin/image-optimizer-admin.php:698
+#: msh-image-optimizer/admin/image-optimizer-admin.php:573
+#: msh-image-optimizer/admin/image-optimizer-admin.php:678
+msgid "Close"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:598
+#: msh-image-optimizer/admin/image-optimizer-admin.php:578
+msgid "Configure how you want to regenerate metadata for your images. This will use AI to analyze images and generate SEO-optimized metadata."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:602
+#: msh-image-optimizer/admin/image-optimizer-admin.php:582
+msgid "Selection Scope"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:606
+#: msh-image-optimizer/admin/image-optimizer-admin.php:586
+msgid "All images in media library"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:611
+#: msh-image-optimizer/admin/image-optimizer-admin.php:591
+msgid "Only published images"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:616
+#: msh-image-optimizer/admin/image-optimizer-admin.php:596
+msgid "Images with missing metadata"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:623
+#: msh-image-optimizer/admin/image-optimizer-admin.php:603
+msgid "Regeneration Mode"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:627
+#: msh-image-optimizer/admin/image-optimizer-admin.php:607
+msgid "Fill empty fields only"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:628
+#: msh-image-optimizer/admin/image-optimizer-admin.php:608
+msgid "Only generate metadata for fields that are currently empty"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:632
+#: msh-image-optimizer/admin/image-optimizer-admin.php:612
+msgid "Overwrite all metadata"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:633
+#: msh-image-optimizer/admin/image-optimizer-admin.php:613
+msgid "Replace existing metadata with AI-generated content (backup created)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:639
+#: msh-image-optimizer/admin/image-optimizer-admin.php:619
+msgid "Fields to Generate"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:643
+#: msh-image-optimizer/admin/image-optimizer-admin.php:623
+msgid "Title"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:647
+#: msh-image-optimizer/admin/image-optimizer-admin.php:627
+msgid "Alt Text"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:651
+#: msh-image-optimizer/admin/image-optimizer-admin.php:631
+msgid "Caption"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:655
+#: msh-image-optimizer/admin/image-optimizer-admin.php:635
+msgid "Description"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:662
+#: msh-image-optimizer/admin/image-optimizer-admin.php:642
+msgid "Images to process:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:666
+#: msh-image-optimizer/admin/image-optimizer-admin.php:646
+msgid "Estimated credits:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:670
+#: msh-image-optimizer/admin/image-optimizer-admin.php:650
+msgid "Credits available:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:676
+#: msh-image-optimizer/admin/image-optimizer-admin.php:656
+msgid "Insufficient Credits"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:677
+#: msh-image-optimizer/admin/image-optimizer-admin.php:657
+msgid "You do not have enough credits to process all selected images. Please reduce the selection scope or upgrade your plan."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:683
+#: admin/image-optimizer-admin.php:712
+#: admin/image-optimizer-settings.php:506
+#: msh-image-optimizer/admin/image-optimizer-admin.php:663
+#: msh-image-optimizer/admin/image-optimizer-admin.php:692
+#: msh-image-optimizer/admin/image-optimizer-settings.php:506
+msgid "Cancel"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:686
+#: msh-image-optimizer/admin/image-optimizer-admin.php:666
+msgid "Start Regeneration"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:697
+#: msh-image-optimizer/admin/image-optimizer-admin.php:677
+msgid "Manual Edits Detected"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:706
+#: msh-image-optimizer/admin/image-optimizer-admin.php:686
+msgid "AI Regeneration will stage new metadata but won't overwrite your manual changes unless you explicitly apply it during the Optimize step."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:715
+#: msh-image-optimizer/admin/image-optimizer-admin.php:695
+msgid "Continue"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:723
+#: msh-image-optimizer/admin/image-optimizer-admin.php:703
+msgid "Image Optimization Progress"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:731
+#: msh-image-optimizer/admin/image-optimizer-admin.php:711
+msgid "Total Published Images"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:735
+#: admin/image-optimizer-admin.php:932
+#: msh-image-optimizer/admin/image-optimizer-admin.php:715
+#: msh-image-optimizer/admin/image-optimizer-admin.php:912
+msgid "Optimized"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:739
+#: msh-image-optimizer/admin/image-optimizer-admin.php:719
+msgid "Remaining"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:755
+#: msh-image-optimizer/admin/image-optimizer-admin.php:735
+msgid "Step 1: Optimize Published Images"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:765
+#: msh-image-optimizer/admin/image-optimizer-admin.php:745
+msgid "Enable AI Metadata Suggestions"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:789
+#: msh-image-optimizer/admin/image-optimizer-admin.php:769
+msgid "Desktop Notifications"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:790
+#: msh-image-optimizer/admin/image-optimizer-admin.php:770
+msgid "Get an OS notification when optimization finishes so you can work in other tabs."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:794
+#: msh-image-optimizer/admin/image-optimizer-admin.php:774
+msgid "Enable Notifications"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:805
+#: msh-image-optimizer/admin/image-optimizer-admin.php:785
+msgid "We scan published content (pages, posts, widgets) and include images that are in use, plus auto-include newer SVG icons so they never get missed."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:806
+#: msh-image-optimizer/admin/image-optimizer-admin.php:786
+msgid "Smart Indexing: Files are indexed automatically when renamed for optimal performance"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:809
+#: msh-image-optimizer/admin/image-optimizer-admin.php:789
+msgid "File renaming powers Step 1"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:810
+#: msh-image-optimizer/admin/image-optimizer-admin.php:790
+msgid "Turn this on when you want Analyze & Apply to generate clean, SEO-friendly filenames. Leave it off for audit-only runs where URLs must stay untouched."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:811
+#: msh-image-optimizer/admin/image-optimizer-admin.php:791
+msgid "We check this toggle before every optimization task, so you are always in control of when filename updates happen."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:820
+#: msh-image-optimizer/admin/image-optimizer-admin.php:800
+msgid "Enable File Renaming"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:822
+#: msh-image-optimizer/admin/image-optimizer-admin.php:802
+msgid "Provides optimized filenames when Apply Suggestions runs. Requires usage index to prevent broken links."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:833
+#: msh-image-optimizer/admin/image-optimizer-admin.php:813
+msgid "✓ Ready for renaming"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:835
+#: msh-image-optimizer/admin/image-optimizer-admin.php:815
+msgid "⚠ Index required"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:837
+#: admin/image-optimizer-settings.php:339
+#: msh-image-optimizer/admin/image-optimizer-admin.php:817
+#: msh-image-optimizer/admin/image-optimizer-settings.php:339
+msgid "Renaming disabled"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:850
+#: msh-image-optimizer/admin/image-optimizer-admin.php:830
+msgid "AI Metadata Regeneration (Advanced)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:851
+#: msh-image-optimizer/admin/image-optimizer-admin.php:831
+msgid "Use this when you want AI-generated suggestions to appear in the results table before applying."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:856
+#: msh-image-optimizer/admin/image-optimizer-admin.php:836
+msgid "Use AI to bulk-regenerate metadata for existing images. This analyzes images with OpenAI Vision and overwrites metadata."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:859
+#: msh-image-optimizer/admin/image-optimizer-admin.php:839
+msgid "When to use this:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:861
+#: msh-image-optimizer/admin/image-optimizer-admin.php:841
+msgid "You have old images with poor/missing metadata"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:862
+#: msh-image-optimizer/admin/image-optimizer-admin.php:842
+msgid "You want to bulk-update metadata for your entire library"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:863
+#: msh-image-optimizer/admin/image-optimizer-admin.php:843
+msgid "You've changed business context and need fresh SEO content"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:868
+#: msh-image-optimizer/admin/image-optimizer-admin.php:848
+msgid "Credits:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:873
+#: msh-image-optimizer/admin/image-optimizer-admin.php:853
+msgid "Last Run:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:877
+#: msh-image-optimizer/admin/image-optimizer-admin.php:857
+msgid "This Month:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:879
+#: msh-image-optimizer/admin/image-optimizer-admin.php:859
+msgid "credits used"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:884
+#: msh-image-optimizer/admin/image-optimizer-admin.php:864
+msgid "Regenerate Metadata with AI"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:887
+#: msh-image-optimizer/admin/image-optimizer-admin.php:867
+msgid "AI Settings"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:897
+#: msh-image-optimizer/admin/image-optimizer-admin.php:877
+msgid "Analyze Published Images"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:900
+#: msh-image-optimizer/admin/image-optimizer-admin.php:880
+msgid "Apply Filename Suggestions"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:904
+#: msh-image-optimizer/admin/image-optimizer-admin.php:884
+msgid "Verify WebP Status"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:907
+#: msh-image-optimizer/admin/image-optimizer-admin.php:887
+msgid "Reset Optimization Flags"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:915
+#: msh-image-optimizer/admin/image-optimizer-admin.php:895
+msgid "Optimization Activity"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:917
+#: msh-image-optimizer/admin/image-optimizer-admin.php:897
+msgid "Optimization activity will appear here..."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:923
+#: msh-image-optimizer/admin/image-optimizer-admin.php:903
+msgid "Analysis Results"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:928
+#: msh-image-optimizer/admin/image-optimizer-admin.php:908
+msgid "Status:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:930
+#: msh-image-optimizer/admin/image-optimizer-admin.php:910
+msgid "All Images"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:931
+#: msh-image-optimizer/admin/image-optimizer-admin.php:911
+msgid "Needs Optimization"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:936
+#: msh-image-optimizer/admin/image-optimizer-admin.php:916
+msgid "Priority:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:938
+#: msh-image-optimizer/admin/image-optimizer-admin.php:918
+msgid "All Priorities"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:939
+#: msh-image-optimizer/admin/image-optimizer-admin.php:919
+msgid "High (15+)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:940
+#: msh-image-optimizer/admin/image-optimizer-admin.php:920
+msgid "Medium (10-14)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:941
+#: msh-image-optimizer/admin/image-optimizer-admin.php:921
+msgid "Low (0-9)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:945
+#: msh-image-optimizer/admin/image-optimizer-admin.php:925
+msgid "Filename:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:947
+#: msh-image-optimizer/admin/image-optimizer-admin.php:927
+msgid "All Files"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:948
+#: msh-image-optimizer/admin/image-optimizer-admin.php:928
+msgid "Has Filename Suggestion"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:949
+#: msh-image-optimizer/admin/image-optimizer-admin.php:929
+msgid "No Filename Suggestion"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:953
+#: msh-image-optimizer/admin/image-optimizer-admin.php:933
+msgid "Issues:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:955
+#: msh-image-optimizer/admin/image-optimizer-admin.php:935
+msgid "All Issues"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:956
+#: msh-image-optimizer/admin/image-optimizer-admin.php:936
+msgid "Missing ALT Text"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:957
+#: msh-image-optimizer/admin/image-optimizer-admin.php:937
+msgid "No WebP"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:958
+#: msh-image-optimizer/admin/image-optimizer-admin.php:938
+msgid "Large File Size"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:963
+#: msh-image-optimizer/admin/image-optimizer-admin.php:943
+msgid "Clear"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:971
+#: msh-image-optimizer/admin/image-optimizer-admin.php:951
+msgid "Select All"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:973
+#: msh-image-optimizer/admin/image-optimizer-admin.php:953
+msgid "Optimize Selected"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:993
+#: msh-image-optimizer/admin/image-optimizer-admin.php:973
+msgid "Image"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:996
+#: msh-image-optimizer/admin/image-optimizer-admin.php:976
+msgid "Filename"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1000
+#: msh-image-optimizer/admin/image-optimizer-admin.php:980
+msgid "Content Category"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1001
+#: msh-image-optimizer/admin/image-optimizer-admin.php:981
+msgid "Status"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1004
+#: msh-image-optimizer/admin/image-optimizer-admin.php:984
+msgid "Priority"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1010
+#: msh-image-optimizer/admin/image-optimizer-admin.php:990
+msgid "Size"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1014
+#: msh-image-optimizer/admin/image-optimizer-admin.php:994
+msgid "Actions"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1019
+#: msh-image-optimizer/admin/image-optimizer-admin.php:999
+msgid "Click \"Analyze Published Images\" to begin analysis."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1028
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1008
+msgid "Step 2: Clean Up Duplicate Images"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1030
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1010
+msgid "AFTER OPTIMIZATION"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1030
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1010
+msgid "Find and safely remove duplicate images to free up storage space and organize your media library."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1032
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1012
+msgid "Duplicate detection methods"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1035
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1015
+msgid "MD5 exact matches"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1039
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1019
+msgid "Perceptual (visually similar)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1043
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1023
+msgid "Filename-based matches"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1048
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1028
+msgid "Visual Similarity Scan"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1051
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1031
+msgid "Quick Duplicate Scan"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1054
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1034
+msgid "Deep Library Scan"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1057
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1037
+msgid "Test Connection"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1064
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1044
+msgid "Duplicate Cleanup Activity"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1066
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1046
+msgid "Duplicate cleanup activity will appear here..."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1072
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1052
+msgid "Advanced Tools (Developers)"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1073
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1053
+msgid "Optional workflows for power users. Safe to ignore for day-to-day optimization."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1080
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1060
+msgid "Usage Index:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1088
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1068
+msgid "Reference Distribution"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1095
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1075
+msgid "Posts:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1096
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1076
+msgid "Meta:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1097
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1077
+msgid "Options:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1101
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1081
+msgid "Queue Status:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1102
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1082
+msgid "Mode:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1103
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1083
+msgid "Pending Jobs:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1104
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1084
+msgid "Processed:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1105
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1085
+msgid "Queued At:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1106
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1086
+msgid "Last Activity:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1107
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1087
+msgid "Next Run:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1109
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1089
+msgid "Attachments Re-indexed:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1116
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1096
+msgid "Smart Build Index"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1119
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1099
+msgid "Force Rebuild"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1125
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1105
+msgid "Clean Orphans"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1128
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1108
+msgid "Automatic monitoring:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1128
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1108
+msgid "New uploads and edits are queued automatically—no manual action needed under normal use."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1129
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1109
+msgid "Smart Build:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1129
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1109
+msgid "Background refresh for out-of-sync entries or after large content edits (fast, incremental)."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1130
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1110
+msgid "Force Rebuild:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1130
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1110
+msgid "Background full rebuild for troubleshooting or post-migration validation (slower, comprehensive)."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1137
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1117
+msgid "WebP Delivery Status"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1138
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1118
+msgid "Reference dashboard showing the current detection method and delivery state. No action is typically required."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1141
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1121
+msgid "Browser Support:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1145
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1125
+msgid "Detection Method:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1149
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1129
+msgid "Delivery Status:"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1162
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1142
+msgid "Processing..."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1164
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1144
+msgid "Please wait while we process your request."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1172
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1152
+msgid "Dismiss"
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1189
+#: admin/image-optimizer-admin.php:1268
+#: admin/image-optimizer-admin.php:1303
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1169
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1248
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1283
+msgid "You do not have permission to update these settings."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1291
+#: msh-image-optimizer/admin/image-optimizer-admin.php:276
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1271
+msgid "Context cleared. You can complete the setup whenever you’re ready."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1316
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1296
+msgid "The selected context profile no longer exists."
+msgstr ""
+
+#: admin/image-optimizer-admin.php:1400
+#: admin/image-optimizer-settings.php:402
+#: admin/image-optimizer-settings.php:414
+#: admin/image-optimizer-settings.php:698
+#: msh-image-optimizer/admin/image-optimizer-admin.php:1380
+#: msh-image-optimizer/admin/image-optimizer-settings.php:402
+#: msh-image-optimizer/admin/image-optimizer-settings.php:414
+#: msh-image-optimizer/admin/image-optimizer-settings.php:698
+msgid "—"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:32
+#: admin/image-optimizer-settings.php:33
+#: msh-image-optimizer/admin/image-optimizer-settings.php:32
+#: msh-image-optimizer/admin/image-optimizer-settings.php:33
+msgid "Image Optimizer"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:74
+#: msh-image-optimizer/admin/image-optimizer-settings.php:74
+msgid "e.g., Spanish Landing Page"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:75
+#: msh-image-optimizer/admin/image-optimizer-settings.php:75
+msgid "Usage notes, target audience, campaign links…"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:76
+#: msh-image-optimizer/admin/image-optimizer-settings.php:76
+msgid "Remove this context profile?"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:95
+#: msh-image-optimizer/admin/image-optimizer-settings.php:95
+msgid "You do not have permission to access this page."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:148
+#: msh-image-optimizer/admin/image-optimizer-settings.php:148
+msgid "Context settings saved."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:168
+#: msh-image-optimizer/admin/image-optimizer-settings.php:168
+msgid "Default business context used for metadata recommendations, reports, and AI prompts."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:192
+#: admin/image-optimizer-settings.php:896
+#: msh-image-optimizer/admin/image-optimizer-settings.php:192
+#: msh-image-optimizer/admin/image-optimizer-settings.php:896
+msgid "Ideal customer"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:195
+#: msh-image-optimizer/admin/image-optimizer-settings.php:195
+msgid "e.g., SaaS founders and B2B marketing leads launching demand-gen campaigns"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:202
+#: msh-image-optimizer/admin/image-optimizer-settings.php:202
+msgid "e.g., Clarifying positioning, building conversion-focused landing pages…"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:210
+#: msh-image-optimizer/admin/image-optimizer-settings.php:210
+msgid "e.g., VC-backed teams, 10–100 employees, North American tech hubs"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:215
+#: admin/image-optimizer-settings.php:899
+#: msh-image-optimizer/admin/image-optimizer-settings.php:215
+#: msh-image-optimizer/admin/image-optimizer-settings.php:899
+msgid "Brand voice"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:223
+#: admin/image-optimizer-settings.php:900
+#: msh-image-optimizer/admin/image-optimizer-settings.php:223
+#: msh-image-optimizer/admin/image-optimizer-settings.php:900
+msgid "What makes you different?"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:225
+#: msh-image-optimizer/admin/image-optimizer-settings.php:225
+msgid "Highlight differentiators, proof points, or signature offers."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:260
+#: msh-image-optimizer/admin/image-optimizer-settings.php:260
+msgid "e.g., Remote across North America"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:266
+#: admin/image-optimizer-settings.php:910
+#: msh-image-optimizer/admin/image-optimizer-settings.php:266
+#: msh-image-optimizer/admin/image-optimizer-settings.php:910
+msgid "Subscribe to AI feature updates"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:295
+#: msh-image-optimizer/admin/image-optimizer-settings.php:295
+msgid "This context powers dashboard copy, automation prompts, and AI recommendations."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:302
+#: msh-image-optimizer/admin/image-optimizer-settings.php:302
+msgid "Context Profiles"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:303
+#: msh-image-optimizer/admin/image-optimizer-settings.php:303
+msgid "Manage additional contexts for landing pages, multilingual experiences, or campaigns. Profiles inherit the same structure as the primary context."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:317
+#: msh-image-optimizer/admin/image-optimizer-settings.php:317
+msgid "Add Context Profile"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:319
+#: msh-image-optimizer/admin/image-optimizer-settings.php:319
+msgid "Changes to profiles are saved when you click “Save Settings” below."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:324
+#: msh-image-optimizer/admin/image-optimizer-settings.php:324
+msgid "Optimization Controls"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:325
+#: msh-image-optimizer/admin/image-optimizer-settings.php:325
+msgid "Keep file renaming in sync with your usage index so URLs stay intact across campaigns and migrations."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:332
+#: msh-image-optimizer/admin/image-optimizer-settings.php:332
+msgid "Enable safe file renaming"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:335
+#: msh-image-optimizer/admin/image-optimizer-settings.php:335
+msgid "When active, Analyze & Apply can publish SEO-friendly filenames without breaking links. Requires a fresh usage index."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:343
+#: msh-image-optimizer/admin/image-optimizer-settings.php:343
+msgid "Ready – usage index verified"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:346
+#: msh-image-optimizer/admin/image-optimizer-settings.php:346
+msgid "Action needed – build usage index before renaming"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:359
+#: msh-image-optimizer/admin/image-optimizer-settings.php:359
+msgid "Diagnostics Snapshot"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:360
+#: msh-image-optimizer/admin/image-optimizer-settings.php:360
+msgid "Quick glance at the most recent optimization activity. Use this to confirm scheduled jobs and automation are running on time."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:364
+#: msh-image-optimizer/admin/image-optimizer-settings.php:364
+msgid "Analyzer"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:368
+#: msh-image-optimizer/admin/image-optimizer-settings.php:368
+msgid "Optimization batch"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:372
+#: msh-image-optimizer/admin/image-optimizer-settings.php:372
+msgid "Duplicate scan"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:376
+#: msh-image-optimizer/admin/image-optimizer-settings.php:376
+msgid "Visual similarity scan"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:380
+#: msh-image-optimizer/admin/image-optimizer-settings.php:380
+msgid "CLI optimization"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:384
+#: msh-image-optimizer/admin/image-optimizer-settings.php:384
+msgid "Index entries"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:390
+#: msh-image-optimizer/admin/image-optimizer-settings.php:390
+msgid "Not yet built"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:396
+#: msh-image-optimizer/admin/image-optimizer-settings.php:396
+msgid "Indexed attachments"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:408
+#: msh-image-optimizer/admin/image-optimizer-settings.php:408
+msgid "Index refreshed"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:424
+#: msh-image-optimizer/admin/image-optimizer-settings.php:424
+msgid "AI Automation"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:425
+#: msh-image-optimizer/admin/image-optimizer-settings.php:425
+msgid "Choose how AI assists your team. Manual keeps everything human, Assisted handles metadata on request, Hybrid enables full automation once you are ready."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:429
+#: msh-image-optimizer/admin/image-optimizer-settings.php:429
+msgid "AI Mode"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:432
+#: msh-image-optimizer/admin/image-optimizer-settings.php:432
+msgid "Manual"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:433
+#: msh-image-optimizer/admin/image-optimizer-settings.php:433
+msgid "Keep prompts handy but require a human to approve each change."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:437
+#: msh-image-optimizer/admin/image-optimizer-settings.php:437
+msgid "Assisted"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:438
+#: msh-image-optimizer/admin/image-optimizer-settings.php:438
+msgid "Generate metadata, descriptions, and alt text on request. You approve before publish."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:442
+#: msh-image-optimizer/admin/image-optimizer-settings.php:442
+msgid "Hybrid Automation"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:443
+#: msh-image-optimizer/admin/image-optimizer-settings.php:443
+msgid "Let AI run in the background with escalations when confidence drops."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:448
+#: msh-image-optimizer/admin/image-optimizer-settings.php:448
+msgid "Bring-your-own API key (optional)"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:456
+#: msh-image-optimizer/admin/image-optimizer-settings.php:456
+msgid "sk-••••"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:459
+#: msh-image-optimizer/admin/image-optimizer-settings.php:459
+msgid "Provide your own OpenAI key to bypass credit billing. Leave blank to use bundled credits."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:464
+#: msh-image-optimizer/admin/image-optimizer-settings.php:464
+msgid "Local Live Link URL (for testing)"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:471
+#: msh-image-optimizer/admin/image-optimizer-settings.php:471
+msgid "https://abc123.loca.lt"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:474
+#: msh-image-optimizer/admin/image-optimizer-settings.php:474
+msgid "For local development: Enable \"Live Link\" in Local by Flywheel (disable password protection!) and paste the public URL here. OpenAI will use this instead of base64 encoding. Leave blank for automatic base64 fallback."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:479
+#: msh-image-optimizer/admin/image-optimizer-settings.php:479
+msgid "Enabled AI modules"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:482
+#: msh-image-optimizer/admin/image-optimizer-settings.php:482
+msgid "Metadata & alt text suggestions"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:486
+#: msh-image-optimizer/admin/image-optimizer-settings.php:486
+msgid "Vision analysis (quality & branding checks)"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:490
+#: msh-image-optimizer/admin/image-optimizer-settings.php:490
+msgid "AI-powered filename generation"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:494
+#: msh-image-optimizer/admin/image-optimizer-settings.php:494
+msgid "Duplicate detection + smart cleanup targets"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:497
+#: msh-image-optimizer/admin/image-optimizer-settings.php:497
+msgid "AI modules respect the active context profile and only run when credits are available."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:504
+#: msh-image-optimizer/admin/image-optimizer-settings.php:504
+msgid "Save Settings"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:521
+#: msh-image-optimizer/admin/image-optimizer-settings.php:521
+msgid "You do not have permission to perform this action."
+msgstr ""
+
+#: admin/image-optimizer-settings.php:794
+#: msh-image-optimizer/admin/image-optimizer-settings.php:794
+msgid "Select…"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:845
+#: msh-image-optimizer/admin/image-optimizer-settings.php:845
+msgid "Profile Label"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:851
+#: msh-image-optimizer/admin/image-optimizer-settings.php:851
+msgid "Profile Key"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:852
+#: msh-image-optimizer/admin/image-optimizer-settings.php:852
+msgid "Auto-generated from label"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:857
+#: msh-image-optimizer/admin/image-optimizer-settings.php:857
+msgid "Usage"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:859
+#: msh-image-optimizer/admin/image-optimizer-settings.php:859
+msgid "Select usage…"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:861
+#: msh-image-optimizer/admin/image-optimizer-settings.php:861
+msgid "Landing Page"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:864
+#: msh-image-optimizer/admin/image-optimizer-settings.php:864
+msgid "Locale / Language"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:867
+#: msh-image-optimizer/admin/image-optimizer-settings.php:867
+msgid "Campaign"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:870
+#: msh-image-optimizer/admin/image-optimizer-settings.php:870
+msgid "Custom"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:877
+#: msh-image-optimizer/admin/image-optimizer-settings.php:877
+msgid "Locale code (optional)"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:885
+#: msh-image-optimizer/admin/image-optimizer-settings.php:885
+msgid "Notes"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:891
+#: msh-image-optimizer/admin/image-optimizer-settings.php:891
+msgid "Context Details"
+msgstr ""
+
+#: admin/image-optimizer-settings.php:918
+#: msh-image-optimizer/admin/image-optimizer-settings.php:918
+msgid "Remove profile"
+msgstr ""
+
+#: includes/class-msh-ai-ajax-handlers.php:112
+#: msh-image-optimizer/includes/class-msh-ai-ajax-handlers.php:112
+msgid "Unauthorized"
+msgstr ""
+
+#: includes/class-msh-ai-ajax-handlers.php:116
+#: msh-image-optimizer/includes/class-msh-ai-ajax-handlers.php:116
+msgid "AI Service not available"
+msgstr ""
+
+#: includes/class-msh-ai-service.php:323
+#: msh-image-optimizer/includes/class-msh-ai-service.php:323
+msgid "No images to process."
+msgstr ""
+
+#: includes/class-msh-ai-service.php:330
+#: msh-image-optimizer/includes/class-msh-ai-service.php:330
+msgid "AI features are not enabled."
+msgstr ""
+
+#: includes/class-msh-ai-service.php:344
+#: msh-image-optimizer/includes/class-msh-ai-service.php:344
+#, php-format
+msgid "Insufficient credits. Need %d credits, but only %d available."
+msgstr ""
+
+#: includes/class-msh-context-helper.php:330
+#: includes/class-msh-context-helper.php:342
+#: includes/class-msh-image-optimizer.php:6657
+#: includes/class-msh-image-optimizer.php:6672
+#: msh-image-optimizer/includes/class-msh-context-helper.php:330
+#: msh-image-optimizer/includes/class-msh-context-helper.php:342
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6657
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6672
+msgid "Auto-detect (default)"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:331
+#: msh-image-optimizer/includes/class-msh-context-helper.php:331
+msgid "Clinical / Treatment"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:332
+#: includes/class-msh-context-helper.php:344
+#: includes/class-msh-image-optimizer.php:2275
+#: includes/class-msh-image-optimizer.php:6659
+#: msh-image-optimizer/includes/class-msh-context-helper.php:332
+#: msh-image-optimizer/includes/class-msh-context-helper.php:344
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2275
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6659
+msgid "Team Member"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:333
+#: msh-image-optimizer/includes/class-msh-context-helper.php:333
+msgid "Patient Testimonial"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:334
+#: includes/class-msh-image-optimizer.php:4318
+#: includes/class-msh-image-optimizer.php:4385
+#: msh-image-optimizer/includes/class-msh-context-helper.php:334
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4318
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4385
+msgid "Service Icon"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:335
+#: msh-image-optimizer/includes/class-msh-context-helper.php:335
+msgid "Facility / Clinic"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:336
+#: msh-image-optimizer/includes/class-msh-context-helper.php:336
+msgid "Equipment"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:337
+#: includes/class-msh-context-helper.php:343
+#: includes/class-msh-image-optimizer.php:6658
+#: msh-image-optimizer/includes/class-msh-context-helper.php:337
+#: msh-image-optimizer/includes/class-msh-context-helper.php:343
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6658
+msgid "Business / General"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:345
+#: includes/class-msh-image-optimizer.php:6660
+#: msh-image-optimizer/includes/class-msh-context-helper.php:345
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6660
+msgid "Customer Testimonial"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:346
+#: includes/class-msh-image-optimizer.php:6661
+#: msh-image-optimizer/includes/class-msh-context-helper.php:346
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6661
+msgid "Icon / Graphic"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:347
+#: includes/class-msh-image-optimizer.php:6662
+#: msh-image-optimizer/includes/class-msh-context-helper.php:347
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6662
+msgid "Workspace / Office"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:348
+#: includes/class-msh-image-optimizer.php:6663
+#: msh-image-optimizer/includes/class-msh-context-helper.php:348
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6663
+msgid "Product / Equipment"
+msgstr ""
+
+#: includes/class-msh-context-helper.php:349
+#: includes/class-msh-image-optimizer.php:6664
+#: msh-image-optimizer/includes/class-msh-context-helper.php:349
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6664
+msgid "Service Highlight"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:326
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:326
+msgid "Business Services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:351
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:351
+msgid "Contact us today to get started."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:353
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:353
+msgid "Reach out for details or a consultation."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:355
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:355
+msgid "Discover how we can support your goals."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:366
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:366
+#, php-format
+msgid "Serving %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:612
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:612
+msgid "Free consultation with flexible payment plans."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:613
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:613
+msgid "Maximum refunds with audit protection included."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:614
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:614
+msgid "ROI-focused strategies with measurable outcomes."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:615
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:615
+msgid "Data-driven campaigns with transparent reporting."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:616
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:616
+msgid "Mobile-first websites with fast load times."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:617
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:617
+msgid "Same-day service with upfront pricing and warranty."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:618
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:618
+msgid "Energy-efficient solutions with financing available."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:619
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:619
+msgid "Code-compliant work backed by safety guarantees."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:620
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:620
+msgid "On-time, on-budget project delivery."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:621
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:621
+msgid "Same-week appointments and most insurance accepted."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:622
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:622
+msgid "Gentle care with sedation options and modern tech."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:623
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:623
+msgid "Evidence-based treatment in a confidential setting."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:624
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:624
+msgid "Holistic programs with personalized treatment plans."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:625
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:625
+msgid "Fast shipping with hassle-free returns."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:626
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:626
+msgid "Personalized service from local experts."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:627
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:627
+msgid "Curated selection guided by industry experts."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:628
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:628
+msgid "Professional service with satisfaction guaranteed."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:666
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:666
+msgid "frozen pipe repair emergency thawing service"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:667
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:667
+msgid "sump pump maintenance flood prevention"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:668
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:668
+msgid "outdoor plumbing irrigation sprinkler repair"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:669
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:669
+msgid "winterization pipe insulation cold weather prep"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:672
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:672
+msgid "emergency ac repair cooling system service"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:673
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:673
+msgid "furnace repair heating system emergency"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:674
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:674
+msgid "hvac maintenance tune up indoor air quality"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:675
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:675
+msgid "heating inspection furnace preparation winter"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:678
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:678
+msgid "detox programs seasonal allergies support"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:679
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:679
+msgid "hydration therapy cooling spa treatments"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:680
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:680
+msgid "immunity boost relaxation stress relief"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:681
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:681
+msgid "warm stone massage winter wellness support"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:682
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:682
+msgid "holistic wellness self care relaxation spa"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:685
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:685
+msgid "tax preparation filing season refunds"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:686
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:686
+msgid "estimated taxes quarterly bookkeeping"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:687
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:687
+msgid "financial planning mid year review"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:688
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:688
+msgid "year end tax strategy deductions planning"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:691
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:691
+msgid "black friday cyber week deals limited time offers"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:692
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:692
+msgid "holiday gifts fast shipping seasonal bundles"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:693
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:693
+msgid "back to school essentials supplies"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:694
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:694
+msgid "exclusive online deals fast shipping secure checkout"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:697
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:697
+msgid "doorcrasher deals limited inventory shop local"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:698
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:698
+msgid "holiday gifts curated local shop small"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:699
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:699
+msgid "back to school must haves local experts"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:700
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:700
+msgid "shop local boutique selection personalized service"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:752
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:752
+msgid "Licensed & insured plumbers."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:753
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:753
+msgid "24/7 emergency response within 60 minutes."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:754
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:754
+msgid "BBB A+ rated service."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:757
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:757
+msgid "Factory-certified HVAC technicians."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:758
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:758
+msgid "Energy Star partner with financing options."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:759
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:759
+msgid "NATE-certified service team."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:762
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:762
+msgid "Certified wellness practitioners."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:763
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:763
+msgid "Personalized treatment plans."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:764
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:764
+msgid "Thousands of satisfied members."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:767
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:767
+msgid "Board-certified physicians."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:768
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:768
+msgid "Accepting new patients."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:769
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:769
+msgid "Most insurance plans accepted."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:772
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:772
+msgid "Gentle, comfort-focused dental care."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:773
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:773
+msgid "Sedation options available."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:774
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:774
+msgid "Insurance welcome; payment plans offered."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:779
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:779
+msgid "Experienced professionals."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:780
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:780
+msgid "Locally trusted service."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:795
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:795
+msgid "Discover holistic wellness solutions tailored to you."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:796
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:796
+msgid "Learn to spot early plumbing issues before they escalate."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:797
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:797
+msgid "Is your HVAC system ready for the season?"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:800
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:800
+msgid "Compare wellness programs designed for lasting balance."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:801
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:801
+msgid "See why homeowners trust our licensed plumbing team."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:802
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:802
+msgid "Compare HVAC maintenance options that protect your comfort."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:805
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:805
+msgid "Book your personalized wellness consultation today."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:806
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:806
+msgid "Schedule same-day plumbing service with upfront pricing."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:807
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:807
+msgid "Reserve your HVAC tune-up and stay comfortable year-round."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:810
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:810
+msgid "Stay consistent with monthly wellness check-ins."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:811
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:811
+msgid "Join our maintenance program and prevent future issues."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:812
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:812
+msgid "Renew your maintenance plan for priority scheduling."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:823
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:823
+msgid "Trusted professionals delivering reliable service."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:850
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:850
+msgid "10,000+ satisfied customers across the GTA."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:851
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:851
+msgid "Serving local homes and businesses for over 20 years."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:852
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:852
+msgid "Rated 4.9/5 by wellness members since 2015."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:853
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:853
+msgid "Recognised for outstanding patient care in the community."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:854
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:854
+msgid "Award-winning dental team with state-of-the-art technology."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:855
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:855
+msgid "Delivering measurable growth for 200+ brands."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:856
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:856
+msgid "Designed and launched 500+ conversion-focused websites."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:896
+#: includes/class-msh-image-optimizer.php:924
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:896
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:924
+msgid "Professional services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:899
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:899
+#, php-format
+msgid "%1$s specializing in %2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:927
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:927
+#, php-format
+msgid "%1$s serving %2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:1544
+#: includes/class-msh-image-optimizer.php:1552
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:1544
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:1552
+msgid "Services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2275
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2275
+msgid "Healthcare Professional"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2303
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2303
+#, php-format
+msgid "%1$s from %2$s%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2310
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2310
+#, php-format
+msgid "%1$s – part of the %2$s team"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2317
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2317
+#, php-format
+msgid "Meet %1$s from %2$s%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2339
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2339
+msgid "Patient"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2339
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2339
+msgid "Client"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2348
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2348
+#, php-format
+msgid "%1$s shares %2$s recovery experience at %3$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2355
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2355
+#, php-format
+msgid "Patient testimonial from %1$s highlighting %2$s recovery at %3$s %4$s. %5$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2368
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2368
+#, php-format
+msgid "Patient %1$s shares %2$s recovery story at %3$s %4$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2377
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2377
+#, php-format
+msgid "%1$s Success Story – %2$s%3$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2385
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2385
+#, php-format
+msgid "Testimonial from %1$s showcasing %2$s outcomes with %3$s%4$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2397
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2397
+#, php-format
+msgid "%1$s shares their experience with %2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2404
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2404
+#, php-format
+msgid "Client %1$s testimonial for %2$s%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2440
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2440
+#, php-format
+msgid "%1$s Icon – %2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2441
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2441
+#, php-format
+msgid "%s Icon"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2448
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2448
+#, php-format
+msgid "Illustrated %1$s icon for %2$s%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2449
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2449
+#, php-format
+msgid "Illustrated %s icon."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2453
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2453
+#, php-format
+msgid "Custom %1$s icon supporting %2$s digital experience%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2455
+#: includes/class-msh-image-optimizer.php:3634
+#: includes/class-msh-image-optimizer.php:6961
+#: includes/class-msh-image-optimizer.php:6981
+#: includes/class-msh-image-optimizer.php:7001
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2455
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3634
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6961
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6981
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7001
+msgid "the brand"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2458
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2458
+#, php-format
+msgid "Designed for %s navigation."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2465
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2465
+#, php-format
+msgid "%1$s icon for %2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2475
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2475
+#, php-format
+msgid "%s Logo"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2476
+#: includes/class-msh-image-optimizer.php:4303
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2476
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4303
+msgid "Brand Logo"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2483
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2483
+#, php-format
+msgid "Official logo for %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2484
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2484
+msgid "Official brand logo"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2487
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2487
+#, php-format
+msgid "%1$s %2$s branding"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2488
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2488
+#, php-format
+msgid "Branding for %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2492
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2492
+#, php-format
+msgid "Official %1$s logo showcasing %2$s%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2493
+#: includes/class-msh-image-optimizer.php:2689
+#: includes/class-msh-image-optimizer.php:2701
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2493
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2689
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2701
+msgid "the business"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2513
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2513
+msgid "Featured Product"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2526
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2526
+#, php-format
+msgid "Product spotlight: %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2528
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2528
+#, php-format
+msgid " from %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2531
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2531
+#, php-format
+msgid " in %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2536
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2536
+#, php-format
+msgid "Signature offering from %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2536
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2536
+msgid "Signature offering."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2549
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2549
+#, php-format
+msgid "%1$s provides %2$s solutions like %3$s%4$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2550
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2550
+msgid "This business"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2635
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2635
+#, php-format
+msgid "%1$s Workspace – %2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2636
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2636
+#, php-format
+msgid "Workspace – %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2639
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2639
+#, php-format
+msgid "Interior view of %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2640
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2640
+#, php-format
+msgid "Interior workspace%1$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2643
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2643
+#, php-format
+msgid "Collaborative space for %1$s team members."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2649
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2649
+#, php-format
+msgid "The %1$s workspace%2$s designed for %3$s collaboration."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2650
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2650
+msgid "business"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2678
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2678
+msgid "Operational Equipment"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2688
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2688
+#, php-format
+msgid "Operational equipment at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2694
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2694
+#, php-format
+msgid "Equipment supporting %s delivery."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2700
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2700
+#, php-format
+msgid "Professional equipment used by %1$s for %2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2725
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2725
+msgid "Plumbing Specialists"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2731
+#: includes/class-msh-image-optimizer.php:2779
+#: includes/class-msh-image-optimizer.php:2827
+#: includes/class-msh-image-optimizer.php:2875
+#: includes/class-msh-image-optimizer.php:2923
+#: includes/class-msh-image-optimizer.php:2971
+#: includes/class-msh-image-optimizer.php:3019
+#: includes/class-msh-image-optimizer.php:3067
+#: includes/class-msh-image-optimizer.php:3115
+#: includes/class-msh-image-optimizer.php:3211
+#: includes/class-msh-image-optimizer.php:3259
+#: includes/class-msh-image-optimizer.php:3307
+#: includes/class-msh-image-optimizer.php:3355
+#: includes/class-msh-image-optimizer.php:3403
+#: includes/class-msh-image-optimizer.php:3532
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2731
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2779
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2827
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2875
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2923
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2971
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3019
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3067
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3115
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3211
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3259
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3307
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3355
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3403
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3532
+#, php-format
+msgid "%1$s at %2$s%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2737
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2737
+#, php-format
+msgid "Plumbing Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2739
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2739
+#, php-format
+msgid "Professional plumbing services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2745
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2745
+msgid "Licensed plumbing contractors"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2748
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2748
+#, php-format
+msgid "Licensed, insured plumbers serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2749
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2749
+msgid "Licensed, insured plumbing team."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2752
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2752
+msgid "Professional plumbing services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2773
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2773
+msgid "HVAC Experts"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2785
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2785
+#, php-format
+msgid "HVAC Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2787
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2787
+#, php-format
+msgid "Heating and cooling services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2793
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2793
+msgid "Licensed HVAC technicians"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2796
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2796
+#, php-format
+msgid "Licensed HVAC contractors serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2797
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2797
+msgid "Licensed HVAC contractors."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2800
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2800
+msgid "Professional heating and cooling services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2821
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2821
+msgid "Electrical Specialists"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2833
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2833
+#, php-format
+msgid "Electrical Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2835
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2835
+#, php-format
+msgid "Licensed electrical services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2841
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2841
+msgid "Licensed electrical contractors"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2844
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2844
+#, php-format
+msgid "Licensed, insured electricians serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2845
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2845
+msgid "Licensed, insured electricians."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2848
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2848
+msgid "Professional electrical services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2869
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2869
+msgid "Renovation Experts"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2881
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2881
+#, php-format
+msgid "Renovation Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2883
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2883
+#, php-format
+msgid "Renovation and construction services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2889
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2889
+msgid "Licensed general contractors"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2892
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2892
+#, php-format
+msgid "Licensed, bonded contractors serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2893
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2893
+msgid "Licensed, bonded contractors."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2896
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2896
+msgid "Professional renovation and construction services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2917
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2917
+msgid "Law Firm"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2929
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2929
+#, php-format
+msgid "Legal Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2931
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2931
+#, php-format
+msgid "Legal representation at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2937
+#: includes/class-msh-image-optimizer.php:2944
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2937
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2944
+msgid "Professional legal services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2940
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2940
+#, php-format
+msgid "Licensed attorneys serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2941
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2941
+msgid "Licensed attorneys providing confidential consultations."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2965
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2965
+msgid "Accounting Firm"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2977
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2977
+#, php-format
+msgid "Accounting Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2979
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2979
+#, php-format
+msgid "Accounting and tax services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2985
+#: includes/class-msh-image-optimizer.php:2992
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2985
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2992
+msgid "Comprehensive accounting and tax services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2988
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2988
+#, php-format
+msgid "Certified accounting professionals serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:2989
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:2989
+msgid "Certified accounting professionals delivering trusted guidance."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3013
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3013
+msgid "Consulting Agency"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3025
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3025
+#, php-format
+msgid "Business Consulting – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3027
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3027
+#, php-format
+msgid "Business consulting services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3033
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3033
+msgid "Strategic business consulting"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3036
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3036
+#, php-format
+msgid "Strategic consultants supporting %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3037
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3037
+msgid "Strategic consultants delivering measurable growth."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3040
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3040
+msgid "Strategic business consulting services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3073
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3073
+#, php-format
+msgid "Marketing Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3075
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3075
+#, php-format
+msgid "Digital marketing services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3081
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3081
+msgid "Full-service marketing agency"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3084
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3084
+#, php-format
+msgid "Strategic marketers serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3085
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3085
+msgid "Strategic marketers delivering measurable campaigns."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3088
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3088
+msgid "Full-service marketing and brand strategy"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3109
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3109
+msgid "Web Design Studio"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3121
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3121
+#, php-format
+msgid "Web Design Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3123
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3123
+#, php-format
+msgid "Web design and development at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3129
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3129
+msgid "Custom web design and development"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3132
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3132
+#, php-format
+msgid "Website specialists serving %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3133
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3133
+msgid "Website specialists delivering responsive, high-performing sites."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3136
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3136
+msgid "Custom website design and development services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3166
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3166
+#, php-format
+msgid "%1$s available from %2$s%3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3172
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3172
+#, php-format
+msgid "Shop Online – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3174
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3174
+#, php-format
+msgid "Online products from %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3180
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3180
+msgid "Premium products with fast shipping"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3181
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3181
+msgid "Fast shipping, secure checkout, satisfaction guaranteed."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3184
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3184
+msgid "Premium products available online"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3205
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3205
+msgid "Local Retailer"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3217
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3217
+#, php-format
+msgid "Local Retail – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3219
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3219
+#, php-format
+msgid "Local retail products at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3225
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3225
+msgid "Personalized local shopping experience"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3228
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3228
+#, php-format
+msgid "Local store serving %s with curated selections."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3229
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3229
+msgid "Local store offering curated selections and personalized service."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3232
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3232
+msgid "Curated local retail products"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3253
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3253
+msgid "Specialty Provider"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3265
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3265
+#, php-format
+msgid "Specialty Products – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3267
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3267
+#, php-format
+msgid "Specialty products at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3273
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3273
+msgid "Expertly curated specialty items"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3276
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3276
+#, php-format
+msgid "Specialty consultants serving %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3277
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3277
+msgid "Specialty consultants delivering expert product guidance."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3280
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3280
+msgid "Curated specialty products and expert guidance"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3313
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3313
+#, php-format
+msgid "Medical Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3315
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3315
+#, php-format
+msgid "Medical services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3321
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3321
+msgid "Comprehensive medical care"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3324
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3324
+#, php-format
+msgid "Board-certified physicians serving %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3325
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3325
+msgid "Board-certified physicians providing trusted care."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3328
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3328
+msgid "Comprehensive medical care and treatment"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3349
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3349
+msgid "Dental Clinic"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3361
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3361
+#, php-format
+msgid "Dental Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3363
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3363
+#, php-format
+msgid "Dental care at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3369
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3369
+msgid "Comprehensive dental care"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3372
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3372
+#, php-format
+msgid "Licensed dentists serving %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3373
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3373
+msgid "Licensed dentists providing family-friendly care."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3376
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3376
+msgid "Comprehensive dental care for the whole family"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3397
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3397
+msgid "Therapy Practice"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3409
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3409
+#, php-format
+msgid "Therapy Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3411
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3411
+#, php-format
+msgid "Therapy and counseling at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3417
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3417
+msgid "Professional therapy and counseling"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3420
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3420
+#, php-format
+msgid "Licensed therapists supporting %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3421
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3421
+msgid "Licensed therapists providing confidential support."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3424
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3424
+msgid "Professional therapy and counseling services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3447
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3447
+msgid "Wellness Studio"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3457
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3457
+#, php-format
+msgid "Wellness Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3465
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3465
+msgid "Holistic wellness services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3466
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3466
+msgid "at"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3479
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3479
+msgid "Holistic wellness and self-care services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3485
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3485
+#, php-format
+msgid "Certified wellness practitioners serving %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3486
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3486
+msgid "Certified wellness practitioners delivering personalized care."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3493
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3493
+msgid "Holistic wellness and self-care services tailored to your goals."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3496
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3496
+#, php-format
+msgid "Currently focusing on %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3538
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3538
+#, php-format
+msgid "Professional Services – %1$s%2$s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3540
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3540
+#, php-format
+msgid "Professional services at %1$s%2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3546
+#: includes/class-msh-image-optimizer.php:3553
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3546
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3553
+msgid "Professional services tailored to your needs"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3549
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3549
+#, php-format
+msgid "Specialists supporting %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3550
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3550
+msgid "Specialists delivering personalized service."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3625
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3625
+msgid "Brand Overview"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3639
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3639
+#, php-format
+msgid "%1$s visual created for %2$s in %3$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3646
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3646
+#, php-format
+msgid "%1$s visual created for %2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3654
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3654
+#, php-format
+msgid "%1$s visual in %2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3659
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3659
+#, php-format
+msgid "Visual of %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3666
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3666
+#, php-format
+msgid "%1$s visual for %2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3671
+#: includes/class-msh-image-optimizer.php:3687
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3671
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3687
+#, php-format
+msgid "Visual highlight: %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3675
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3675
+#, php-format
+msgid "Brand visual for %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3676
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3676
+msgid "Brand visual highlight."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3679
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3679
+msgid "this brand"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3682
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3682
+msgid "brand imagery"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3689
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3689
+msgid "Visual highlight from the brand collection."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3694
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3694
+#, php-format
+msgid "Created for %1$s in %2$s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3696
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3696
+#, php-format
+msgid "Created for %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3699
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3699
+#, php-format
+msgid "Captured in %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:3704
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:3704
+#, php-format
+msgid "Industry focus: %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4288
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4288
+msgid "Brand Visual"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4306
+#: includes/class-msh-image-optimizer.php:4334
+#: includes/class-msh-image-optimizer.php:4383
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4306
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4334
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4383
+msgid "Team Portrait"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4309
+#: includes/class-msh-image-optimizer.php:4384
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4309
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4384
+msgid "Workspace Interior"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4312
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4312
+msgid "Product Showcase"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4315
+#: includes/class-msh-image-optimizer.php:4380
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4315
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4380
+msgid "Brand Graphic"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4326
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4326
+msgid "Classic Gallery"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4330
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4330
+msgid "Creative Gallery"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4341
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4341
+msgid "Brand Gallery"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4348
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4348
+msgid "Brand Slider"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4353
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4353
+#, php-format
+msgid "%s Brand"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4357
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4357
+msgid "Brand Imagery"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4381
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4381
+msgid "Product Photo"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4382
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4382
+msgid "Logo Mark"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:4402
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:4402
+#, php-format
+msgid "Asset %d"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:5184
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:5184
+msgid "No filename suggestion available"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:5189
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:5189
+msgid "Invalid filename suggestion"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:5193
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:5193
+msgid "Safe rename system not available."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:5235
+#: includes/class-msh-image-optimizer.php:7621
+#: includes/class-msh-image-optimizer.php:8083
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:5235
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7621
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:8083
+msgid "Filename already optimized"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6680
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6680
+msgid "Unknown"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6729
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6729
+msgid "Manual override"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6729
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6729
+msgid "Auto-detected"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6737
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6737
+#, php-format
+msgid "Auto suggestion: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6743
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6743
+#, php-format
+msgid "Service focus: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6749
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6749
+#, php-format
+msgid "Asset type: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6750
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6750
+msgid "General"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6755
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6755
+#, php-format
+msgid "Product indicator: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6756
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6756
+msgid "Medical"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6761
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6761
+#, php-format
+msgid "Icon category: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6762
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6762
+msgid "Clinical"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6767
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6767
+#, php-format
+msgid "Appears on: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6778
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6778
+msgid "The optimizer will honour this manual context until you switch back to Auto-detect."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6779
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6779
+msgid "Auto-detect uses usage data, taxonomies, and filenames to pick the best context. Select a manual option to lock it in."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6784
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6784
+#, php-format
+msgid "Last auto-detected context: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6785
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6785
+msgid "Run the analyzer to record the latest auto-detected context for comparison."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6810
+#: includes/class-msh-image-optimizer.php:6818
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6810
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6818
+msgid "Image Context"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6942
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6942
+msgid "Brand"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6944
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6944
+#, php-format
+msgid "%s Brand Overview"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6963
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6963
+#, php-format
+msgid "Visual highlight for %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:6983
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:6983
+#, php-format
+msgid "Brand imagery for %s."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7004
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7004
+msgid "professional services"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7007
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7007
+#, php-format
+msgid "%1$s provides %2$s with customer-ready visual assets."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7271
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7271
+#, php-format
+msgid "Optimized %d high priority images (15+)"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7324
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7324
+#, php-format
+msgid "Optimized %d medium priority images (10-14)"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7378
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7378
+#, php-format
+msgid "Optimized %d remaining images"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7442
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7442
+#, php-format
+msgid "Manual override in effect: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7443
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7443
+#, php-format
+msgid "Auto-detected context: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7446
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7446
+#, php-format
+msgid "(Auto suggestion: %s)"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7590
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7590
+msgid "Filename applied"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7602
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7602
+msgid "WebP renamed to match new filename"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7613
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7613
+msgid "WebP regenerated after rename"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7616
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7616
+msgid "WebP regeneration failed after rename"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7624
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7624
+#, php-format
+msgid "Filename rename failed: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7626
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7626
+msgid "Safe rename verification details logged for review."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7677
+#: includes/class-msh-image-optimizer.php:9061
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7677
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:9061
+msgid "Invalid attachment ID."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7696
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7696
+msgid "Invalid context selection."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7760
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7760
+msgid "Unable to refresh analyzer data."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7944
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7944
+msgid "Safe rename system is not available on this site."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:7951
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:7951
+msgid "Safe rename system is not fully loaded."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:8067
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:8067
+msgid "Test mode - rename simulated only."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:8104
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:8104
+#, php-format
+msgid "References updated: %d"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:8194
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:8194
+#, php-format
+msgid "Safe rename failed: %s"
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:8769
+#: includes/class-msh-image-optimizer.php:8784
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:8769
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:8784
+msgid "Unauthorized."
+msgstr ""
+
+#: includes/class-msh-image-optimizer.php:8864
+#: msh-image-optimizer/includes/class-msh-image-optimizer.php:8864
+msgid "Safe rename failed."
+msgstr ""
+
+#: includes/class-msh-image-usage-index.php:234
+#: msh-image-optimizer/includes/class-msh-image-usage-index.php:234
+msgid "No media attachments found for indexing."
+msgstr ""
+
+#. translators: 1: number processed, 2: total attachments
+#: includes/class-msh-image-usage-index.php:348
+#: msh-image-optimizer/includes/class-msh-image-usage-index.php:348
+#, php-format
+msgid "Processed %1$d attachment(s) (out of %2$d)."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:332
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:332
+msgid "Starting content scan..."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:363
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:363
+#, php-format
+msgid "Processing image %1$d of %2$d..."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1290
+#: includes/class-msh-media-cleanup.php:2241
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1290
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2241
+msgid "Perceptual hashing is unavailable. Ensure the GD extension is enabled."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1304
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1304
+msgid "No images available for visual similarity scanning."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1325
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1325
+msgid "Preparing visual similarity scan…"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1337
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1337
+msgid "Visual similarity scan initialized."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1598
+#: includes/class-msh-media-cleanup.php:2274
+#: includes/class-msh-media-cleanup.php:2276
+#: includes/class-msh-media-cleanup.php:2303
+#: includes/class-msh-media-cleanup.php:2305
+#: includes/class-msh-media-cleanup.php:2364
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1598
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2274
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2276
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2303
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2305
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2364
+msgid "Visual similarity scan completed."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1770
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1770
+msgid "Exact file match (byte-for-byte identical)."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1773
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1773
+msgid "Exact match"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1847
+#: includes/class-msh-media-cleanup.php:1925
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1847
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1925
+msgid "Filename collision"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1848
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1848
+#, php-format
+msgid "Files share normalized base name “%s”. Review manually."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1851
+#: includes/class-msh-media-cleanup.php:2025
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1851
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2025
+msgid "Filename match"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1919
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1919
+msgid "Definite duplicate"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1921
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1921
+msgid "Likely duplicate"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1923
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1923
+msgid "Possibly related"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1927
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1927
+msgid "Needs review"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1942
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1942
+msgid "0–5 bits difference (≥95% visual similarity)."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1944
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1944
+msgid "6–10 bits difference (85–94% similarity)."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1946
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1946
+msgid "11–15 bits difference (75–84% similarity)."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1948
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1948
+msgid "Grouped by normalized filename – confirm manually."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1951
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1951
+#, php-format
+msgid "Distance: %d bits"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1969
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1969
+msgid "≈100% match"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1973
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1973
+msgid "High visual match"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1977
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1977
+msgid "Moderate similarity"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1980
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1980
+msgid "Low similarity"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:1999
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:1999
+msgid "Exact file hash"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:2008
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2008
+#, php-format
+msgid "Visual %.1f%%"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:2016
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2016
+#, php-format
+msgid "%d-bit diff"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:2033
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2033
+msgid "Heuristic match"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:2250
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2250
+msgid "Visual similarity scan state not found. Please restart the scan."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:2340
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2340
+#, php-format
+msgid "Processed %1$d of %2$d images…"
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:2397
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2397
+msgid "No visual scan in progress."
+msgstr ""
+
+#: includes/class-msh-media-cleanup.php:2434
+#: msh-image-optimizer/includes/class-msh-media-cleanup.php:2434
+msgid "No cached visual scan results found. Run the scan first."
+msgstr ""
+
+#: includes/class-msh-metadata-regeneration-background.php:75
+#: msh-image-optimizer/includes/class-msh-metadata-regeneration-background.php:75
+msgid "No images selected for regeneration."
+msgstr ""
+
+#: includes/class-msh-metadata-regeneration-background.php:81
+#: msh-image-optimizer/includes/class-msh-metadata-regeneration-background.php:81
+msgid "Another regeneration job is already running."
+msgstr ""
+
+#: includes/class-msh-safe-rename-system.php:79
+#: msh-image-optimizer/includes/class-msh-safe-rename-system.php:79
+msgid "Original file not found for attachment."
+msgstr ""
+
+#: includes/class-msh-safe-rename-system.php:115
+#: msh-image-optimizer/includes/class-msh-safe-rename-system.php:115
+msgid "Test mode - no filesystem changes applied."
+msgstr ""
+
+#: includes/class-msh-usage-index-background.php:271
+#: msh-image-optimizer/includes/class-msh-usage-index-background.php:271
+msgid "Smart index rebuild finished."
+msgstr ""
+
+#: includes/class-msh-usage-index-background.php:312
+#: msh-image-optimizer/includes/class-msh-usage-index-background.php:312
+msgid "Usage index background job completed."
+msgstr ""
+
+#: includes/class-msh-usage-index-background.php:343
+#: msh-image-optimizer/includes/class-msh-usage-index-background.php:343
+msgid "Force usage index rebuild queued. Processing all attachments in the background."
+msgstr ""
+
+#: includes/class-msh-usage-index-background.php:344
+#: msh-image-optimizer/includes/class-msh-usage-index-background.php:344
+msgid "Smart usage index rebuild queued. Background job will refresh the cache shortly."
+msgstr ""
