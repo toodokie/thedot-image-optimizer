@@ -236,7 +236,7 @@ class MSH_Hub_Page {
 	private function render_tab_content( $tab ) {
 		switch ( $tab ) {
 			case 'history':
-				echo '<p>' . esc_html__( 'History tab - Coming soon...', 'msh-image-optimizer' ) . '</p>';
+				$this->render_history_tab();
 				break;
 			case 'queue':
 				$this->render_queue_tab();
@@ -245,11 +245,7 @@ class MSH_Hub_Page {
 				$this->render_events_tab();
 				break;
 			case 'sync':
-				if ( function_exists( 'msh_is_pro_active' ) && ! msh_is_pro_active() ) {
-					echo '<p>' . esc_html__( 'Sync tab - Pro feature coming soon...', 'msh-image-optimizer' ) . '</p>';
-				} else {
-					echo '<p>' . esc_html__( 'Sync tab - Coming soon...', 'msh-image-optimizer' ) . '</p>';
-				}
+				$this->render_sync_tab();
 				break;
 			case 'metadata':
 			case 'cache':
@@ -766,6 +762,188 @@ class MSH_Hub_Page {
 				</li>
 			<?php endforeach; ?>
 		</ul>
+		<?php
+	}
+
+	/**
+	 * Render History tab content.
+	 *
+	 * Shows version history and metadata change timeline.
+	 *
+	 * @return void
+	 */
+	private function render_history_tab() {
+		// Get version history if the helper function exists
+		$history_entries = array();
+		if ( function_exists( 'msh_get_version_history' ) ) {
+			$history_entries = msh_get_version_history( array( 'limit' => 50 ) );
+		}
+		?>
+		<div class="msh-history-tab">
+			<div class="msh-history-intro">
+				<p>
+					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
+					<?php esc_html_e( 'Track all metadata changes over time. Review what was changed, when, and by whom (manual vs AI). Useful for auditing optimization decisions and rollback planning.', 'msh-image-optimizer' ); ?>
+				</p>
+			</div>
+
+			<?php if ( ! empty( $history_entries ) ) : ?>
+				<div class="msh-history-timeline">
+					<table class="msh-table msh-history-table">
+						<thead>
+							<tr>
+								<th><?php esc_html_e( 'Date/Time', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Attachment', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Field', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Change', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Source', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Version', 'msh-image-optimizer' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<?php foreach ( $history_entries as $entry ) : ?>
+								<tr>
+									<td><?php echo esc_html( $entry['timestamp'] ?? '—' ); ?></td>
+									<td>
+										<a href="<?php echo esc_url( admin_url( 'post.php?post=' . ( $entry['attachment_id'] ?? 0 ) . '&action=edit' ) ); ?>">
+											#<?php echo esc_html( $entry['attachment_id'] ?? '—' ); ?>
+										</a>
+									</td>
+									<td><?php echo esc_html( ucfirst( $entry['field'] ?? '—' ) ); ?></td>
+									<td class="msh-history-change">
+										<div class="msh-change-old"><?php echo esc_html( wp_trim_words( $entry['old_value'] ?? '', 10 ) ); ?></div>
+										<div class="msh-change-arrow">→</div>
+										<div class="msh-change-new"><?php echo esc_html( wp_trim_words( $entry['new_value'] ?? '', 10 ) ); ?></div>
+									</td>
+									<td><span class="msh-badge msh-badge-<?php echo esc_attr( strtolower( $entry['source'] ?? 'manual' ) ); ?>"><?php echo esc_html( ucfirst( $entry['source'] ?? 'Manual' ) ); ?></span></td>
+									<td><?php echo esc_html( $entry['version'] ?? '1' ); ?></td>
+								</tr>
+							<?php endforeach; ?>
+						</tbody>
+					</table>
+				</div>
+			<?php else : ?>
+				<div class="msh-placeholder-state">
+					<div class="msh-placeholder-icon">📜</div>
+					<h3><?php esc_html_e( 'No Version History Yet', 'msh-image-optimizer' ); ?></h3>
+					<p><?php esc_html_e( 'Once you start optimizing images and making metadata changes, the version timeline will appear here. Each change is tracked with before/after values, timestamps, and source attribution.', 'msh-image-optimizer' ); ?></p>
+					<p class="msh-placeholder-note">
+						<strong><?php esc_html_e( 'What gets tracked:', 'msh-image-optimizer' ); ?></strong><br>
+						<?php esc_html_e( 'Title updates, ALT text changes, caption edits, description modifications, filename renames, and locale-specific metadata.', 'msh-image-optimizer' ); ?>
+					</p>
+				</div>
+			<?php endif; ?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render Sync tab content.
+	 *
+	 * Cloud synchronization interface (Pro feature).
+	 *
+	 * @return void
+	 */
+	private function render_sync_tab() {
+		$is_pro = function_exists( 'msh_is_pro_active' ) && msh_is_pro_active();
+
+		if ( ! $is_pro ) {
+			// Show Pro upsell
+			?>
+			<div class="msh-sync-tab msh-pro-locked">
+				<div class="msh-pro-upsell">
+					<div class="msh-pro-icon">🔒</div>
+					<h2><?php esc_html_e( 'Cloud Sync – Pro Feature', 'msh-image-optimizer' ); ?></h2>
+					<p class="msh-pro-description">
+						<?php esc_html_e( 'Sync optimized metadata across multiple WordPress sites, maintain consistency across staging/production environments, and backup your metadata to the cloud for disaster recovery.', 'msh-image-optimizer' ); ?>
+					</p>
+
+					<div class="msh-pro-features">
+						<h3><?php esc_html_e( 'What You Get:', 'msh-image-optimizer' ); ?></h3>
+						<ul>
+							<li>✓ <?php esc_html_e( 'Automatic cloud backup of all metadata', 'msh-image-optimizer' ); ?></li>
+							<li>✓ <?php esc_html_e( 'Push/pull sync between multiple sites', 'msh-image-optimizer' ); ?></li>
+							<li>✓ <?php esc_html_e( 'Conflict resolution with version control', 'msh-image-optimizer' ); ?></li>
+							<li>✓ <?php esc_html_e( 'Scheduled automatic sync (hourly/daily)', 'msh-image-optimizer' ); ?></li>
+							<li>✓ <?php esc_html_e( 'Restore to any previous backup point', 'msh-image-optimizer' ); ?></li>
+						</ul>
+					</div>
+
+					<div class="msh-pro-cta">
+						<a href="https://thedot.com/pricing" target="_blank" rel="noopener noreferrer" class="button button-primary button-hero">
+							<?php esc_html_e( 'Upgrade to Pro', 'msh-image-optimizer' ); ?>
+						</a>
+						<a href="https://thedot.com/features/sync" target="_blank" rel="noopener noreferrer" class="button button-secondary">
+							<?php esc_html_e( 'Learn More', 'msh-image-optimizer' ); ?>
+						</a>
+					</div>
+				</div>
+			</div>
+			<?php
+			return;
+		}
+
+		// Pro users see the actual sync interface
+		$sync_status = function_exists( 'msh_get_sync_status' ) ? msh_get_sync_status() : array(
+			'enabled'        => false,
+			'last_sync'      => null,
+			'next_scheduled' => null,
+			'total_synced'   => 0,
+			'pending'        => 0,
+		);
+		?>
+		<div class="msh-sync-tab">
+			<div class="msh-sync-intro">
+				<p>
+					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
+					<?php esc_html_e( 'Manage cloud synchronization of your optimized metadata. Keep multiple sites in sync or maintain reliable backups for disaster recovery.', 'msh-image-optimizer' ); ?>
+				</p>
+			</div>
+
+			<div class="msh-sync-status-card">
+				<h3><?php esc_html_e( 'Sync Status', 'msh-image-optimizer' ); ?></h3>
+				<div class="msh-sync-stats">
+					<div class="msh-sync-stat">
+						<span class="msh-stat-label"><?php esc_html_e( 'Status:', 'msh-image-optimizer' ); ?></span>
+						<span class="msh-stat-value msh-sync-<?php echo $sync_status['enabled'] ? 'active' : 'inactive'; ?>">
+							<?php echo $sync_status['enabled'] ? esc_html__( 'Active', 'msh-image-optimizer' ) : esc_html__( 'Inactive', 'msh-image-optimizer' ); ?>
+						</span>
+					</div>
+					<div class="msh-sync-stat">
+						<span class="msh-stat-label"><?php esc_html_e( 'Last Sync:', 'msh-image-optimizer' ); ?></span>
+						<span class="msh-stat-value"><?php echo esc_html( $sync_status['last_sync'] ?? __( 'Never', 'msh-image-optimizer' ) ); ?></span>
+					</div>
+					<div class="msh-sync-stat">
+						<span class="msh-stat-label"><?php esc_html_e( 'Next Scheduled:', 'msh-image-optimizer' ); ?></span>
+						<span class="msh-stat-value"><?php echo esc_html( $sync_status['next_scheduled'] ?? __( 'Not scheduled', 'msh-image-optimizer' ) ); ?></span>
+					</div>
+					<div class="msh-sync-stat">
+						<span class="msh-stat-label"><?php esc_html_e( 'Total Synced:', 'msh-image-optimizer' ); ?></span>
+						<span class="msh-stat-value"><?php echo esc_html( number_format_i18n( $sync_status['total_synced'] ) ); ?></span>
+					</div>
+					<div class="msh-sync-stat">
+						<span class="msh-stat-label"><?php esc_html_e( 'Pending:', 'msh-image-optimizer' ); ?></span>
+						<span class="msh-stat-value"><?php echo esc_html( number_format_i18n( $sync_status['pending'] ) ); ?></span>
+					</div>
+				</div>
+			</div>
+
+			<div class="msh-sync-actions">
+				<button type="button" class="button button-primary" id="msh-trigger-sync">
+					<?php esc_html_e( 'Sync Now', 'msh-image-optimizer' ); ?>
+				</button>
+				<button type="button" class="button button-secondary" id="msh-configure-sync">
+					<?php esc_html_e( 'Configure Sync', 'msh-image-optimizer' ); ?>
+				</button>
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer-settings&tab=sync' ) ); ?>" class="button">
+					<?php esc_html_e( 'Sync Settings', 'msh-image-optimizer' ); ?>
+				</a>
+			</div>
+
+			<div class="msh-placeholder-note" style="margin-top: 20px;">
+				<p><em><?php esc_html_e( 'Note: The Sync feature backend is still in development. Full functionality coming soon.', 'msh-image-optimizer' ); ?></em></p>
+			</div>
+		</div>
 		<?php
 	}
 
