@@ -780,7 +780,7 @@ class MSH_Hub_Page {
 		}
 		?>
 		<div class="msh-history-tab">
-			<div class="msh-history-intro">
+			<div class="msh-cache-intro">
 				<p>
 					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
 					<?php esc_html_e( 'Track all metadata changes over time. Review what was changed, when, and by whom (manual vs AI). Useful for auditing optimization decisions and rollback planning.', 'msh-image-optimizer' ); ?>
@@ -850,7 +850,7 @@ class MSH_Hub_Page {
 		if ( ! $is_pro ) {
 			// Show Pro upsell
 			?>
-			<div class="msh-sync-tab msh-pro-locked">
+			<div class="msh-sync-tab">
 				<div class="msh-pro-upsell">
 					<div class="msh-pro-icon">🔒</div>
 					<h2><?php esc_html_e( 'Cloud Sync – Pro Feature', 'msh-image-optimizer' ); ?></h2>
@@ -861,16 +861,16 @@ class MSH_Hub_Page {
 					<div class="msh-pro-features">
 						<h3><?php esc_html_e( 'What You Get:', 'msh-image-optimizer' ); ?></h3>
 						<ul>
-							<li>✓ <?php esc_html_e( 'Automatic cloud backup of all metadata', 'msh-image-optimizer' ); ?></li>
-							<li>✓ <?php esc_html_e( 'Push/pull sync between multiple sites', 'msh-image-optimizer' ); ?></li>
-							<li>✓ <?php esc_html_e( 'Conflict resolution with version control', 'msh-image-optimizer' ); ?></li>
-							<li>✓ <?php esc_html_e( 'Scheduled automatic sync (hourly/daily)', 'msh-image-optimizer' ); ?></li>
-							<li>✓ <?php esc_html_e( 'Restore to any previous backup point', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Automatic cloud backup of all metadata', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Push/pull sync between multiple sites', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Conflict resolution with version control', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Scheduled automatic sync (hourly/daily)', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Restore to any previous backup point', 'msh-image-optimizer' ); ?></li>
 						</ul>
 					</div>
 
 					<div class="msh-pro-cta">
-						<a href="https://thedot.com/pricing" target="_blank" rel="noopener noreferrer" class="button button-primary button-hero">
+						<a href="https://thedot.com/pricing" target="_blank" rel="noopener noreferrer" class="button button-primary">
 							<?php esc_html_e( 'Upgrade to Pro', 'msh-image-optimizer' ); ?>
 						</a>
 						<a href="https://thedot.com/features/sync" target="_blank" rel="noopener noreferrer" class="button button-secondary">
@@ -893,7 +893,7 @@ class MSH_Hub_Page {
 		);
 		?>
 		<div class="msh-sync-tab">
-			<div class="msh-sync-intro">
+			<div class="msh-cache-intro">
 				<p>
 					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
 					<?php esc_html_e( 'Manage cloud synchronization of your optimized metadata. Keep multiple sites in sync or maintain reliable backups for disaster recovery.', 'msh-image-optimizer' ); ?>
