@@ -12,6 +12,13 @@
 		queueRefreshInterval: null,
 		eventsRefreshInterval: null,
 		eventsPaused: false,
+		modalBackdrop: null,
+		modalDialog: null,
+		modalTitle: null,
+		modalBody: null,
+		modalFooter: null,
+		toast: null,
+		toastTimeout: null,
 
 		/**
 		 * Bootstrap handlers once DOM ready.
@@ -37,36 +44,39 @@
 		 * Enhance cache filter form with AJAX.
 		 */
 		bindCacheFilters: function() {
-			const $form = $('#msh-cache-filter-form');
+		const $form = $('#msh-cache-filter-form');
+		if (!$form.length) {
+			return;
+		}
 
-			if (!$form.length) {
-				return;
-			}
+		const $clear = $('#msh-clear-filters');
 
-			const $clear = $('#msh-clear-filters');
+		$form.on('submit', (event) => {
+			event.preventDefault();
+			this.loadCacheEntries(1);
+		});
 
-			$form.on('submit', (event) => {
+		$form.find('select').on('change', () => {
+			$form.trigger('submit');
+		});
+
+		$form.find('[name="search"]').on('keydown', (event) => {
+			if (event.key === 'Enter') {
 				event.preventDefault();
+				$form.trigger('submit');
+			}
+		});
+
+		if ($clear.length) {
+			$clear.on('click', (event) => {
+				event.preventDefault();
+				this.resetFilters();
 				this.loadCacheEntries(1);
 			});
+		}
 
-			$form.find('select').on('change', () => {
-				$form.trigger('submit');
-			});
-
-			if ($clear.length) {
-				$clear.on('click', (event) => {
-					event.preventDefault();
-					this.resetFilters();
-					this.loadCacheEntries(1);
-				});
-			}
-
-			this.toggleClearLink(
-				$form.find('[name="locale"]').val(),
-				$form.find('[name="staleness"]').val(),
-				$form.find('[name="source"]').val()
-			);
+		this.toggleClearLink();
+	},
 		},
 
 		/**
@@ -99,40 +109,61 @@
 		 * Placeholder bindings retained from earlier scaffold.
 		 */
 		bindAdditionalPlaceholders: function() {
-			$(document).on('click', '#msh-bulk-regenerate', (event) => {
-				event.preventDefault();
-				this.bulkRegenerate();
-			});
+		$(document).on('click', '#msh-bulk-regenerate', (event) => {
+			event.preventDefault();
+			this.bulkRegenerate();
+		});
 
-			$(document).on('click', '#msh-export-csv', (event) => {
-				event.preventDefault();
-				this.exportCSV();
-			});
+		$(document).on('click', '#msh-export-csv', (event) => {
+			event.preventDefault();
+			this.exportCSV();
+		});
 
-			$(document).on('click', '.msh-view-both', (event) => {
-				event.preventDefault();
-				this.viewBoth(event.currentTarget);
-			});
+		$(document).on('click', '.msh-action-preview', (event) => {
+			event.preventDefault();
+			const $button = $(event.currentTarget);
+			console.log('Preview metadata placeholder', $button.data());
+		});
 
-			$(document).on('click', '.msh-switch-source', (event) => {
-				event.preventDefault();
-				this.switchSource(event.currentTarget);
-			});
+		$(document).on('click', '.msh-action-copy', (event) => {
+			event.preventDefault();
+			const value = $(event.currentTarget).data('value') || '';
+			navigator.clipboard?.writeText(value).then(() => {
+				console.log('Copied metadata value');
+			}).catch(() => console.warn('Copy not supported.'));
+		});
+
+		$(document).on('click', '.msh-action-edit', (event) => {
+			event.preventDefault();
+			console.log('Edit metadata placeholder', $(event.currentTarget).data());
+		});
+
+		$(document).on('click', '.msh-action-regenerate', (event) => {
+			event.preventDefault();
+			console.log('Regenerate metadata placeholder', $(event.currentTarget).data());
+		});
+
+		$(document).on('click', '.msh-action-toggle-lock', (event) => {
+			event.preventDefault();
+			console.log('Toggle lock placeholder', $(event.currentTarget).data());
+		});
+	},
 		},
 
 		/**
-		 * Issue AJAX request to fetch filtered cache entries.
+		 * Issue AJAX request to fetch filtered metadata entries.
 		 *
 		 * @param {number} page Page number to load.
 		 */
 		loadCacheEntries: function(page) {
 			const $form = $('#msh-cache-filter-form');
 			const locale = $form.find('[name="locale"]').val();
-			const staleness = $form.find('[name="staleness"]').val();
+			const field = $form.find('[name="field"]').val();
 			const source = $form.find('[name="source"]').val();
+			const status = $form.find('[name="status"]').val();
+			const search = $form.find('[name="search"]').val();
 
-			this.toggleClearLink(locale, staleness, source);
-
+			this.toggleClearLink();
 			this.showCacheLoading();
 
 			$.ajax({
@@ -140,11 +171,13 @@
 				type: 'POST',
 				dataType: 'json',
 				data: {
-					action: 'msh_get_cache_entries',
+					action: 'msh_get_metadata_entries',
 					nonce: window.mshHubData.ajaxNonce,
 					locale,
-					staleness,
+					field,
 					source,
+					status,
+					search,
 					paged: page
 				}
 			})
@@ -159,11 +192,11 @@
 
 					$('#msh-cache-table-body').html(response.data.table_html);
 					$('#msh-cache-pagination').html(response.data.pagination_html);
-					this.updateResultsCount(response.data.total);
+					this.updateResultsCount(response.data.total || 0);
 				})
 				.fail((xhr, status, error) => {
-					console.error('Cache AJAX error:', status, error);
-					alert('Failed to load cache entries. Check console for details.');
+					console.error('Metadata AJAX error:', status, error);
+					alert('Failed to load metadata entries. Check console for details.');
 				})
 				.always(() => {
 					this.hideCacheLoading();
@@ -177,7 +210,7 @@
 		 */
 		updateResultsCount: function(total) {
 			$('.msh-results-count').text(
-				'Showing ' + (parseInt(total, 10) || 0) + ' cache entries'
+				'Showing ' + (parseInt(total, 10) || 0) + ' metadata entries'
 			);
 		},
 
@@ -192,7 +225,8 @@
 
 			$form[0].reset();
 			$form.find('select').val('');
-			this.toggleClearLink('', '', '');
+			$form.find('[name=\"search\"]').val('');
+			this.toggleClearLink();
 		},
 
 		/**
@@ -202,13 +236,20 @@
 		 * @param {string} staleness
 		 * @param {string} source
 		 */
-		toggleClearLink: function(locale, staleness, source) {
+		toggleClearLink: function() {
 			const $clear = $('#msh-clear-filters');
-			if (!$clear.length) {
+			const $form = $('#msh-cache-filter-form');
+			if (!$clear.length || !$form.length) {
 				return;
 			}
 
-			const hasFilters = Boolean(locale || staleness || source);
+			const hasFilters = Boolean(
+				$form.find('[name="locale"]').val() ||
+				$form.find('[name="field"]').val() ||
+				$form.find('[name="source"]').val() ||
+				$form.find('[name="status"]').val() ||
+				$form.find('[name="search"]').val()
+			);
 			$clear.toggleClass('is-disabled', !hasFilters);
 		},
 
@@ -553,8 +594,8 @@
 				}
 			})
 				.done((response) => {
+					const strings = (window.mshHubData && window.mshHubData.i18n) || {};
 					if (!response || !response.success) {
-						const strings = (window.mshHubData && window.mshHubData.i18n) || {};
 						$('#msh-events-stream').html('<p class="msh-placeholder">' + (strings.eventsError || 'Unable to load recent events. Please try again.') + '</p>');
 						return;
 					}
@@ -562,7 +603,7 @@
 					if (response.data && response.data.html) {
 						$('#msh-events-stream').html(response.data.html);
 					} else {
-						$('#msh-events-stream').html('<p class="msh-placeholder">' + (window.mshHubData && window.mshHubData.i18n ? window.mshHubData.i18n.eventsNoData : 'No recent events yet. The feed will populate as activity occurs.') + '</p>');
+						$('#msh-events-stream').html('<p class="msh-placeholder">' + (strings.eventsNoData || 'No recent events yet. The feed will populate as activity occurs.') + '</p>');
 					}
 				})
 				.fail((xhr, status, error) => {

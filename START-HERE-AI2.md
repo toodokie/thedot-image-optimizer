@@ -86,10 +86,26 @@ The Dot → Optimizer Hub
 
 ### Step 5: Build Cache Tab (Your Main Focus)
 
-**File:** `admin/tabs/class-msh-hub-cache-tab.php`
+**UPDATED (Oct 19, 2025):** Use `msh_get_metadata_entries()` for translated metadata.
+
+**File:** Cache tab is already built into `admin/class-msh-hub-page.php`
 
 **Use this helper function (I provide it):**
 ```php
+// Get translated metadata (title, alt, caption, description)
+$results = msh_get_metadata_entries( array(
+    'locale'     => 'es_ES',  // or 'en_US', 'fr_FR'
+    'source'     => 'ai',     // or 'manual'
+    'page'       => 1,
+    'per_page'   => 50,
+) );
+
+// Current data: 13 entries (8 en_US, 5 es_ES, 0 fr_FR)
+```
+
+**Alternative - Phase 3 staleness tracking:**
+```php
+// Get staleness cache (tracks if metadata needs regeneration)
 $results = msh_get_cache_entries( array(
     'locale'     => 'es_ES',
     'staleness'  => 'stale',
@@ -97,8 +113,6 @@ $results = msh_get_cache_entries( array(
     'per_page'   => 50,
 ) );
 ```
-
-**Full documentation:** `docs/interface-contract.md` Section 2, Function 5
 
 ---
 
@@ -125,8 +139,10 @@ $stats = msh_get_job_stats();
 
 ### Rule 3: All Helper Functions Documented
 Every function you need is in `docs/interface-contract.md` Section 2:
-- `msh_get_cache_entries()` - Query metadata cache
+- `msh_get_metadata_entries()` - Query translated metadata (NEW - use this for Cache tab!)
+- `msh_get_cache_entries()` - Query Phase 3 staleness cache
 - `msh_get_job_stats()` - Get queue status
+- `msh_get_recent_events()` - Get event feed (NEW - for Events tab!)
 - `msh_enqueue_job()` - Add job to queue
 - `msh_is_pro_active()` - Check license
 - `msh_telemetry()` - Log events

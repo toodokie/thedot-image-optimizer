@@ -37,74 +37,89 @@ function msh_get_metadata_entries( $args = array() ) {
 	global $wpdb;
 
 	$metadata_table = $wpdb->prefix . 'msh_optimizer_metadata';
+	$cache_table    = $wpdb->prefix . 'optimizer_metadata_cache';
 
-	// Parse args with defaults
 	$args = wp_parse_args( $args, array(
 		'media_id'  => 0,
 		'locale'    => '',
 		'source'    => '',
 		'field'     => '',
+		'status'    => '',
 		'search'    => '',
 		'page'      => 1,
 		'per_page'  => 50,
 	) );
 
-	// Build WHERE clause
-	$where = array( '1=1' );
+	$where  = array( '1=1' );
 	$params = array();
 
 	if ( ! empty( $args['media_id'] ) ) {
-		$where[] = 'media_id = %d';
+		$where[]  = 'm.media_id = %d';
 		$params[] = $args['media_id'];
 	}
 
 	if ( ! empty( $args['locale'] ) ) {
-		$where[] = 'locale = %s';
+		$where[]  = 'm.locale = %s';
 		$params[] = $args['locale'];
 	}
 
 	if ( ! empty( $args['field'] ) ) {
-		$where[] = 'field = %s';
+		$where[]  = 'm.field = %s';
 		$params[] = $args['field'];
 	}
 
 	if ( ! empty( $args['source'] ) ) {
-		$where[] = 'source = %s';
+		$where[]  = 'm.source = %s';
 		$params[] = $args['source'];
 	}
 
 	if ( ! empty( $args['search'] ) ) {
-		$where[] = 'value LIKE %s';
+		$where[]  = 'm.value LIKE %s';
 		$params[] = '%' . $wpdb->esc_like( $args['search'] ) . '%';
 	}
 
+	$status_case = "CASE\n\tWHEN c.id IS NULL THEN 'missing_cache'\n\tWHEN c.input_fingerprint IS NOT NULL AND c.input_fingerprint <> m.checksum THEN 'needs_regen'\n\tWHEN c.ai_model IS NOT NULL AND c.ai_model <> m.version THEN 'outdated_model'\n\tWHEN m.source = 'manual' OR m.approved_by IS NOT NULL THEN 'locked'\n\tELSE 'fresh'\nEND";
+
 	$where_sql = implode( ' AND ', $where );
 
-	// Get total count
-	if ( ! empty( $params ) ) {
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$total = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(*) FROM {$metadata_table} WHERE {$where_sql}", $params ) );
-	} else {
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$total = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$metadata_table} WHERE {$where_sql}" );
+	if ( ! empty( $args['status'] ) ) {
+		switch ( $args['status'] ) {
+			case 'locked':
+				$where_sql .= " AND ( m.source = 'manual' OR m.approved_by IS NOT NULL )";
+				break;
+			case 'missing_cache':
+				$where_sql .= ' AND c.id IS NULL';
+				break;
+			case 'needs_regen':
+				$where_sql .= ' AND c.id IS NOT NULL AND c.input_fingerprint IS NOT NULL AND c.input_fingerprint <> m.checksum';
+				break;
+			case 'outdated_model':
+				$where_sql .= ' AND c.id IS NOT NULL AND c.ai_model IS NOT NULL AND c.ai_model <> m.version';
+				break;
+			case 'fresh':
+				$where_sql .= " AND c.id IS NOT NULL AND ( c.input_fingerprint IS NULL OR c.input_fingerprint = m.checksum ) AND ( c.ai_model IS NULL OR c.ai_model = m.version ) AND ( m.source <> 'manual' AND m.approved_by IS NULL )";
+				break;
+		}
 	}
 
-	// Calculate pagination
-	$per_page = max( 1, (int) $args['per_page'] );
-	$page = max( 1, (int) $args['page'] );
-	$total_pages = ceil( $total / $per_page );
-	$offset = ( $page - 1 ) * $per_page;
+	$count_sql = "SELECT COUNT(*) FROM {$metadata_table} m LEFT JOIN {$cache_table} c ON c.attachment_id = m.media_id AND c.locale = m.locale AND c.field = m.field WHERE {$where_sql}";
 
-	// Build final query with LIMIT
-	$params[] = $offset;
-	$params[] = $per_page;
+	$total = ! empty( $params )
+		? (int) $wpdb->get_var( $wpdb->prepare( $count_sql, $params ) )
+		: (int) $wpdb->get_var( $count_sql );
 
-	if ( count( $params ) > 2 ) {
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$items = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$metadata_table} WHERE {$where_sql} ORDER BY updated_at DESC LIMIT %d, %d", $params ) );
+	$per_page    = max( 1, (int) $args['per_page'] );
+	$page        = max( 1, (int) $args['page'] );
+	$total_pages = $total > 0 ? (int) ceil( $total / $per_page ) : 1;
+	$offset      = ( $page - 1 ) * $per_page;
+
+	$data_sql = "SELECT m.*, c.id AS cache_id, c.input_fingerprint, c.ai_model, {$status_case} AS metadata_status\n\tFROM {$metadata_table} m\n\tLEFT JOIN {$cache_table} c\n\tON c.attachment_id = m.media_id\n\tAND c.locale = m.locale\n\tAND c.field = m.field\n\tWHERE {$where_sql}\n\tORDER BY m.updated_at DESC\n\tLIMIT %d, %d";
+
+	if ( ! empty( $params ) ) {
+		$params_with_limit = array_merge( $params, array( $offset, $per_page ) );
+		$items             = $wpdb->get_results( $wpdb->prepare( $data_sql, $params_with_limit ) );
 	} else {
-		// phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
-		$items = $wpdb->get_results( $wpdb->prepare( "SELECT * FROM {$metadata_table} WHERE {$where_sql} ORDER BY updated_at DESC LIMIT %d, %d", $offset, $per_page ) );
+		$items = $wpdb->get_results( $wpdb->prepare( $data_sql, $offset, $per_page ) );
 	}
 
 	return array(
@@ -113,28 +128,6 @@ function msh_get_metadata_entries( $args = array() ) {
 		'total_pages' => $total_pages,
 	);
 }
-
-/**
- * Get metadata cache entries with filters (Phase 3 staleness tracking).
- *
- * @param array $args {
- *     Query arguments.
- *
- *     @type int    $attachment_id Filter by attachment ID.
- *     @type string $locale        Filter by locale (e.g., 'es_ES').
- *     @type string $staleness     Filter by staleness: 'stale', 'fresh', ''.
- *     @type string $source        Filter by source: 'ai', 'manual', ''.
- *     @type string $field         Filter by field: 'title', 'alt_text', etc.
- *     @type string $search        Search in ai_value or manual_value.
- *     @type int    $page          Page number (default 1).
- *     @type int    $per_page      Results per page (default 50).
- * }
- * @return array {
- *     @type array $items       Array of cache entry objects.
- *     @type int   $total       Total matching entries (before pagination).
- *     @type int   $total_pages Total number of pages.
- * }
- */
 function msh_get_cache_entries( $args = array() ) {
 	global $wpdb;
 

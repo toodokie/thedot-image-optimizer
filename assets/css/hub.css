@@ -274,6 +274,65 @@
     color: #dc3232;
 }
 
+
+/* Metadata status badges */
+.msh-status-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-family: var(--msh-font-heading);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+}
+
+.msh-status-fresh,
+.msh-status-info {
+    background: rgba(53, 51, 47, 0.08);
+    color: var(--msh-charcoal);
+}
+
+.msh-status-warning {
+    background: rgba(255, 185, 0, 0.12);
+    color: var(--msh-charcoal);
+    border-color: rgba(255, 185, 0, 0.35);
+}
+
+.msh-status-error {
+    background: rgba(220, 50, 50, 0.12);
+    color: var(--msh-charcoal);
+    border-color: rgba(220, 50, 50, 0.35);
+}
+
+.msh-status-muted {
+    background: rgba(53, 51, 47, 0.05);
+    color: var(--msh-warm-gray);
+    border-color: rgba(53, 51, 47, 0.12);
+}
+
+.msh-metadata-value {
+    max-width: 360px;
+}
+
+.msh-metadata-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 12px;
+}
+
+.msh-metadata-actions .button-link {
+    font-family: var(--msh-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--msh-charcoal);
+}
+
+.msh-metadata-actions .button-link:hover {
+    color: var(--msh-lime);
+}
+
 /* Table Styles (for Cache/History tabs) */
 .msh-hub-page .wp-list-table {
     font-family: var(--msh-font-body);
@@ -591,6 +650,7 @@
     letter-spacing: 0.08em;
     font-size: 11px;
     color: var(--msh-warm-gray);
+    gap: 12px;
     margin-bottom: 8px;
 }
 
@@ -598,21 +658,56 @@
     color: var(--msh-charcoal);
 }
 
-.msh-event-summary {
-    font-family: var(--msh-font-body);
-    color: var(--msh-charcoal);
-    margin: 0 0 8px;
+.msh-event-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 2px 8px;
+    border-radius: 999px;
+    font-family: var(--msh-font-heading);
+    letter-spacing: 0.06em;
+    font-size: 10px;
+    text-transform: uppercase;
+    border: 1px solid transparent;
 }
 
-.msh-event-details {
-    font-family: monospace;
-    font-size: 12px;
+.msh-event-info {
+    background: rgba(53, 51, 47, 0.08);
     color: var(--msh-charcoal);
-    background: rgba(53, 51, 47, 0.05);
-    padding: 12px;
-    border-radius: 6px;
+}
+
+.msh-event-success {
+    background: rgba(70, 180, 80, 0.12);
+    color: var(--msh-charcoal);
+    border-color: rgba(70, 180, 80, 0.35);
+}
+
+.msh-event-error {
+    background: rgba(220, 50, 50, 0.12);
+    color: var(--msh-charcoal);
+    border-color: rgba(220, 50, 50, 0.35);
+}
+
+.msh-event-warning {
+    background: rgba(255, 185, 0, 0.12);
+    color: var(--msh-charcoal);
+    border-color: rgba(255, 185, 0, 0.35);
+}
+
+.msh-event-time {
+    margin-left: auto;
+}
+
+.msh-event-message {
+    font-family: var(--msh-font-body);
+    color: var(--msh-charcoal);
+    margin: 0 0 6px;
+}
+
+.msh-event-context {
+    font-family: var(--msh-font-body);
+    color: var(--msh-warm-gray);
+    font-size: 12px;
     margin: 0;
-    overflow-x: auto;
 }
 
 /* Status Badges */
