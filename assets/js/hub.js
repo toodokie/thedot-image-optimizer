@@ -20,6 +20,7 @@
 		toast: null,
 		toastTimeout: null,
 		globalHandlersBound: false,
+		metadataHandlersBound: false,
 
 		/**
 		 * Bootstrap handlers once DOM ready.
@@ -30,15 +31,14 @@
 				return;
 			}
 
-			this.bindCacheFilters();
-			this.bindCachePagination();
-			this.bindRegenerateButtons();
+			this.bindGlobalUiHandlers();
+		this.bindCacheFilters();
+		this.bindCachePagination();
+		this.bindRegenerateButtons();
+		this.bindMetadataActions();
 
-			this.bindQueueActions();
-			this.bindEventsFeed();
-
-			// Future features keep their bindings so we do not lose earlier scaffolding.
-			this.bindAdditionalPlaceholders();
+		this.bindQueueActions();
+		this.bindEventsFeed();
 		},
 
 		/**
