@@ -171,27 +171,23 @@ class MSH_Image_Optimizer_Settings {
 						<p><?php esc_html_e( 'Control menu complexity: Basic mode shows essential features only, Advanced mode shows all tools and options.', 'msh-image-optimizer' ); ?></p>
 					</header>
 					<div class="msh-settings-grid">
-						<div class="msh-settings-field msh-user-mode-option">
-							<label style="display: flex; gap: 12px; cursor: pointer; align-items: baseline;">
-								<input type="radio" name="options[user_mode]" value="basic" <?php checked( $user_mode, 'basic' ); ?> style="flex-shrink: 0; margin-top: 4px;">
-								<div style="flex: 1;">
-									<strong style="display: inline;"><?php esc_html_e( 'Basic Mode', 'msh-image-optimizer' ); ?></strong>
-									<p class="description" style="margin: 4px 0 0 0; color: #646970;">
-										<?php esc_html_e( 'Shows Dashboard, Image Optimizer, Settings, and Help. Perfect for day-to-day optimization work.', 'msh-image-optimizer' ); ?>
-									</p>
-								</div>
+						<div class="msh-settings-field msh-user-mode-option" style="display: block; margin-bottom: 16px;">
+							<label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 4px;">
+								<input type="radio" name="options[user_mode]" value="basic" <?php checked( $user_mode, 'basic' ); ?>>
+								<strong><?php esc_html_e( 'Basic Mode', 'msh-image-optimizer' ); ?></strong>
 							</label>
+							<p class="description" style="margin: 0 0 0 28px; color: #646970;">
+								<?php esc_html_e( 'Shows Dashboard, Image Optimizer, Settings, and Help. Perfect for day-to-day optimization work.', 'msh-image-optimizer' ); ?>
+							</p>
 						</div>
-						<div class="msh-settings-field msh-user-mode-option">
-							<label style="display: flex; gap: 12px; cursor: pointer; align-items: baseline;">
-								<input type="radio" name="options[user_mode]" value="advanced" <?php checked( $user_mode, 'advanced' ); ?> style="flex-shrink: 0; margin-top: 4px;">
-								<div style="flex: 1;">
-									<strong style="display: inline;"><?php esc_html_e( 'Advanced Mode', 'msh-image-optimizer' ); ?></strong>
-									<p class="description" style="margin: 4px 0 0 0; color: #646970;">
-										<?php esc_html_e( 'Displays all features including Optimizer Hub, Localization, Insights & Analytics, and Review Center (Pro features require active license).', 'msh-image-optimizer' ); ?>
-									</p>
-								</div>
+						<div class="msh-settings-field msh-user-mode-option" style="display: block; margin-bottom: 16px;">
+							<label style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; margin-bottom: 4px;">
+								<input type="radio" name="options[user_mode]" value="advanced" <?php checked( $user_mode, 'advanced' ); ?>>
+								<strong><?php esc_html_e( 'Advanced Mode', 'msh-image-optimizer' ); ?></strong>
 							</label>
+							<p class="description" style="margin: 0 0 0 28px; color: #646970;">
+								<?php esc_html_e( 'Displays all features including Optimizer Hub, Localization, Insights & Analytics, and Review Center (Pro features require active license).', 'msh-image-optimizer' ); ?>
+							</p>
 						</div>
 					</div>
 				</section>
