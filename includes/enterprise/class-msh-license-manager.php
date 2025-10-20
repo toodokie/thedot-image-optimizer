@@ -248,6 +248,11 @@ class MSH_License_Manager {
 	 * @return bool
 	 */
 	public function is_pro_active() {
+		// Dev mode bypass - allows testing Pro features without license
+		if ( defined( 'MSH_DEV_MODE' ) && MSH_DEV_MODE ) {
+			return true;
+		}
+
 		$status = get_option( self::LICENSE_STATUS_OPTION, 'inactive' );
 		return 'active' === $status;
 	}

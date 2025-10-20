@@ -49,6 +49,10 @@ final class MSH_Image_Optimizer_Plugin {
         if (!defined('MSH_IO_ASSETS_URL')) {
             define('MSH_IO_ASSETS_URL', trailingslashit(MSH_IO_PLUGIN_URL . 'assets'));
         }
+        // Dev mode - enables Pro features for testing without license
+        if (!defined('MSH_DEV_MODE')) {
+            define('MSH_DEV_MODE', defined('WP_DEBUG') && WP_DEBUG);
+        }
     }
 
     private function includes() {
