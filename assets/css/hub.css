@@ -837,22 +837,31 @@
     margin-top: 30px;
 }
 
-.msh-pro-upsell-actions .button-primary {
-    background: var(--msh-charcoal);
-    border-color: var(--msh-charcoal);
-    color: #fff;
+.msh-pro-upsell-actions .button-primary,
+.msh-pro-cta .button-primary,
+.msh-pro-cta .button-primary:hover,
+.msh-pro-cta .button-primary:focus {
+    background: var(--msh-charcoal) !important;
+    border-color: var(--msh-charcoal) !important;
+    color: #fff !important;
     text-transform: uppercase;
     font-family: var(--msh-font-heading);
     letter-spacing: 0.08em;
     margin-right: 10px;
+    box-shadow: none !important;
 }
 
-.msh-pro-upsell-actions .button-secondary {
-    border-color: var(--msh-charcoal);
-    color: var(--msh-charcoal);
+.msh-pro-upsell-actions .button-secondary,
+.msh-pro-cta .button-secondary,
+.msh-pro-cta .button-secondary:hover,
+.msh-pro-cta .button-secondary:focus {
+    background: transparent !important;
+    border-color: var(--msh-charcoal) !important;
+    color: var(--msh-charcoal) !important;
     text-transform: uppercase;
     font-family: var(--msh-font-heading);
     letter-spacing: 0.08em;
+    box-shadow: none !important;
 }
 
 /* Responsive */

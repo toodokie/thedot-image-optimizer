@@ -82,7 +82,7 @@
     width: 0.5rem;
     height: 0.5rem;
     margin: 0.1875rem;
-    background-color: #daff00 !important;
+    background-color: #35332F !important;
     line-height: 1.14285714;
 }
 
@@ -125,7 +125,7 @@
 }
 
 .msh-settings-wrap input[type="checkbox"]:checked {
-    background-color: #daff00 !important;
+    background-color: #35332F !important;
     border-color: #35332f !important;
 }
 
@@ -323,14 +323,14 @@
 .msh-settings-field input[type="email"]:hover,
 .msh-settings-field input[type="url"]:hover,
 .msh-settings-field textarea:hover {
-    border-color: #daff00;
-    box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
+    border-color: #35332F;
+    box-shadow: 0 0 8px rgba(53, 51, 47, 0.15);
     background-color: #fff;
 }
 
 .msh-settings-field select:hover {
-    border-color: #daff00 !important;
-    box-shadow: 0 0 8px rgba(218, 255, 0, 0.3) !important;
+    border-color: #35332F !important;
+    box-shadow: 0 0 8px rgba(53, 51, 47, 0.15) !important;
     outline: none !important;
 }
 
@@ -479,8 +479,8 @@ select[name*="context"] option:checked,
 
 .msh-radio-grid label:hover,
 .msh-radio-grid label:focus-within {
-    border-color: #daff00;
-    box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
+    border-color: #35332F;
+    box-shadow: 0 0 8px rgba(53, 51, 47, 0.15);
     background-color: #ffffff;
 }
 
@@ -627,12 +627,12 @@ select[name*="context"] option:checked,
 }
 
 .msh-status-pill.status-ready {
-    background: rgba(95, 181, 72, 0.15);
-    color: #2f5400;
+    background: rgba(53, 51, 47, 0.1);
+    color: #35332f;
 }
 
 .msh-status-pill.status-pending {
-    background: rgba(218, 255, 0, 0.25);
+    background: rgba(53, 51, 47, 0.1);
     color: #35332f;
 }
 
@@ -702,7 +702,7 @@ select[name*="context"] option:checked,
 .button-dot-solid,
 .wp-core-ui .button-dot-solid,
 .wp-core-ui .button.button-dot-solid {
-    background-color: #daff00 !important;
+    background-color: #35332F !important;
     color: #35332f !important;
     border: 1px solid #35332f !important;
 }
@@ -713,7 +713,7 @@ select[name*="context"] option:checked,
 .wp-core-ui .button-dot-primary:hover,
 .wp-core-ui .button-dot-primary:focus,
 .wp-core-ui .button-dot-primary:active {
-    background-color: #daff00 !important;
+    background-color: #35332F !important;
     border-color: #35332f !important;
     color: #35332f !important;
 }
@@ -763,12 +763,12 @@ select[name*="context"] option:checked,
 }
 
 .msh-status-pill.status-ready {
-    background: rgba(95, 181, 72, 0.15);
-    color: #2f5400;
+    background: rgba(53, 51, 47, 0.1);
+    color: #35332f;
 }
 
 .msh-status-pill.status-pending {
-    background: rgba(218, 255, 0, 0.25);
+    background: rgba(53, 51, 47, 0.1);
     color: #35332f;
 }
 
@@ -844,8 +844,8 @@ select[name*="context"] option:checked,
 
 .msh-radio-tile:hover,
 .msh-radio-tile:focus-within {
-    border-color: #daff00;
-    box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
+    border-color: #35332F;
+    box-shadow: 0 0 8px rgba(53, 51, 47, 0.15);
     background-color: #ffffff;
 }
 
