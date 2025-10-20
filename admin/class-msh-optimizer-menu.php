@@ -98,11 +98,26 @@ class MSH_Optimizer_Menu {
 		);
 
 		// 2. Image Optimizer (always visible)
-		// Registered by image-optimizer-admin.php at priority 15
+		add_submenu_page(
+			'msh-optimizer',
+			__( 'Image Optimizer', 'msh-image-optimizer' ),
+			'<span class="dashicons dashicons-images-alt2"></span> ' . __( 'Image Optimizer', 'msh-image-optimizer' ),
+			'manage_options',
+			'msh-image-optimizer',
+			array( 'MSH_Image_Optimizer_Admin', 'render_admin_page' )
+		);
 
 		// 3. Optimizer Hub (Advanced mode only)
-		// Registered by class-msh-hub-page.php at priority 20
-		// Shows: Cache, Queue, Events, History, Sync tabs
+		if ( $is_advanced ) {
+			add_submenu_page(
+				'msh-optimizer',
+				__( 'Optimizer Hub', 'msh-image-optimizer' ),
+				'<span class="dashicons dashicons-database"></span> ' . __( 'Optimizer Hub', 'msh-image-optimizer' ),
+				'manage_options',
+				'msh-hub',
+				array( 'MSH_Hub_Page', 'render' )
+			);
+		}
 
 		// 4. Insights & Analytics (Pro + Advanced mode)
 		if ( $is_pro && $is_advanced ) {
@@ -141,7 +156,14 @@ class MSH_Optimizer_Menu {
 		}
 
 		// 7. Settings (always visible)
-		// Registered by image-optimizer-settings.php at priority 55
+		add_submenu_page(
+			'msh-optimizer',
+			__( 'Settings', 'msh-image-optimizer' ),
+			'<span class="dashicons dashicons-admin-generic"></span> ' . __( 'Settings', 'msh-image-optimizer' ),
+			'manage_options',
+			'msh-image-optimizer-settings',
+			array( 'MSH_Image_Optimizer_Settings', 'render_settings_page' )
+		);
 
 		// 8. Help & Docs (always visible)
 		add_submenu_page(
@@ -153,19 +175,14 @@ class MSH_Optimizer_Menu {
 			array( $this, 'render_help_page' )
 		);
 
-		// Remove old standalone pages from menu if in Basic mode
-		if ( ! $is_advanced ) {
-			remove_submenu_page( 'msh-optimizer', 'msh-locale-profiles' );
-			remove_submenu_page( 'msh-optimizer', 'msh-glossary' );
-			remove_submenu_page( 'msh-optimizer', 'msh-context-analytics' );
-			remove_submenu_page( 'msh-optimizer', 'msh-hub' );
-		}
-
-		if ( ! $is_pro || ! $is_advanced ) {
-			remove_submenu_page( 'msh-optimizer', 'msh-version-history' );
-			remove_submenu_page( 'msh-optimizer', 'msh-ab-testing' );
-			remove_submenu_page( 'msh-optimizer', 'msh-approval-queue' );
-		}
+		// Remove ALL duplicate menu items registered by standalone page files
+		// These are now handled by the tabbed interfaces above
+		remove_submenu_page( 'msh-optimizer', 'msh-locale-profiles' );
+		remove_submenu_page( 'msh-optimizer', 'msh-glossary' );
+		remove_submenu_page( 'msh-optimizer', 'msh-context-analytics' );
+		remove_submenu_page( 'msh-optimizer', 'msh-version-history' );
+		remove_submenu_page( 'msh-optimizer', 'msh-ab-testing' );
+		remove_submenu_page( 'msh-optimizer', 'msh-approval-queue' );
 	}
 
 	/**
