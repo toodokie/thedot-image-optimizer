@@ -1,0 +1,89 @@
+[
+  {
+    "id": "alt_length_best_practice",
+    "locale": "es_ES",
+    "category": "accessibility",
+    "audience": "casual",
+    "text": "El texto alternativo funciona mejor con menos de 125 caracteres. Manténgalo natural y específico.",
+    "cta": {
+      "label": "Ver ejemplos",
+      "href": "https://docs.thedot.io/tips/alt-length"
+    },
+    "weight": 0.9
+  },
+  {
+    "id": "file_names_seo",
+    "locale": "es_ES",
+    "category": "seo",
+    "audience": "casual",
+    "text": "Los nombres de archivo descriptivos ayudan al SEO. Renombre las imágenes antes de subirlas cuando sea posible.",
+    "cta": {
+      "label": "Más información",
+      "href": "https://docs.thedot.io/tips/file-names"
+    },
+    "weight": 0.8
+  },
+  {
+    "id": "context_matters",
+    "locale": "es_ES",
+    "category": "features",
+    "audience": "casual",
+    "text": "La IA analiza el contexto de la página circundante. Las imágenes utilizadas en múltiples páginas pueden obtener metadatos diferentes.",
+    "cta": null,
+    "weight": 0.7
+  },
+  {
+    "id": "batch_processing",
+    "locale": "es_ES",
+    "category": "workflow",
+    "audience": "casual",
+    "text": "Procese las imágenes en lotes pequeños para evitar sobrecargar su servidor.",
+    "cta": {
+      "label": "Mejores prácticas",
+      "href": "https://docs.thedot.io/tips/batch-processing"
+    },
+    "weight": 0.6
+  },
+  {
+    "id": "locale_profiles",
+    "locale": "es_ES",
+    "category": "features",
+    "audience": "advanced",
+    "text": "Los Perfiles de Configuración Regional le permiten personalizar cómo se generan los metadatos para diferentes idiomas y regiones.",
+    "cta": {
+      "label": "Probar Perfiles de Configuración",
+      "href": "admin.php?page=msh-locale-profiles"
+    },
+    "weight": 0.5
+  },
+  {
+    "id": "avoid_image_of",
+    "locale": "es_ES",
+    "category": "accessibility",
+    "audience": "casual",
+    "text": "Evite comenzar el texto alternativo con 'imagen de' - los lectores de pantalla ya anuncian que es una imagen.",
+    "cta": null,
+    "weight": 0.9
+  },
+  {
+    "id": "glossary_consistency",
+    "locale": "es_ES",
+    "category": "features",
+    "audience": "advanced",
+    "text": "Use el Glosario para asegurar que los términos de marca y nombres de productos se usen de manera consistente.",
+    "cta": {
+      "label": "Abrir Glosario",
+      "href": "admin.php?page=msh-glossary"
+    },
+    "weight": 0.6
+  },
+  {
+    "id": "queue_monitoring",
+    "locale": "es_ES",
+    "category": "workflow",
+    "audience": "advanced",
+    "text": "Monitoree la pestaña Cola para rastrear trabajos de optimización masiva e identificar fallas.",
+    "cta": null,
+    "weight": 0.4
+  }
+]

@@ -1,0 +1,89 @@
+[
+  {
+    "id": "alt_length_best_practice",
+    "locale": "fr_CA",
+    "category": "accessibility",
+    "audience": "casual",
+    "text": "Le texte alternatif fonctionne mieux avec moins de 125 caractères. Restez naturel et spécifique.",
+    "cta": {
+      "label": "Voir des exemples",
+      "href": "https://docs.thedot.io/tips/alt-length"
+    },
+    "weight": 0.9
+  },
+  {
+    "id": "file_names_seo",
+    "locale": "fr_CA",
+    "category": "seo",
+    "audience": "casual",
+    "text": "Les noms de fichiers descriptifs aident le référencement. Renommez les images avant de les télécharger si possible.",
+    "cta": {
+      "label": "En savoir plus",
+      "href": "https://docs.thedot.io/tips/file-names"
+    },
+    "weight": 0.8
+  },
+  {
+    "id": "context_matters",
+    "locale": "fr_CA",
+    "category": "features",
+    "audience": "casual",
+    "text": "L'IA analyse le contexte de la page environnante. Les images utilisées sur plusieurs pages peuvent obtenir des métadonnées différentes.",
+    "cta": null,
+    "weight": 0.7
+  },
+  {
+    "id": "batch_processing",
+    "locale": "fr_CA",
+    "category": "workflow",
+    "audience": "casual",
+    "text": "Traitez les images par petits lots pour éviter de surcharger votre serveur.",
+    "cta": {
+      "label": "Meilleures pratiques",
+      "href": "https://docs.thedot.io/tips/batch-processing"
+    },
+    "weight": 0.6
+  },
+  {
+    "id": "locale_profiles",
+    "locale": "fr_CA",
+    "category": "features",
+    "audience": "advanced",
+    "text": "Les profils de localisation vous permettent de personnaliser la génération de métadonnées pour différentes langues et régions.",
+    "cta": {
+      "label": "Essayer les profils de localisation",
+      "href": "admin.php?page=msh-locale-profiles"
+    },
+    "weight": 0.5
+  },
+  {
+    "id": "avoid_image_of",
+    "locale": "fr_CA",
+    "category": "accessibility",
+    "audience": "casual",
+    "text": "Évitez de commencer le texte alternatif par 'image de' - les lecteurs d'écran annoncent déjà qu'il s'agit d'une image.",
+    "cta": null,
+    "weight": 0.9
+  },
+  {
+    "id": "glossary_consistency",
+    "locale": "fr_CA",
+    "category": "features",
+    "audience": "advanced",
+    "text": "Utilisez le glossaire pour vous assurer que les termes de marque et les noms de produits sont utilisés de manière cohérente.",
+    "cta": {
+      "label": "Ouvrir le glossaire",
+      "href": "admin.php?page=msh-glossary"
+    },
+    "weight": 0.6
+  },
+  {
+    "id": "queue_monitoring",
+    "locale": "fr_CA",
+    "category": "workflow",
+    "audience": "advanced",
+    "text": "Surveillez l'onglet File d'attente pour suivre les tâches d'optimisation en masse et identifier les échecs.",
+    "cta": null,
+    "weight": 0.4
+  }
+]

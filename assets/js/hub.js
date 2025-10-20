@@ -853,6 +853,215 @@
 				});
 		},
 
+		buildRegenerateSummaryMessage: function(data) {
+			if (!data || !data.summary) {
+				return '';
+			}
+
+			const summary = data.summary;
+			if (summary && typeof summary.enqueued === 'number') {
+				const template = this.getString('metadataRegenerateSummary', 'Queued %d item(s).');
+				return template.replace('%d', summary.enqueued);
+			}
+
+			return data.message || '';
+		},
+
+		handleRegenerateSuccess: function($button, originalHtml, queuedLabel, message) {
+			this.toggleButtonBusy($button, false);
+			if (message) {
+				this.showToast(message, 'success');
+			}
+			$button.html('✓ ' + queuedLabel).addClass('button-primary');
+			setTimeout(() => {
+				$button.html(originalHtml).removeClass('button-primary');
+			}, 2000);
+			this.reloadMetadataTable();
+		},
+
+		shouldFallbackToAjax: function(error) {
+			if (!error) {
+				return false;
+			}
+
+			if (typeof error === 'string') {
+				return error === 'missing_rest_url' || error === 'rest_unavailable';
+			}
+
+			if (error.status && (error.status === 404 || error.status === 0)) {
+				return true;
+			}
+
+			if (error.response && (error.response.status === 404 || error.response.status === 0)) {
+				return true;
+			}
+
+			return false;
+		},
+
+		enqueueRegenerateViaAjax: function(attachmentId, locale, field, $button, originalHtml, queuedLabel) {
+			this.postAction('msh_regenerate_entry', {
+				attachment_id: attachmentId,
+				locale,
+				field
+			})
+				.done((response) => {
+					if (!response || !response.success) {
+						this.handleAjaxError(response, 'Unable to enqueue regeneration job.');
+						this.toggleButtonBusy($button, false);
+						return;
+					}
+
+					const message = (response.data && response.data.message) || this.getString('metadataRegenerateQueued', 'Regeneration queued.');
+					this.handleRegenerateSuccess($button, originalHtml, queuedLabel, message);
+				})
+				.fail((xhr, status, error) => {
+					console.error('Regenerate AJAX error:', status, error);
+					this.toggleButtonBusy($button, false);
+					this.showToast(this.getString('metadataRegenerateError', 'Failed to enqueue regeneration.'), 'error');
+				});
+		},
+
+		enqueueRegenerateJob: function(payload, idempotencyKey) {
+			return this.postRest('msh/enqueue-regenerate', payload, { idempotencyKey });
+		},
+
+		extractErrorMessage: function(error, fallback) {
+			if (!error) {
+				return fallback;
+			}
+
+			if (typeof error === 'string') {
+				return error === 'missing_rest_url' || error === 'rest_unavailable' ? fallback : error;
+			}
+
+			if (error.data && error.data.message) {
+				return error.data.message;
+			}
+
+			if (error.response && error.response.data && error.response.data.message) {
+				return error.response.data.message;
+			}
+
+			if (error.message) {
+				return error.message;
+			}
+
+			return fallback;
+		},
+
+		postRest: function(path, payload, options) {
+			const deferred = $.Deferred();
+			const endpoint = this.getRestUrl(path);
+
+			if (!endpoint) {
+				deferred.reject('missing_rest_url');
+				return deferred.promise();
+			}
+
+			const headers = { 'Content-Type': 'application/json' };
+			const nonce = window.mshHubData && window.mshHubData.apiNonce;
+			if (nonce) {
+				headers['X-WP-Nonce'] = nonce;
+			}
+
+			if (options && options.idempotencyKey) {
+				headers['Idempotency-Key'] = options.idempotencyKey;
+			}
+
+			const body = JSON.stringify(this.cleanRestPayload(payload));
+
+			fetch(endpoint, {
+				method: 'POST',
+				headers,
+				body,
+				credentials: 'same-origin'
+			})
+				.then((response) => response.text().then((text) => {
+					let data = {};
+					if (text) {
+						try {
+							data = JSON.parse(text);
+						} catch (parseError) {
+							console.error('Failed to parse REST response:', parseError);
+						}
+					}
+
+					return { response, data };
+				}))
+				.then(({ response, data }) => {
+					const result = { status: response.status, ok: response.ok, data, response };
+					if (response.ok) {
+						deferred.resolve(result);
+					} else {
+						deferred.reject(result);
+					}
+				})
+				.catch((error) => {
+					console.error('REST request failed:', error);
+					deferred.reject('rest_unavailable');
+				});
+
+			return deferred.promise();
+		},
+
+		getRestUrl: function(path) {
+			const base = window.mshHubData && window.mshHubData.apiUrl;
+			if (!base) {
+				return null;
+			}
+
+			const normalizedBase = base.replace(/\/$/, '');
+			const normalizedPath = (path || '').replace(/^\//, '');
+			return normalizedBase + '/' + normalizedPath;
+		},
+
+		cleanRestPayload: function(payload) {
+			const cleaned = {};
+			Object.keys(payload || {}).forEach((key) => {
+				const value = payload[key];
+
+				if (value === undefined || value === null) {
+					return;
+				}
+
+				if (Array.isArray(value) && value.length === 0) {
+					return;
+				}
+
+				cleaned[key] = value;
+			});
+
+			return cleaned;
+		},
+
+		generateIdempotencyKey: function() {
+			if (window.crypto && window.crypto.randomUUID) {
+				return window.crypto.randomUUID();
+			}
+
+			return 'msh-' + Math.random().toString(16).slice(2) + Date.now().toString(16);
+		},
+
+		mapFieldToApi: function(field) {
+			if (!field) {
+				return '';
+			}
+
+			const normalized = String(field).toLowerCase();
+			const map = {
+				'alt_text': 'alt',
+				'alt': 'alt',
+				'title': 'title',
+				'caption': 'caption',
+				'description': 'description',
+				'value': 'description'
+			};
+
+			return map[normalized] || normalized;
+		},
+
+
 		/**
 		 * Queue tab bindings and auto-refresh.
 		 */
