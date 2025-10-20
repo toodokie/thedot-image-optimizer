@@ -102,20 +102,25 @@ class MSH_Hub_Page {
 			? trailingslashit( MSH_IO_ASSETS_URL )
 			: trailingslashit( plugin_dir_url( __FILE__ ) . '../assets' );
 
+		$style_file    = dirname( __FILE__ ) . '/../assets/css/hub.css';
+		$style_version = file_exists( $style_file ) ? filemtime( $style_file ) : '2.0.0';
+
 		wp_enqueue_style(
 			'msh-hub-css',
 			$assets_base . 'css/hub.css',
 			array(),
-			'2.0.0'
+			$style_version
 		);
 
-		$script_path = $assets_base . 'js/hub.js';
+		$script_path    = $assets_base . 'js/hub.js';
+		$script_file    = dirname( __FILE__ ) . '/../assets/js/hub.js';
+		$script_version = file_exists( $script_file ) ? filemtime( $script_file ) : '2.0.0';
 
 		wp_enqueue_script(
 			'msh-hub-js',
 			$script_path,
 			array( 'jquery' ),
-			'2.0.0',
+			$script_version,
 			true
 		);
 
@@ -126,7 +131,8 @@ class MSH_Hub_Page {
 			'msh-hub-js',
 			'mshHubData',
 			array(
-				'apiUrl'    => esc_url_raw( rest_url( 'msh/v1' ) ),
+				'apiUrl'    => esc_url_raw( rest_url() ),
+				'restNamespace' => 'dot-opt/v1',
 				'apiNonce'  => wp_create_nonce( 'wp_rest' ),
 				'ajaxUrl'   => admin_url( 'admin-ajax.php' ),
 				'ajaxNonce' => wp_create_nonce( 'msh_hub_nonce' ),

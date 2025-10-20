@@ -78,7 +78,6 @@
 
 		this.toggleClearLink();
 	},
-		},
 
 		/**
 		 * Handle pagination button clicks via delegation.
@@ -142,58 +141,110 @@
 			$(document).on('click.mshMetadata', '.msh-action-preview', (event) => {
 				event.preventDefault();
 				const $button = $(event.currentTarget);
-				const entryId = this.getEntryIdFromButton($button);
-				if (!entryId) {
+				const context = this.getRowContext($button);
+
+				if (!context.entryId && !context.attachmentId) {
 					this.showToast(this.getString('metadataMissingIdentifier', 'Unable to locate metadata record.'), 'error');
 					return;
 				}
-				this.handlePreviewClick(entryId, $button);
+
+				this.handlePreviewClick(context, $button);
 			});
 
 			$(document).on('click.mshMetadata', '.msh-action-copy', (event) => {
 				event.preventDefault();
 				const $button = $(event.currentTarget);
-				const entryId = this.getEntryIdFromButton($button);
-				if (!entryId) {
-					this.handleCopyFallback($button);
-					return;
-				}
-				this.handleCopyClick(entryId, $button);
+				const context = this.getRowContext($button);
+				this.handleCopyClick(context, $button);
 			});
 
 			$(document).on('click.mshMetadata', '.msh-action-edit', (event) => {
 				event.preventDefault();
 				const $button = $(event.currentTarget);
-				const entryId = this.getEntryIdFromButton($button);
-				if (!entryId) {
+				const context = this.getRowContext($button);
+
+				if (!context.entryId && !context.attachmentId) {
 					this.showToast(this.getString('metadataMissingIdentifier', 'Unable to locate metadata record.'), 'error');
 					return;
 				}
-				this.handleEditClick(entryId, $button);
+
+				this.handleEditClick(context, $button);
 			});
 
 			$(document).on('click.mshMetadata', '.msh-action-regenerate', (event) => {
 				event.preventDefault();
 				const $button = $(event.currentTarget);
-				const entryId = this.getEntryIdFromButton($button);
-				const attachmentId = parseInt($button.data('mediaId'), 10);
-				const locale = $button.data('locale') || '';
-				const field = $button.data('field') || '';
-				this.regenerateEntry(attachmentId, locale, field, $button, entryId);
+				const context = this.getRowContext($button);
+
+				if (!context.attachmentId || !context.field) {
+					this.showToast(this.getString('metadataRegenerateMissing', 'Missing attachment or field information.'), 'error');
+					return;
+				}
+
+				this.regenerateEntry(context.attachmentId, context.locale || '', context.field, $button, context.entryId);
 			});
 
 			$(document).on('click.mshMetadata', '.msh-action-toggle-lock', (event) => {
 				event.preventDefault();
 				const $button = $(event.currentTarget);
-				const entryId = this.getEntryIdFromButton($button);
-				if (!entryId) {
+				const context = this.getRowContext($button);
+
+				if (!context.entryId && !context.attachmentId) {
 					this.showToast(this.getString('metadataMissingIdentifier', 'Unable to locate metadata record.'), 'error');
 					return;
 				}
-				this.handleToggleLockClick(entryId, $button);
+
+				this.handleToggleLockClick(context, $button);
 			});
 
 			this.metadataHandlersBound = true;
+		},
+
+		getRowContext: function($button) {
+			const context = {
+				entryId: null,
+				attachmentId: null,
+				locale: '',
+				field: '',
+				status: '',
+				source: '',
+				value: ''
+			};
+
+			if (!$button || !$button.length) {
+				return context;
+			}
+
+			const $row = $button.closest('.msh-metadata-row');
+			if (!$row.length) {
+				return context;
+			}
+
+			const entryId = parseInt($row.data('entryId'), 10);
+			const attachmentId = parseInt($row.data('mediaId'), 10);
+			const locale = $row.data('locale') || '';
+			const field = $row.data('field') || '';
+			const status = $row.data('status') || '';
+			const source = $row.data('source') || '';
+
+			context.entryId = Number.isFinite(entryId) && entryId > 0 ? entryId : null;
+			context.attachmentId = Number.isFinite(attachmentId) ? attachmentId : null;
+			context.locale = locale;
+			context.field = field;
+			context.status = status;
+			context.source = source;
+
+			const $valueCell = $row.find('.msh-metadata-value');
+			if ($valueCell.length) {
+				const fullValue = $valueCell.data('fullValue');
+				if (fullValue !== undefined) {
+					context.value = fullValue;
+				} else {
+					context.value = $valueCell.text();
+				}
+			}
+
+			return context;
 		},
 
 		getEntryIdFromButton: function($button) {
@@ -923,7 +974,9 @@
 		},
 
 		enqueueRegenerateJob: function(payload, idempotencyKey) {
-			return this.postRest('msh/enqueue-regenerate', payload, { idempotencyKey });
+			const namespace = (window.mshHubData && window.mshHubData.restNamespace) || 'dot-opt/v1';
+			const route = namespace.replace(/\/$/, '') + '/msh/enqueue-regenerate';
+			return this.postRest(route, payload, { idempotencyKey });
 		},
 
 		extractErrorMessage: function(error, fallback) {
