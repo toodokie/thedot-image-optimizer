@@ -18,7 +18,8 @@ class MSH_Image_Optimizer_Settings {
 	const ADMIN_POST_ACTION = 'msh_save_context_settings';
 
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'register_settings_page' ), 55 );
+		// Menu registration now handled by class-msh-optimizer-menu.php
+		// add_action( 'admin_menu', array( $this, 'register_settings_page' ), 55 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_' . self::ADMIN_POST_ACTION, array( $this, 'handle_save' ) );
 		add_action( 'msh_image_optimizer_settings_notices', array( $this, 'output_notice' ) );
@@ -171,24 +172,24 @@ class MSH_Image_Optimizer_Settings {
 					</header>
 					<div class="msh-settings-grid">
 						<div class="msh-settings-field msh-user-mode-option">
-							<label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
-								<input type="radio" name="options[user_mode]" value="basic" <?php checked( $user_mode, 'basic' ); ?> style="margin-top: 2px; flex-shrink: 0;">
-								<div>
-									<strong style="display: block; margin-bottom: 4px;"><?php esc_html_e( 'Basic Mode', 'msh-image-optimizer' ); ?></strong>
-									<span class="description" style="display: block; color: #646970;">
+							<label style="display: flex; gap: 12px; cursor: pointer; align-items: baseline;">
+								<input type="radio" name="options[user_mode]" value="basic" <?php checked( $user_mode, 'basic' ); ?> style="flex-shrink: 0; margin-top: 4px;">
+								<div style="flex: 1;">
+									<strong style="display: inline;"><?php esc_html_e( 'Basic Mode', 'msh-image-optimizer' ); ?></strong>
+									<p class="description" style="margin: 4px 0 0 0; color: #646970;">
 										<?php esc_html_e( 'Shows Dashboard, Image Optimizer, Settings, and Help. Perfect for day-to-day optimization work.', 'msh-image-optimizer' ); ?>
-									</span>
+									</p>
 								</div>
 							</label>
 						</div>
 						<div class="msh-settings-field msh-user-mode-option">
-							<label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
-								<input type="radio" name="options[user_mode]" value="advanced" <?php checked( $user_mode, 'advanced' ); ?> style="margin-top: 2px; flex-shrink: 0;">
-								<div>
-									<strong style="display: block; margin-bottom: 4px;"><?php esc_html_e( 'Advanced Mode', 'msh-image-optimizer' ); ?></strong>
-									<span class="description" style="display: block; color: #646970;">
+							<label style="display: flex; gap: 12px; cursor: pointer; align-items: baseline;">
+								<input type="radio" name="options[user_mode]" value="advanced" <?php checked( $user_mode, 'advanced' ); ?> style="flex-shrink: 0; margin-top: 4px;">
+								<div style="flex: 1;">
+									<strong style="display: inline;"><?php esc_html_e( 'Advanced Mode', 'msh-image-optimizer' ); ?></strong>
+									<p class="description" style="margin: 4px 0 0 0; color: #646970;">
 										<?php esc_html_e( 'Displays all features including Optimizer Hub, Localization, Insights & Analytics, and Review Center (Pro features require active license).', 'msh-image-optimizer' ); ?>
-									</span>
+									</p>
 								</div>
 							</label>
 						</div>

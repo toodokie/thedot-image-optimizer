@@ -45,9 +45,11 @@ class MSH_Hub_Page {
 	 * Lock constructor to enforce singleton usage.
 	 */
 	private function __construct() {
-		add_action( 'admin_menu', array( $this, 'register_menu' ), 35 );
+		// Menu registration now handled by class-msh-optimizer-menu.php
+		// add_action( 'admin_menu', array( $this, 'register_menu' ), 35 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
-		add_action( 'wp_ajax_msh_get_cache_entries', array( $this, 'ajax_get_cache_entries' ) );
+		add_action( 'wp_ajax_msh_get_metadata_entries', array( $this, 'ajax_get_metadata_entries' ) );
+		add_action( 'wp_ajax_msh_get_cache_entries', array( $this, 'ajax_get_metadata_entries' ) );
 		add_action( 'wp_ajax_msh_regenerate_entry', array( $this, 'ajax_regenerate_entry' ) );
 		add_action( 'wp_ajax_msh_refresh_queue_stats', array( $this, 'ajax_refresh_queue_stats' ) );
 		add_action( 'wp_ajax_msh_process_queue', array( $this, 'ajax_process_queue' ) );
@@ -169,7 +171,7 @@ class MSH_Hub_Page {
 	 */
 	private function get_tabs() {
 		$tabs = array(
-			'cache'   => __( 'Cache', 'msh-image-optimizer' ),
+			'metadata' => __( 'Metadata', 'msh-image-optimizer' ),
 			'history' => __( 'History', 'msh-image-optimizer' ),
 			'queue'   => __( 'Queue', 'msh-image-optimizer' ),
 			'events'  => __( 'Events', 'msh-image-optimizer' ),
@@ -231,9 +233,10 @@ class MSH_Hub_Page {
 					echo '<p>' . esc_html__( 'Sync tab - Coming soon...', 'msh-image-optimizer' ) . '</p>';
 				}
 				break;
+			case 'metadata':
 			case 'cache':
 			default:
-				$this->render_cache_tab();
+				$this->render_metadata_tab();
 				break;
 		}
 	}
@@ -243,11 +246,13 @@ class MSH_Hub_Page {
 	 *
 	 * @return void
 	 */
-	private function render_cache_tab() {
-		$locale    = isset( $_GET['locale'] ) ? sanitize_text_field( wp_unslash( $_GET['locale'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$staleness = isset( $_GET['staleness'] ) ? sanitize_text_field( wp_unslash( $_GET['staleness'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$source    = isset( $_GET['source'] ) ? sanitize_text_field( wp_unslash( $_GET['source'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
-		$paged     = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+	private function render_metadata_tab() {
+		$locale  = isset( $_GET['locale'] ) ? sanitize_text_field( wp_unslash( $_GET['locale'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+		$field   = isset( $_GET['field'] ) ? sanitize_text_field( wp_unslash( $_GET['field'] ) ) : '';
+		$source  = isset( $_GET['source'] ) ? sanitize_text_field( wp_unslash( $_GET['source'] ) ) : '';
+		$status  = isset( $_GET['status'] ) ? sanitize_key( wp_unslash( $_GET['status'] ) ) : '';
+		$search  = isset( $_GET['search'] ) ? sanitize_text_field( wp_unslash( $_GET['search'] ) ) : '';
+		$paged   = isset( $_GET['paged'] ) ? absint( $_GET['paged'] ) : 1;
 
 		if ( $paged < 1 ) {
 			$paged = 1;
@@ -262,27 +267,46 @@ class MSH_Hub_Page {
 			$args['locale'] = $locale;
 		}
 
-		if ( '' !== $staleness ) {
-			$args['staleness'] = $staleness;
+		if ( '' !== $field ) {
+			$args['field'] = $field;
 		}
 
 		if ( '' !== $source ) {
 			$args['source'] = $source;
 		}
 
-		$results = function_exists( 'msh_get_cache_entries' ) ? msh_get_cache_entries( $args ) : array();
+		if ( '' !== $status ) {
+			$args['status'] = $status;
+		}
+
+		if ( '' !== $search ) {
+			$args['search'] = $search;
+		}
+
+		$results = function_exists( 'msh_get_metadata_entries' ) ? msh_get_metadata_entries( $args ) : array(
+			'items'       => array(),
+			'total'       => 0,
+			'total_pages' => 1,
+		);
 
 		$items       = isset( $results['items'] ) ? $results['items'] : array();
 		$total       = isset( $results['total'] ) ? (int) $results['total'] : 0;
 		$total_pages = isset( $results['total_pages'] ) ? max( 1, (int) $results['total_pages'] ) : 1;
+
+		$status_labels = $this->get_metadata_status_labels();
+		$source_labels = array(
+			'ai'        => _x( 'AI', 'metadata source', 'msh-image-optimizer' ),
+			'manual'    => _x( 'Manual', 'metadata source', 'msh-image-optimizer' ),
+			'imported'  => _x( 'Imported', 'metadata source', 'msh-image-optimizer' ),
+		);
 
 		?>
 		<div class="msh-cache-tab">
 			<div class="msh-cache-intro">
 				<p>
 					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
-					<?php esc_html_e( 'This table shows the stored AI and manual metadata for every attachment. Regenerate queues a fresh analysis using the latest context, glossary, and locale settings.', 'msh-image-optimizer' ); ?>
-					<a href="<?php echo esc_url( 'https://github.com/toodokie/thedot-image-optimizer/blob/main/msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md#metadata-cache' ); ?>" class="msh-cache-intro__link" target="_blank" rel="noopener noreferrer">
+					<?php esc_html_e( 'This table shows the localized metadata that will ship to production. Use the filters to focus on specific locales, fields, or sources.', 'msh-image-optimizer' ); ?>
+					<a href="<?php echo esc_url( 'https://github.com/toodokie/thedot-image-optimizer/blob/main/msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md#metadata' ); ?>" class="msh-cache-intro__link" target="_blank" rel="noopener noreferrer">
 						<?php esc_html_e( 'Read more', 'msh-image-optimizer' ); ?>
 					</a>
 				</p>
@@ -291,113 +315,90 @@ class MSH_Hub_Page {
 			<div class="msh-filters">
 				<form method="get" action="" id="msh-cache-filter-form">
 					<input type="hidden" name="page" value="msh-hub" />
-					<input type="hidden" name="tab" value="cache" />
+					<input type="hidden" name="tab" value="metadata" />
 
 					<div class="msh-filter-group">
 						<label for="filter-locale"><?php esc_html_e( 'Locale', 'msh-image-optimizer' ); ?></label>
 						<select name="locale" id="filter-locale">
-							<option value=""><?php esc_html_e( 'All Locales', 'msh-image-optimizer' ); ?></option>
-							<option value="es_ES" <?php selected( $locale, 'es_ES' ); ?>><?php esc_html_e( 'Spanish (es_ES)', 'msh-image-optimizer' ); ?></option>
-							<option value="fr_FR" <?php selected( $locale, 'fr_FR' ); ?>><?php esc_html_e( 'French (fr_FR)', 'msh-image-optimizer' ); ?></option>
-							<option value="de_DE" <?php selected( $locale, 'de_DE' ); ?>><?php esc_html_e( 'German (de_DE)', 'msh-image-optimizer' ); ?></option>
+							<option value=""><?php esc_html_e( 'All locales', 'msh-image-optimizer' ); ?></option>
+							<option value="en_US" <?php selected( $locale, 'en_US' ); ?>>English (en_US)</option>
+							<option value="es_ES" <?php selected( $locale, 'es_ES' ); ?>>Español (es_ES)</option>
+							<option value="fr_FR" <?php selected( $locale, 'fr_FR' ); ?>>Français (fr_FR)</option>
+							<option value="de_DE" <?php selected( $locale, 'de_DE' ); ?>>Deutsch (de_DE)</option>
 						</select>
 					</div>
 
 					<div class="msh-filter-group">
-						<label for="filter-staleness"><?php esc_html_e( 'Staleness', 'msh-image-optimizer' ); ?></label>
-						<select name="staleness" id="filter-staleness">
-							<option value=""><?php esc_html_e( 'All', 'msh-image-optimizer' ); ?></option>
-							<option value="stale" <?php selected( $staleness, 'stale' ); ?>><?php esc_html_e( 'Stale Only', 'msh-image-optimizer' ); ?></option>
-							<option value="fresh" <?php selected( $staleness, 'fresh' ); ?>><?php esc_html_e( 'Fresh Only', 'msh-image-optimizer' ); ?></option>
+						<label for="filter-field"><?php esc_html_e( 'Field', 'msh-image-optimizer' ); ?></label>
+						<select name="field" id="filter-field">
+							<option value=""><?php esc_html_e( 'All fields', 'msh-image-optimizer' ); ?></option>
+							<option value="title" <?php selected( $field, 'title' ); ?>><?php esc_html_e( 'Title', 'msh-image-optimizer' ); ?></option>
+							<option value="alt" <?php selected( $field, 'alt' ); ?>><?php esc_html_e( 'Alt Text', 'msh-image-optimizer' ); ?></option>
+							<option value="caption" <?php selected( $field, 'caption' ); ?>><?php esc_html_e( 'Caption', 'msh-image-optimizer' ); ?></option>
+							<option value="description" <?php selected( $field, 'description' ); ?>><?php esc_html_e( 'Description', 'msh-image-optimizer' ); ?></option>
 						</select>
 					</div>
 
 					<div class="msh-filter-group">
 						<label for="filter-source"><?php esc_html_e( 'Source', 'msh-image-optimizer' ); ?></label>
 						<select name="source" id="filter-source">
-							<option value=""><?php esc_html_e( 'All Sources', 'msh-image-optimizer' ); ?></option>
-							<option value="ai" <?php selected( $source, 'ai' ); ?>><?php esc_html_e( 'AI Generated', 'msh-image-optimizer' ); ?></option>
-							<option value="manual" <?php selected( $source, 'manual' ); ?>><?php esc_html_e( 'Manual Override', 'msh-image-optimizer' ); ?></option>
+							<option value=""><?php esc_html_e( 'All sources', 'msh-image-optimizer' ); ?></option>
+							<option value="ai" <?php selected( $source, 'ai' ); ?>><?php esc_html_e( 'AI generated', 'msh-image-optimizer' ); ?></option>
+							<option value="manual" <?php selected( $source, 'manual' ); ?>><?php esc_html_e( 'Manual edit', 'msh-image-optimizer' ); ?></option>
+							<option value="imported" <?php selected( $source, 'imported' ); ?>><?php esc_html_e( 'Imported', 'msh-image-optimizer' ); ?></option>
 						</select>
 					</div>
 
-					<a href="#" class="msh-clear-filters<?php echo ( '' === $locale && '' === $staleness && '' === $source ) ? ' is-disabled' : ''; ?>" id="msh-clear-filters"><?php esc_html_e( 'Clear filters', 'msh-image-optimizer' ); ?></a>
+					<div class="msh-filter-group">
+						<label for="filter-status"><?php esc_html_e( 'Status', 'msh-image-optimizer' ); ?></label>
+						<select name="status" id="filter-status">
+							<option value=""><?php esc_html_e( 'All statuses', 'msh-image-optimizer' ); ?></option>
+							<?php foreach ( $status_labels as $status_key => $status_data ) : ?>
+								<option value="<?php echo esc_attr( $status_key ); ?>" <?php selected( $status, $status_key ); ?>><?php echo esc_html( $status_data['label'] ); ?></option>
+							<?php endforeach; ?>
+						</select>
+					</div>
+
+					<div class="msh-filter-group">
+						<label for="filter-search"><?php esc_html_e( 'Search', 'msh-image-optimizer' ); ?></label>
+						<input type="search" name="search" id="filter-search" value="<?php echo esc_attr( $search ); ?>" placeholder="<?php esc_attr_e( 'Search value…', 'msh-image-optimizer' ); ?>" />
+					</div>
+
+					<a href="#" class="msh-clear-filters<?php echo ( '' === $locale && '' === $field && '' === $source && '' === $status && '' === $search ) ? ' is-disabled' : ''; ?>" id="msh-clear-filters"><?php esc_html_e( 'Clear filters', 'msh-image-optimizer' ); ?></a>
 				</form>
 			</div>
 
 			<div id="msh-loading-spinner" style="display: none; text-align: center; padding: 20px;">
 				<span class="spinner is-active" style="float: none; margin: 0;"></span>
-				<p><?php esc_html_e( 'Loading cache entries...', 'msh-image-optimizer' ); ?></p>
+				<p><?php esc_html_e( 'Loading metadata entries…', 'msh-image-optimizer' ); ?></p>
 			</div>
 
 			<p class="msh-results-count">
 				<?php
 				printf(
-					/* translators: %d: total number of cache entries */
-					esc_html__( 'Showing %d cache entries', 'msh-image-optimizer' ),
-					$total
+				/* translators: %d: total number of metadata entries */
+				esc_html__( 'Showing %d metadata entries', 'msh-image-optimizer' ),
+				$total
 				);
 				?>
 			</p>
 
 			<?php if ( ! empty( $items ) ) : ?>
-				<table class="wp-list-table widefat fixed striped msh-cache-table">
+				<table class="wp-list-table widefat fixed striped msh-cache-table msh-metadata-table">
 					<thead>
 						<tr>
-							<th><?php esc_html_e( 'Attachment ID', 'msh-image-optimizer' ); ?></th>
+							<th><?php esc_html_e( 'Media', 'msh-image-optimizer' ); ?></th>
 							<th><?php esc_html_e( 'Locale', 'msh-image-optimizer' ); ?></th>
 							<th><?php esc_html_e( 'Field', 'msh-image-optimizer' ); ?></th>
 							<th><?php esc_html_e( 'Value', 'msh-image-optimizer' ); ?></th>
 							<th><?php esc_html_e( 'Source', 'msh-image-optimizer' ); ?></th>
-							<th><?php esc_html_e( 'Staleness', 'msh-image-optimizer' ); ?></th>
+							<th><?php esc_html_e( 'Status', 'msh-image-optimizer' ); ?></th>
 							<th><?php esc_html_e( 'Updated', 'msh-image-optimizer' ); ?></th>
 							<th><?php esc_html_e( 'Actions', 'msh-image-optimizer' ); ?></th>
 						</tr>
 					</thead>
 					<tbody id="msh-cache-table-body">
-						<?php foreach ( $items as $entry ) : ?>
-							<tr>
-								<td><?php echo (int) $entry->attachment_id; ?></td>
-								<td><code><?php echo esc_html( $entry->locale ); ?></code></td>
-								<td><?php echo esc_html( $entry->field ); ?></td>
-								<td>
-									<?php
-									$value = 'manual' === $entry->chosen_source && ! empty( $entry->manual_value )
-										? $entry->manual_value
-										: $entry->ai_value;
-									echo esc_html( wp_trim_words( (string) $value, 10 ) );
-									?>
-								</td>
-								<td>
-									<span class="msh-badge msh-badge-<?php echo esc_attr( $entry->chosen_source ); ?>">
-										<?php echo esc_html( ucfirst( $entry->chosen_source ) ); ?>
-									</span>
-								</td>
-								<td>
-									<?php if ( ! empty( $entry->stale_reason ) ) : ?>
-										<span class="msh-badge msh-badge-stale" title="<?php echo esc_attr( $entry->stale_reason ); ?>">
-											<?php esc_html_e( 'Stale', 'msh-image-optimizer' ); ?>
-										</span>
-									<?php else : ?>
-										<span class="msh-badge msh-badge-fresh">
-											<?php esc_html_e( 'Fresh', 'msh-image-optimizer' ); ?>
-										</span>
-									<?php endif; ?>
-								</td>
-								<td><?php echo esc_html( $entry->updated_at ); ?></td>
-								<td>
-									<button
-										type="button"
-										class="button button-small msh-regenerate-btn"
-										data-attachment-id="<?php echo (int) $entry->attachment_id; ?>"
-										data-locale="<?php echo esc_attr( $entry->locale ); ?>"
-										data-field="<?php echo esc_attr( $entry->field ); ?>"
-									>
-										<?php esc_html_e( 'Regenerate', 'msh-image-optimizer' ); ?>
-									</button>
-								</td>
-							</tr>
-						<?php endforeach; ?>
+						<?php $this->render_metadata_rows( $items, $status_labels, $source_labels ); ?>
 					</tbody>
 				</table>
 
@@ -406,21 +407,16 @@ class MSH_Hub_Page {
 						<div class="tablenav-pages" id="msh-cache-pagination">
 							<?php
 							$base_args = array(
-								'page'      => 'msh-hub',
-								'tab'       => 'cache',
+								'page'   => 'msh-hub',
+								'tab'    => 'metadata',
+								'locale' => $locale,
+								'field'  => $field,
+								'source' => $source,
+								'status' => $status,
+								'search' => $search,
 							);
 
-							if ( '' !== $locale ) {
-								$base_args['locale'] = $locale;
-							}
-							if ( '' !== $staleness ) {
-								$base_args['staleness'] = $staleness;
-							}
-							if ( '' !== $source ) {
-								$base_args['source'] = $source;
-							}
-
-							$base_url = add_query_arg( $base_args, admin_url( 'admin.php' ) );
+							$base_url = add_query_arg( array_filter( $base_args, 'strlen' ), admin_url( 'admin.php' ) );
 
 							for ( $i = 1; $i <= $total_pages; $i++ ) {
 								$current = ( $i === $paged ) ? ' current' : '';
@@ -441,10 +437,91 @@ class MSH_Hub_Page {
 					</div>
 				<?php endif; ?>
 			<?php else : ?>
-				<p><?php esc_html_e( 'No cache entries found.', 'msh-image-optimizer' ); ?></p>
+				<p><?php esc_html_e( 'No metadata entries found for the current filters.', 'msh-image-optimizer' ); ?></p>
 			<?php endif; ?>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Metadata status labels map.
+	 *
+	 * @return array
+	 */
+	private function get_metadata_status_labels() {
+		return array(
+			'fresh'         => array( 'label' => __( 'Fresh', 'msh-image-optimizer' ), 'class' => 'fresh' ),
+			'needs_regen'   => array( 'label' => __( 'Needs regen', 'msh-image-optimizer' ), 'class' => 'warning' ),
+			'missing_cache' => array( 'label' => __( 'Missing cache', 'msh-image-optimizer' ), 'class' => 'error' ),
+			'outdated_model'=> array( 'label' => __( 'Outdated model', 'msh-image-optimizer' ), 'class' => 'info' ),
+			'locked'        => array( 'label' => __( 'Locked', 'msh-image-optimizer' ), 'class' => 'muted' ),
+		);
+	}
+
+	/**
+	 * Output metadata table rows.
+	 *
+	 * @param array $items         Metadata entries.
+	 * @param array $status_labels Status label map.
+	 * @param array $source_labels Source label map.
+	 *
+	 * @return void
+	 */
+	private function render_metadata_rows( $items, $status_labels, $source_labels ) {
+		foreach ( $items as $entry ) {
+			$status_key   = isset( $entry->metadata_status ) ? $entry->metadata_status : 'fresh';
+			$status_data  = isset( $status_labels[ $status_key ] ) ? $status_labels[ $status_key ] : array( 'label' => ucfirst( $status_key ), 'class' => 'info' );
+			$status_class = 'msh-status-' . str_replace( '_', '-', $status_key );
+			$status_label = $status_data['label'];
+			$status_badge = isset( $status_data['class'] ) ? 'msh-status-' . $status_data['class'] : $status_class;
+
+			$source_key   = isset( $entry->source ) ? $entry->source : '' ;
+			$source_label = isset( $source_labels[ $source_key ] ) ? $source_labels[ $source_key ] : ucfirst( $source_key );
+
+			$media_id    = isset( $entry->media_id ) ? (int) $entry->media_id : 0;
+			$media_label = $media_id ? sprintf( __( 'Attachment #%d', 'msh-image-optimizer' ), $media_id ) : __( 'Unknown media', 'msh-image-optimizer' );
+			$media_html  = esc_html( $media_label );
+
+			if ( $media_id && function_exists( 'get_edit_post_link' ) ) {
+				$edit_link = get_edit_post_link( $media_id );
+				if ( $edit_link ) {
+					$title = get_the_title( $media_id );
+					if ( $title ) {
+						$media_label = $title . ' (' . $media_label . ')';
+					}
+					$media_html = sprintf( '<a href="%s">%s</a>', esc_url( $edit_link ), esc_html( $media_label ) );
+				}
+			}
+
+			$value      = isset( $entry->value ) ? $entry->value : '';
+			$value_view = esc_html( wp_trim_words( wp_strip_all_tags( (string) $value ), 18 ) );
+			$updated    = isset( $entry->updated_at ) && $entry->updated_at ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $entry->updated_at ) : __( 'N/A', 'msh-image-optimizer' );
+
+			?>
+			<tr>
+				<td><?php echo $media_html; ?></td>
+				<td><code><?php echo esc_html( $entry->locale ?? '' ); ?></code></td>
+				<td><?php echo esc_html( $entry->field ?? '' ); ?></td>
+				<td class="msh-metadata-value"><?php echo $value_view; ?></td>
+				<td><?php echo esc_html( $source_label ?: __( 'Unknown', 'msh-image-optimizer' ) ); ?></td>
+				<td>
+					<span class="msh-status-badge <?php echo esc_attr( $status_badge ); ?>" data-status="<?php echo esc_attr( $status_key ); ?>">
+						<?php echo esc_html( $status_label ); ?>
+					</span>
+				</td>
+				<td><?php echo esc_html( $updated ); ?></td>
+				<td>
+					<div class="msh-metadata-actions">
+						<button type="button" class="button-link msh-action-preview" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Preview', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-copy" data-value="<?php echo esc_attr( $value ); ?>"><?php esc_html_e( 'Copy', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-edit" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Edit', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-regenerate" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Regenerate', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-toggle-lock" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Lock', 'msh-image-optimizer' ); ?></button>
+					</div>
+				</td>
+			</tr>
+			<?php
+		}
 	}
 
 	/**
@@ -588,7 +665,7 @@ class MSH_Hub_Page {
 	 * @return void
 	 */
 	private function render_events_tab() {
-		$events = function_exists( 'msh_get_recent_events' ) ? msh_get_recent_events( array( 'limit' => 20 ) ) : array();
+		$events = function_exists( 'msh_get_recent_events' ) ? msh_get_recent_events( 20 ) : array();
 		?>
 		<div class="msh-events-tab">
 			<div class="msh-events-intro">
@@ -635,18 +712,34 @@ class MSH_Hub_Page {
 		?>
 		<ul class="msh-events-list">
 			<?php foreach ( $events as $event ) : ?>
+				<?php
+				$type      = isset( $event->type ) ? $event->type : ( $event->event ?? '' );
+				$timestamp = isset( $event->timestamp ) ? $event->timestamp : ( $event->created_at ?? current_time( 'mysql' ) );
+				$severity  = isset( $event->severity ) ? strtolower( $event->severity ) : 'info';
+				$message   = isset( $event->message ) ? $event->message : ( $event->summary ?? '' );
+				$entity_id = isset( $event->entity_id ) ? (int) $event->entity_id : 0;
+				?>
 				<li class="msh-event-item">
 					<div class="msh-event-meta">
-						<span class="msh-event-type"><?php echo esc_html( $event->event ?? '' ); ?></span>
-						<span class="msh-event-time"><?php echo esc_html( $event->created_at ?? current_time( 'mysql' ) ); ?></span>
+						<span class="msh-event-type"><?php echo esc_html( $type ); ?></span>
+						<?php if ( $severity ) : ?>
+							<span class="msh-event-badge msh-event-<?php echo esc_attr( $severity ); ?>"><?php echo esc_html( ucfirst( $severity ) ); ?></span>
+						<?php endif; ?>
+						<span class="msh-event-time"><?php echo esc_html( $timestamp ); ?></span>
 					</div>
-					<?php if ( ! empty( $event->summary ) ) : ?>
-						<p class="msh-event-summary"><?php echo esc_html( $event->summary ); ?></p>
+					<?php if ( $message ) : ?>
+						<p class="msh-event-message"><?php echo esc_html( $message ); ?></p>
 					<?php endif; ?>
-					<?php if ( ! empty( $event->details ) && is_array( $event->details ) ) : ?>
-						<pre class="msh-event-details"><?php echo esc_html( wp_json_encode( $event->details, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
-					<?php elseif ( ! empty( $event->data ) ) : ?>
-						<pre class="msh-event-details"><?php echo esc_html( (string) $event->data ); ?></pre>
+					<?php if ( $entity_id ) : ?>
+						<p class="msh-event-context">
+							<?php
+							printf(
+								/* translators: %d: attachment/entity ID. */
+								esc_html__( 'Entity #%d', 'msh-image-optimizer' ),
+								$entity_id
+							);
+							?>
+						</p>
 					<?php endif; ?>
 				</li>
 			<?php endforeach; ?>
@@ -659,7 +752,7 @@ class MSH_Hub_Page {
 	 *
 	 * @return void
 	 */
-	public function ajax_get_cache_entries() {
+	public function ajax_get_metadata_entries() {
 		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -670,10 +763,12 @@ class MSH_Hub_Page {
 			);
 		}
 
-		$locale    = isset( $_POST['locale'] ) ? sanitize_text_field( wp_unslash( $_POST['locale'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$staleness = isset( $_POST['staleness'] ) ? sanitize_text_field( wp_unslash( $_POST['staleness'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$source    = isset( $_POST['source'] ) ? sanitize_text_field( wp_unslash( $_POST['source'] ) ) : ''; // phpcs:ignore WordPress.Security.NonceVerification.Missing
-		$paged     = isset( $_POST['paged'] ) ? absint( $_POST['paged'] ) : 1; // phpcs:ignore WordPress.Security.NonceVerification.Missing
+		$locale = isset( $_POST['locale'] ) ? sanitize_text_field( wp_unslash( $_POST['locale'] ) ) : '';
+		$field  = isset( $_POST['field'] ) ? sanitize_text_field( wp_unslash( $_POST['field'] ) ) : '';
+		$source = isset( $_POST['source'] ) ? sanitize_text_field( wp_unslash( $_POST['source'] ) ) : '';
+		$status = isset( $_POST['status'] ) ? sanitize_key( wp_unslash( $_POST['status'] ) ) : '';
+		$search = isset( $_POST['search'] ) ? sanitize_text_field( wp_unslash( $_POST['search'] ) ) : '';
+		$paged  = isset( $_POST['paged'] ) ? absint( $_POST['paged'] ) : 1;
 
 		if ( $paged < 1 ) {
 			$paged = 1;
@@ -687,72 +782,45 @@ class MSH_Hub_Page {
 		if ( '' !== $locale ) {
 			$args['locale'] = $locale;
 		}
-		if ( '' !== $staleness ) {
-			$args['staleness'] = $staleness;
+
+		if ( '' !== $field ) {
+			$args['field'] = $field;
 		}
+
 		if ( '' !== $source ) {
 			$args['source'] = $source;
 		}
 
-		$results = function_exists( 'msh_get_cache_entries' ) ? msh_get_cache_entries( $args ) : array();
+		if ( '' !== $status ) {
+			$args['status'] = $status;
+		}
+
+		if ( '' !== $search ) {
+			$args['search'] = $search;
+		}
+
+		$results = function_exists( 'msh_get_metadata_entries' ) ? msh_get_metadata_entries( $args ) : array(
+			'items'       => array(),
+			'total'       => 0,
+			'total_pages' => 1,
+		);
 
 		$items       = isset( $results['items'] ) ? $results['items'] : array();
 		$total       = isset( $results['total'] ) ? (int) $results['total'] : 0;
 		$total_pages = isset( $results['total_pages'] ) ? max( 1, (int) $results['total_pages'] ) : 1;
 
+		$status_labels = $this->get_metadata_status_labels();
+		$source_labels = array(
+			'ai'        => _x( 'AI', 'metadata source', 'msh-image-optimizer' ),
+			'manual'    => _x( 'Manual', 'metadata source', 'msh-image-optimizer' ),
+			'imported'  => _x( 'Imported', 'metadata source', 'msh-image-optimizer' ),
+		);
+
 		ob_start();
 		if ( ! empty( $items ) ) {
-			foreach ( $items as $entry ) {
-				?>
-				<tr>
-					<td><?php echo (int) $entry->attachment_id; ?></td>
-					<td><code><?php echo esc_html( $entry->locale ); ?></code></td>
-					<td><?php echo esc_html( $entry->field ); ?></td>
-					<td>
-						<?php
-						$value = 'manual' === $entry->chosen_source && ! empty( $entry->manual_value )
-							? $entry->manual_value
-							: $entry->ai_value;
-						echo esc_html( wp_trim_words( (string) $value, 10 ) );
-						?>
-					</td>
-					<td>
-						<span class="msh-badge msh-badge-<?php echo esc_attr( $entry->chosen_source ); ?>">
-							<?php echo esc_html( ucfirst( $entry->chosen_source ) ); ?>
-						</span>
-					</td>
-					<td>
-						<?php if ( ! empty( $entry->stale_reason ) ) : ?>
-							<span class="msh-badge msh-badge-stale" title="<?php echo esc_attr( $entry->stale_reason ); ?>">
-								<?php esc_html_e( 'Stale', 'msh-image-optimizer' ); ?>
-							</span>
-						<?php else : ?>
-							<span class="msh-badge msh-badge-fresh">
-								<?php esc_html_e( 'Fresh', 'msh-image-optimizer' ); ?>
-							</span>
-						<?php endif; ?>
-					</td>
-					<td><?php echo esc_html( $entry->updated_at ); ?></td>
-					<td>
-						<button
-							type="button"
-							class="button button-small msh-regenerate-btn"
-							data-attachment-id="<?php echo (int) $entry->attachment_id; ?>"
-							data-locale="<?php echo esc_attr( $entry->locale ); ?>"
-							data-field="<?php echo esc_attr( $entry->field ); ?>"
-						>
-							<?php esc_html_e( 'Regenerate', 'msh-image-optimizer' ); ?>
-						</button>
-					</td>
-				</tr>
-				<?php
-			}
+			$this->render_metadata_rows( $items, $status_labels, $source_labels );
 		} else {
-			?>
-			<tr>
-				<td colspan="8"><?php esc_html_e( 'No cache entries found.', 'msh-image-optimizer' ); ?></td>
-			</tr>
-			<?php
+			echo '<tr><td colspan="8">' . esc_html__( 'No metadata entries found for the current filters.', 'msh-image-optimizer' ) . '</td></tr>';
 		}
 		$table_html = ob_get_clean();
 
@@ -775,8 +843,6 @@ class MSH_Hub_Page {
 				'table_html'      => $table_html,
 				'pagination_html' => $pagination_html,
 				'total'           => $total,
-				'current_page'    => $paged,
-				'total_pages'     => $total_pages,
 			)
 		);
 	}
@@ -945,7 +1011,7 @@ class MSH_Hub_Page {
 			);
 		}
 
-		$events = function_exists( 'msh_get_recent_events' ) ? msh_get_recent_events( array( 'limit' => 20 ) ) : array();
+		$events = function_exists( 'msh_get_recent_events' ) ? msh_get_recent_events( 20 ) : array();
 
 		ob_start();
 		if ( ! empty( $events ) ) {

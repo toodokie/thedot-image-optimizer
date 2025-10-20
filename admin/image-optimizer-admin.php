@@ -16,7 +16,8 @@ class MSH_Image_Optimizer_Admin {
 	 * @since 1.2.0
 	 */
 	public function __construct() {
-		add_action( 'admin_menu', array( $this, 'add_admin_menu' ), 15 );
+		// Menu registration now handled by class-msh-optimizer-menu.php
+		// add_action( 'admin_menu', array( $this, 'add_admin_menu' ), 15 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
 		add_action( 'admin_head', array( $this, 'add_admin_favicon' ) );
 		add_action( 'wp_ajax_msh_save_onboarding_context', array( $this, 'ajax_save_onboarding_context' ) );
