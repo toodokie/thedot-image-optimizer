@@ -810,37 +810,46 @@
 
 			const originalHtml = $button.html();
 			const queuedLabel = this.getString('queued', 'Queued');
+			const normalizedField = this.mapFieldToApi(field);
+			const payload = {
+				attachment_ids: [attachmentId],
+				reason: 'MANUAL',
+				priority: 5,
+				dry_run: false,
+				force: false
+			};
+
+			if (locale) {
+				payload.locales = [locale];
+			}
+
+			if (normalizedField) {
+				payload.fields = [normalizedField];
+			}
+
+			if (entryId && Number.isFinite(entryId)) {
+				payload.max_items = 1;
+			}
+
+			const idempotencyKey = this.generateIdempotencyKey();
 
 			this.toggleButtonBusy($button, true, this.getString('metadataRegenerating', 'Queuing...'));
 
-			this.postAction('msh_regenerate_entry', {
-				attachment_id: attachmentId,
-				locale,
-				field,
-				entry_id: entryId || ''
-			})
-				.done((response) => {
-					if (!response || !response.success) {
-						this.handleAjaxError(response, 'Unable to enqueue regeneration job.');
-						this.toggleButtonBusy($button, false);
+			this.enqueueRegenerateJob(payload, idempotencyKey)
+				.done((result) => {
+					const data = (result && result.data) || {};
+					const message = data.message || this.buildRegenerateSummaryMessage(data) || this.getString('metadataRegenerateQueued', 'Regeneration queued.');
+					this.handleRegenerateSuccess($button, originalHtml, queuedLabel, message);
+				})
+				.fail((error) => {
+					if (this.shouldFallbackToAjax(error)) {
+						this.enqueueRegenerateViaAjax(attachmentId, locale, field, $button, originalHtml, queuedLabel);
 						return;
 					}
 
-					const message = (response.data && response.data.message) || this.getString('metadataRegenerateQueued', 'Regeneration queued.');
-					this.showToast(message, 'success');
+					const message = this.extractErrorMessage(error, this.getString('metadataRegenerateError', 'Failed to enqueue regeneration.'));
 					this.toggleButtonBusy($button, false);
-					$button.html('✓ ' + queuedLabel).addClass('button-primary');
-
-					setTimeout(() => {
-						$button.html(originalHtml).removeClass('button-primary');
-					}, 2000);
-
-					this.reloadMetadataTable();
-				})
-				.fail((xhr, status, error) => {
-					console.error('Regenerate AJAX error:', status, error);
-					this.toggleButtonBusy($button, false);
-					this.showToast(this.getString('metadataRegenerateError', 'Failed to enqueue regeneration.'), 'error');
+					this.showToast(message, 'error');
 				});
 		},
 
