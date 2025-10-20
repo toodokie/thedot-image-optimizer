@@ -917,3 +917,221 @@
     flex-direction: column;
     gap: 6px;
 }
+
+/* Metadata modal + toast */
+body.msh-modal-open {
+    overflow: hidden;
+}
+
+.msh-modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(53, 51, 47, 0.55);
+    z-index: 100000;
+    display: none;
+}
+
+.msh-modal {
+    position: fixed;
+    z-index: 100001;
+    top: 50%;
+    left: 50%;
+    width: min(720px, calc(100% - 40px));
+    transform: translate(-50%, -50%);
+    background: #fff;
+    border-radius: 8px;
+    box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
+    display: none;
+    max-height: calc(100vh - 80px);
+    overflow: hidden;
+    font-family: var(--msh-font-body);
+}
+
+.msh-modal__content {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+.msh-modal__header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 24px;
+    border-bottom: 1px solid rgba(53, 51, 47, 0.15);
+    background: var(--msh-cream);
+}
+
+.msh-modal__title {
+    margin: 0;
+    font-family: var(--msh-font-heading);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--msh-charcoal);
+    font-size: 16px;
+}
+
+.msh-modal__close {
+    border: none;
+    background: transparent;
+    color: var(--msh-charcoal);
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.msh-modal__close:hover {
+    color: var(--msh-warm-gray);
+}
+
+.msh-modal__body {
+    padding: 24px;
+    overflow-y: auto;
+    flex: 1 1 auto;
+    background: #fff;
+}
+
+.msh-modal__footer,
+.msh-modal__actions {
+    padding: 16px 24px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 12px;
+    background: #fff;
+    border-top: 1px solid rgba(53, 51, 47, 0.12);
+}
+
+.msh-modal__actions .button {
+    min-width: 140px;
+}
+
+.msh-metadata-preview__image {
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.msh-metadata-preview__image img {
+    max-width: 100%;
+    border-radius: 6px;
+    box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+}
+
+.msh-metadata-preview__summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 8px 16px;
+    margin: 0 0 20px;
+    font-size: 13px;
+}
+
+.msh-metadata-preview__summary dt {
+    font-family: var(--msh-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    font-weight: 600;
+    color: var(--msh-warm-gray);
+}
+
+.msh-metadata-preview__summary dd {
+    margin: 0;
+    color: var(--msh-charcoal);
+    word-break: break-word;
+}
+
+.msh-metadata-preview__fields {
+    display: grid;
+    gap: 18px;
+}
+
+.msh-metadata-preview__field h3 {
+    font-family: var(--msh-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 14px;
+    margin: 0 0 6px;
+    color: var(--msh-charcoal);
+}
+
+.msh-metadata-preview__field pre {
+    margin: 0;
+    background: var(--msh-cream);
+    border-radius: 6px;
+    padding: 12px 14px;
+    font-family: var(--msh-font-body);
+    font-size: 13px;
+    line-height: 1.6;
+    white-space: pre-wrap;
+    word-break: break-word;
+}
+
+.msh-metadata-edit-form__control {
+    margin-bottom: 18px;
+}
+
+.msh-metadata-edit-form__control label {
+    display: block;
+    font-family: var(--msh-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-size: 12px;
+    margin-bottom: 6px;
+    color: var(--msh-charcoal);
+}
+
+.msh-metadata-edit-form__control textarea {
+    width: 100%;
+    min-height: 80px;
+    padding: 10px 12px;
+    border-radius: 6px;
+    border: 1px solid rgba(53, 51, 47, 0.18);
+    font-family: var(--msh-font-body);
+    font-size: 13px;
+    line-height: 1.5;
+    resize: vertical;
+}
+
+.msh-metadata-edit-form__control textarea:focus {
+    outline: none;
+    border-color: var(--msh-lime);
+    box-shadow: 0 0 0 2px rgba(218, 255, 0, 0.35);
+}
+
+.msh-toast {
+    position: fixed;
+    left: 50%;
+    bottom: 40px;
+    transform: translateX(-50%);
+    padding: 12px 24px;
+    border-radius: 999px;
+    box-shadow: 0 14px 34px rgba(0, 0, 0, 0.18);
+    font-family: var(--msh-font-body);
+    font-size: 14px;
+    color: #fff;
+    background: var(--msh-charcoal);
+    z-index: 100002;
+    display: none;
+}
+
+.msh-toast.is-success {
+    background: #2f855a;
+}
+
+.msh-toast.is-error {
+    background: #c53030;
+}
+
+.msh-toast.is-info {
+    background: var(--msh-charcoal);
+}
+
+.button.is-busy,
+.button-link.is-busy {
+    opacity: 0.65;
+    pointer-events: none;
+    cursor: progress;
+}
+
+.msh-clipboard-temp {
+    position: absolute;
+    left: -9999px;
+    top: 0;
+}

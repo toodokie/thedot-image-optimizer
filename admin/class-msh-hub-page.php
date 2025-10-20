@@ -506,15 +506,19 @@ class MSH_Hub_Page {
 			}
 
 			$value      = isset( $entry->value ) ? $entry->value : '';
-			$value_view = esc_html( wp_trim_words( wp_strip_all_tags( (string) $value ), 18 ) );
+			$value_raw  = (string) $value;
+			$value_view = esc_html( wp_trim_words( wp_strip_all_tags( $value_raw ), 18 ) );
 			$updated    = isset( $entry->updated_at ) && $entry->updated_at ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $entry->updated_at ) : __( 'N/A', 'msh-image-optimizer' );
+			$entry_id   = isset( $entry->id ) ? (int) $entry->id : 0;
+			$is_locked  = ( 'locked' === $status_key ) || ( isset( $entry->locked ) && $entry->locked );
+			$lock_label = $is_locked ? __( 'Unlock', 'msh-image-optimizer' ) : __( 'Lock', 'msh-image-optimizer' );
 
 			?>
-			<tr>
+			<tr class="msh-metadata-row" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-status="<?php echo esc_attr( $status_key ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>" data-source="<?php echo esc_attr( $source_key ); ?>">
 				<td><?php echo $media_html; ?></td>
 				<td><code><?php echo esc_html( $entry->locale ?? '' ); ?></code></td>
 				<td><?php echo esc_html( $entry->field ?? '' ); ?></td>
-				<td class="msh-metadata-value"><?php echo $value_view; ?></td>
+				<td class="msh-metadata-value" data-full-value="<?php echo esc_attr( $value_raw ); ?>"><?php echo $value_view; ?></td>
 				<td><?php echo esc_html( $source_label ?: __( 'Unknown', 'msh-image-optimizer' ) ); ?></td>
 				<td>
 					<span class="msh-status-badge <?php echo esc_attr( $status_badge ); ?>" data-status="<?php echo esc_attr( $status_key ); ?>">
@@ -524,11 +528,11 @@ class MSH_Hub_Page {
 				<td><?php echo esc_html( $updated ); ?></td>
 				<td>
 					<div class="msh-metadata-actions">
-						<button type="button" class="button-link msh-action-preview" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Preview', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-copy" data-value="<?php echo esc_attr( $value ); ?>"><?php esc_html_e( 'Copy', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-edit" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Edit', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-regenerate" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Regenerate', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-toggle-lock" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Lock', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-preview" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Preview', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-copy" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-value="<?php echo esc_attr( $value_raw ); ?>"><?php esc_html_e( 'Copy', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-edit" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Edit', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-regenerate" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Regenerate', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-toggle-lock" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>" data-locked="<?php echo $is_locked ? '1' : '0'; ?>"><?php echo esc_html( $lock_label ); ?></button>
 					</div>
 				</td>
 			</tr>

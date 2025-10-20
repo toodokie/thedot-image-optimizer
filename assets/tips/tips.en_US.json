@@ -1,0 +1,89 @@
+[
+  {
+    "id": "alt_length_best_practice",
+    "locale": "en_US",
+    "category": "accessibility",
+    "audience": "casual",
+    "text": "Alt text works best under 125 characters. Keep it natural and specific.",
+    "cta": {
+      "label": "See examples",
+      "href": "https://docs.thedot.io/tips/alt-length"
+    },
+    "weight": 0.9
+  },
+  {
+    "id": "file_names_seo",
+    "locale": "en_US",
+    "category": "seo",
+    "audience": "casual",
+    "text": "Descriptive file names help SEO. Rename images before uploading when possible.",
+    "cta": {
+      "label": "Learn more",
+      "href": "https://docs.thedot.io/tips/file-names"
+    },
+    "weight": 0.8
+  },
+  {
+    "id": "context_matters",
+    "locale": "en_US",
+    "category": "features",
+    "audience": "casual",
+    "text": "The AI analyzes surrounding page context. Images used on multiple pages may get different metadata.",
+    "cta": null,
+    "weight": 0.7
+  },
+  {
+    "id": "batch_processing",
+    "locale": "en_US",
+    "category": "workflow",
+    "audience": "casual",
+    "text": "Process images in small batches to avoid overwhelming your server.",
+    "cta": {
+      "label": "Best practices",
+      "href": "https://docs.thedot.io/tips/batch-processing"
+    },
+    "weight": 0.6
+  },
+  {
+    "id": "locale_profiles",
+    "locale": "en_US",
+    "category": "features",
+    "audience": "advanced",
+    "text": "Locale Profiles let you customize how metadata is generated for different languages and regions.",
+    "cta": {
+      "label": "Try Locale Profiles",
+      "href": "admin.php?page=msh-locale-profiles"
+    },
+    "weight": 0.5
+  },
+  {
+    "id": "avoid_image_of",
+    "locale": "en_US",
+    "category": "accessibility",
+    "audience": "casual",
+    "text": "Avoid starting alt text with 'image of' or 'picture of' - screen readers already announce it's an image.",
+    "cta": null,
+    "weight": 0.9
+  },
+  {
+    "id": "glossary_consistency",
+    "locale": "en_US",
+    "category": "features",
+    "audience": "advanced",
+    "text": "Use the Glossary to ensure brand terms and product names are used consistently across all metadata.",
+    "cta": {
+      "label": "Open Glossary",
+      "href": "admin.php?page=msh-glossary"
+    },
+    "weight": 0.6
+  },
+  {
+    "id": "queue_monitoring",
+    "locale": "en_US",
+    "category": "workflow",
+    "audience": "advanced",
+    "text": "Monitor the Queue tab to track bulk optimization jobs and identify any failures.",
+    "cta": null,
+    "weight": 0.4
+  }
+]
