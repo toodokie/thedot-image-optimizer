@@ -43,16 +43,13 @@ class MSH_Glossary_Page {
 
 	/**
 	 * Register submenu page
+	 *
+	 * NOTE: Menu registration disabled - this page is now accessed via
+	 * the Localization tab in class-msh-optimizer-menu.php
 	 */
 	public function register_menu() {
-		add_submenu_page(
-			'msh-optimizer',
-			__( 'Glossary', 'msh-image-optimizer' ),
-			'<span class="dashicons dashicons-book"></span> ' . __( 'Glossary', 'msh-image-optimizer' ),
-			'manage_options',
-			self::PAGE_SLUG,
-			array( $this, 'render' )
-		);
+		// Disabled - accessed via tabbed interface
+		return;
 	}
 
 	/**

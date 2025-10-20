@@ -30,17 +30,14 @@ class MSH_Approval_Queue_Page {
 	/**
 	 * Register submenu under The Dot menu.
 	 *
+	 * NOTE: Menu registration disabled - this page is now accessed via
+	 * the Review Center tab in class-msh-optimizer-menu.php
+	 *
 	 * @return void
 	 */
 	public function register_page() {
-		add_submenu_page(
-			'msh-optimizer',
-			__( 'Approval Queue', 'msh-image-optimizer' ),
-			__( 'Approval Queue', 'msh-image-optimizer' ),
-			'manage_options',
-			self::PAGE_SLUG,
-			array( $this, 'render_page' )
-		);
+		// Disabled - accessed via tabbed interface
+		return;
 	}
 
 	/**

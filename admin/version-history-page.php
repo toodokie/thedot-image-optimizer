@@ -32,17 +32,14 @@ class MSH_Version_History_Page {
 	/**
 	 * Register submenu page under The Dot menu.
 	 *
+	 * NOTE: Menu registration disabled - this page is now accessed via
+	 * the Review Center tab in class-msh-optimizer-menu.php
+	 *
 	 * @return void
 	 */
 	public function register_page() {
-		add_submenu_page(
-			'msh-optimizer',
-			__( 'Version History', 'msh-image-optimizer' ),
-			__( 'Version History', 'msh-image-optimizer' ),
-			'manage_options',
-			self::PAGE_SLUG,
-			array( $this, 'render_page' )
-		);
+		// Disabled - accessed via tabbed interface
+		return;
 	}
 
 	/**

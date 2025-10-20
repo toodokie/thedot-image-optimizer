@@ -32,17 +32,14 @@ class MSH_AB_Testing_Page {
 	/**
 	 * Register submenu under The Dot menu.
 	 *
+	 * NOTE: Menu registration disabled - this page is now accessed via
+	 * the Insights & Analytics tab in class-msh-optimizer-menu.php
+	 *
 	 * @return void
 	 */
 	public function register_page() {
-		add_submenu_page(
-			'msh-optimizer',
-			__( 'A/B Testing Dashboard', 'msh-image-optimizer' ),
-			__( 'A/B Testing', 'msh-image-optimizer' ),
-			'manage_options',
-			self::PAGE_SLUG,
-			array( $this, 'render_page' )
-		);
+		// Disabled - accessed via tabbed interface
+		return;
 	}
 
 	/**

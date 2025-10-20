@@ -28,16 +28,13 @@ class MSH_Context_Analytics_Page {
 
 	/**
 	 * Add analytics page to admin menu
+	 *
+	 * NOTE: Menu registration disabled - this page is now accessed via
+	 * the Insights & Analytics tab in class-msh-optimizer-menu.php
 	 */
 	public function add_menu_page() {
-		add_submenu_page(
-			'msh-optimizer',
-			__( 'Context Analytics', 'msh-image-optimizer' ),
-			'<span class="dashicons dashicons-chart-bar"></span> ' . __( 'Context Analytics', 'msh-image-optimizer' ),
-			'manage_options',
-			'msh-context-analytics',
-			array( $this, 'render_page' )
-		);
+		// Disabled - accessed via tabbed interface
+		return;
 	}
 
 	/**

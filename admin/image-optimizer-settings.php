@@ -116,6 +116,7 @@ class MSH_Image_Optimizer_Settings {
 		if ( ! is_array( $ai_features ) ) {
 			$ai_features = array();
 		}
+		$user_mode      = get_option( 'msh_user_mode', 'basic' );
 		$success = isset( $_GET['msh_saved'] ) && '1' === $_GET['msh_saved'];
 		$errors  = isset( $_GET['msh_error'] ) ? sanitize_text_field( $_GET['msh_error'] ) : '';
 
@@ -162,6 +163,33 @@ class MSH_Image_Optimizer_Settings {
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="msh-settings-form">
 				<?php wp_nonce_field( self::NONCE_ACTION ); ?>
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ADMIN_POST_ACTION ); ?>">
+
+				<section class="msh-settings-card">
+					<header>
+						<h2><?php esc_html_e( 'User Mode', 'msh-image-optimizer' ); ?></h2>
+						<p><?php esc_html_e( 'Control menu complexity: Basic mode shows essential features only, Advanced mode shows all tools and options.', 'msh-image-optimizer' ); ?></p>
+					</header>
+					<div class="msh-settings-grid">
+						<div class="msh-settings-field">
+							<label>
+								<input type="radio" name="options[user_mode]" value="basic" <?php checked( $user_mode, 'basic' ); ?>>
+								<strong><?php esc_html_e( 'Basic Mode', 'msh-image-optimizer' ); ?></strong>
+								<span class="description" style="display: block; margin-left: 24px; margin-top: 4px;">
+									<?php esc_html_e( 'Shows Dashboard, Image Optimizer, Settings, and Help. Perfect for day-to-day optimization work.', 'msh-image-optimizer' ); ?>
+								</span>
+							</label>
+						</div>
+						<div class="msh-settings-field">
+							<label>
+								<input type="radio" name="options[user_mode]" value="advanced" <?php checked( $user_mode, 'advanced' ); ?>>
+								<strong><?php esc_html_e( 'Advanced Mode', 'msh-image-optimizer' ); ?></strong>
+								<span class="description" style="display: block; margin-left: 24px; margin-top: 4px;">
+									<?php esc_html_e( 'Displays all features including Optimizer Hub, Localization, Insights & Analytics, and Review Center (Pro features require active license).', 'msh-image-optimizer' ); ?>
+								</span>
+							</label>
+						</div>
+					</div>
+				</section>
 
 				<section class="msh-settings-card">
 					<header>
@@ -567,6 +595,12 @@ class MSH_Image_Optimizer_Settings {
 
 		$rename_enabled = ( isset( $options_raw['rename_enabled'] ) && '1' === (string) $options_raw['rename_enabled'] ) ? '1' : '0';
 		update_option( 'msh_enable_file_rename', $rename_enabled, false );
+
+		$user_mode = isset( $options_raw['user_mode'] ) ? sanitize_text_field( $options_raw['user_mode'] ) : 'basic';
+		if ( ! in_array( $user_mode, array( 'basic', 'advanced' ), true ) ) {
+			$user_mode = 'basic';
+		}
+		update_option( 'msh_user_mode', $user_mode, false );
 
 		$ai_mode = isset( $options_raw['ai_mode'] ) ? sanitize_text_field( $options_raw['ai_mode'] ) : 'manual';
 		if ( ! in_array( $ai_mode, array( 'manual', 'assist', 'hybrid' ), true ) ) {
