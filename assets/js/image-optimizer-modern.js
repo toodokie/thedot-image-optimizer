@@ -243,8 +243,11 @@
 
     const Onboarding = {
         init() {
+            console.log('MSH: Onboarding.init() called');
             this.$container = $('#msh-onboarding-container');
+            console.log('MSH: #msh-onboarding-container found?', this.$container.length);
             if (!this.$container.length) {
+                console.error('MSH: #msh-onboarding-container NOT FOUND! Exiting init()');
                 return;
             }
 
@@ -290,9 +293,12 @@
             this.bindEvents();
             this.initializeContextSwitcher();
 
+            console.log('MSH: About to check if onboarding is complete. this.isComplete =', this.isComplete);
             if (this.isComplete) {
+                console.log('MSH: Onboarding IS complete, calling showSummary()');
                 this.showSummary();
             } else {
+                console.log('MSH: Onboarding NOT complete, calling showForm()');
                 this.showForm(true);
             }
 
@@ -608,9 +614,12 @@
         },
 
         showSummary() {
+            console.log('MSH: showSummary() called');
+            console.log('MSH: $summary element found?', this.$summary.length);
             this.isComplete = true;
             this.$formWrapper.hide();
             this.$summary.show();
+            console.log('MSH: Summary should now be visible');
             this.updateProgress();
             this.updateNav();
         },
@@ -4346,6 +4355,9 @@
     // =============================================================================
 
     $(document).ready(function() {
+        console.log('MSH: Initializing Image Optimizer page...');
+        console.log('MSH: Onboarding complete?', window.mshImageOptimizer.onboardingComplete);
+
         Onboarding.init();
         Wizard.init();
         UI.init();
@@ -4360,6 +4372,9 @@
         //     }, CONFIG.autoRefreshInterval);
         // }
 
+        // Diagnostic: Log page visibility state
+        console.log('MSH: Summary visible?', $('#msh-onboarding-summary').is(':visible'));
+        console.log('MSH: Form visible?', $('#msh-onboarding-form').is(':visible'));
     });
 
     // =============================================================================

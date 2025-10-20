@@ -1482,5 +1482,6 @@ class MSH_Image_Optimizer_Admin {
 	}
 }
 
-// Initialize the admin interface
-new MSH_Image_Optimizer_Admin();
+// Initialize the admin interface and make it globally accessible
+global $msh_optimizer_admin_instance;
+$msh_optimizer_admin_instance = new MSH_Image_Optimizer_Admin();
