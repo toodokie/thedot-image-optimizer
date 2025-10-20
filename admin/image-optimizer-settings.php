@@ -577,7 +577,7 @@ class MSH_Image_Optimizer_Settings {
 
 		check_admin_referer( self::NONCE_ACTION );
 
-		$redirect_url = admin_url( 'options-general.php?page=' . self::PAGE_SLUG );
+		$redirect_url = admin_url( 'admin.php?page=' . self::PAGE_SLUG );
 
 		$primary_raw = isset( $_POST['primary'] ) ? wp_unslash( $_POST['primary'] ) : array();
 		$primary     = MSH_Image_Optimizer_Context_Helper::sanitize_context(
