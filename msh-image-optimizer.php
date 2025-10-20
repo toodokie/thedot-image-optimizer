@@ -122,12 +122,22 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-automation-triggers.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-metrics-collector.php';
 
+        // Phase 5+9: Enterprise Features (License, Telemetry, Remote Sync)
+        require_once MSH_IO_PLUGIN_DIR . 'includes/enterprise/class-msh-license-manager.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/enterprise/class-msh-telemetry.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/enterprise/class-msh-remote-sync.php';
+
         // Initialize automation infrastructure
         MSH_Database_Schema::get_instance();
         MSH_Job_Engine::get_instance();
         MSH_Queue_Manager::get_instance();
         MSH_Automation_Triggers::get_instance();
         MSH_Metrics_Collector::get_instance();
+
+        // Initialize enterprise features
+        MSH_License_Manager::get_instance();
+        MSH_Telemetry::get_instance();
+        MSH_Remote_Sync::get_instance();
 
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-database-cli.php';

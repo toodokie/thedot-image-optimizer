@@ -170,22 +170,26 @@ class MSH_Image_Optimizer_Settings {
 						<p><?php esc_html_e( 'Control menu complexity: Basic mode shows essential features only, Advanced mode shows all tools and options.', 'msh-image-optimizer' ); ?></p>
 					</header>
 					<div class="msh-settings-grid">
-						<div class="msh-settings-field">
-							<label>
-								<input type="radio" name="options[user_mode]" value="basic" <?php checked( $user_mode, 'basic' ); ?>>
-								<strong><?php esc_html_e( 'Basic Mode', 'msh-image-optimizer' ); ?></strong>
-								<span class="description" style="display: block; margin-left: 24px; margin-top: 4px;">
-									<?php esc_html_e( 'Shows Dashboard, Image Optimizer, Settings, and Help. Perfect for day-to-day optimization work.', 'msh-image-optimizer' ); ?>
-								</span>
+						<div class="msh-settings-field msh-user-mode-option">
+							<label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+								<input type="radio" name="options[user_mode]" value="basic" <?php checked( $user_mode, 'basic' ); ?> style="margin-top: 2px; flex-shrink: 0;">
+								<div>
+									<strong style="display: block; margin-bottom: 4px;"><?php esc_html_e( 'Basic Mode', 'msh-image-optimizer' ); ?></strong>
+									<span class="description" style="display: block; color: #646970;">
+										<?php esc_html_e( 'Shows Dashboard, Image Optimizer, Settings, and Help. Perfect for day-to-day optimization work.', 'msh-image-optimizer' ); ?>
+									</span>
+								</div>
 							</label>
 						</div>
-						<div class="msh-settings-field">
-							<label>
-								<input type="radio" name="options[user_mode]" value="advanced" <?php checked( $user_mode, 'advanced' ); ?>>
-								<strong><?php esc_html_e( 'Advanced Mode', 'msh-image-optimizer' ); ?></strong>
-								<span class="description" style="display: block; margin-left: 24px; margin-top: 4px;">
-									<?php esc_html_e( 'Displays all features including Optimizer Hub, Localization, Insights & Analytics, and Review Center (Pro features require active license).', 'msh-image-optimizer' ); ?>
-								</span>
+						<div class="msh-settings-field msh-user-mode-option">
+							<label style="display: flex; align-items: flex-start; gap: 12px; cursor: pointer;">
+								<input type="radio" name="options[user_mode]" value="advanced" <?php checked( $user_mode, 'advanced' ); ?> style="margin-top: 2px; flex-shrink: 0;">
+								<div>
+									<strong style="display: block; margin-bottom: 4px;"><?php esc_html_e( 'Advanced Mode', 'msh-image-optimizer' ); ?></strong>
+									<span class="description" style="display: block; color: #646970;">
+										<?php esc_html_e( 'Displays all features including Optimizer Hub, Localization, Insights & Analytics, and Review Center (Pro features require active license).', 'msh-image-optimizer' ); ?>
+									</span>
+								</div>
 							</label>
 						</div>
 					</div>
