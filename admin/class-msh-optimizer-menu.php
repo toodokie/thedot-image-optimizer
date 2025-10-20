@@ -104,7 +104,7 @@ class MSH_Optimizer_Menu {
 			'<span class="dashicons dashicons-images-alt2"></span> ' . __( 'Image Optimizer', 'msh-image-optimizer' ),
 			'manage_options',
 			'msh-image-optimizer',
-			array( 'MSH_Image_Optimizer_Admin', 'render_admin_page' )
+			array( $this, 'render_image_optimizer_page' )
 		);
 
 		// 3. Optimizer Hub (Advanced mode only)
@@ -115,7 +115,7 @@ class MSH_Optimizer_Menu {
 				'<span class="dashicons dashicons-database"></span> ' . __( 'Optimizer Hub', 'msh-image-optimizer' ),
 				'manage_options',
 				'msh-hub',
-				array( 'MSH_Hub_Page', 'render' )
+				array( $this, 'render_hub_page' )
 			);
 		}
 
@@ -162,7 +162,7 @@ class MSH_Optimizer_Menu {
 			'<span class="dashicons dashicons-admin-generic"></span> ' . __( 'Settings', 'msh-image-optimizer' ),
 			'manage_options',
 			'msh-image-optimizer-settings',
-			array( 'MSH_Image_Optimizer_Settings', 'render_settings_page' )
+			array( $this, 'render_settings_page' )
 		);
 
 		// 8. Help & Docs (always visible)
@@ -337,6 +337,54 @@ class MSH_Optimizer_Menu {
 			</div>
 		</div>
 		<?php
+	}
+
+	/**
+	 * Render Image Optimizer page (handled by MSH_Image_Optimizer_Admin)
+	 *
+	 * @return void
+	 */
+	public function render_image_optimizer_page() {
+		if ( class_exists( 'MSH_Image_Optimizer_Admin' ) ) {
+			global $msh_optimizer_admin_instance;
+			if ( isset( $msh_optimizer_admin_instance ) && is_object( $msh_optimizer_admin_instance ) ) {
+				$msh_optimizer_admin_instance->admin_page();
+			}
+		}
+	}
+
+	/**
+	 * Render Optimizer Hub page (handled by MSH_Hub_Page)
+	 *
+	 * @return void
+	 */
+	public function render_hub_page() {
+		if ( class_exists( 'MSH_Hub_Page' ) ) {
+			$hub = MSH_Hub_Page::get_instance();
+			if ( method_exists( $hub, 'render_page' ) ) {
+				$hub->render_page();
+			}
+		}
+	}
+
+	/**
+	 * Render Settings page (handled by MSH_Image_Optimizer_Settings)
+	 *
+	 * @return void
+	 */
+	public function render_settings_page() {
+		if ( class_exists( 'MSH_Image_Optimizer_Settings' ) ) {
+			// Settings class is already instantiated at file bottom, just call render method
+			// We need to access the singleton/global instance
+			global $msh_settings_instance;
+			if ( isset( $msh_settings_instance ) && is_object( $msh_settings_instance ) ) {
+				$msh_settings_instance->render_settings_page();
+			} else {
+				// Fallback: create temporary instance
+				$settings = new MSH_Image_Optimizer_Settings();
+				$settings->render_settings_page();
+			}
+		}
 	}
 
 	/**
