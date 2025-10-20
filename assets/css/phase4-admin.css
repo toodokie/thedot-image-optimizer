@@ -1,0 +1,361 @@
+/* Phase 4 Admin Styles - The Dot Brand */
+
+.msh-phase4-wrap {
+    background: #FAF9F6;
+    color: #35332f;
+    font-family: "ff-real-text-pro", "Helvetica Neue", Arial, sans-serif;
+    padding-bottom: 48px;
+}
+
+.msh-phase4-wrap h1,
+.msh-phase4-wrap h2,
+.msh-phase4-wrap h3,
+.msh-phase4-wrap h4 {
+    font-family: "futura-pt", "Helvetica Neue", Arial, sans-serif;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #35332f;
+}
+
+.msh-phase4-lede {
+    max-width: 720px;
+    font-size: 16px;
+    line-height: 1.6;
+    margin-top: 12px;
+    margin-bottom: 24px;
+}
+
+.msh-phase4-filter {
+    display: flex;
+    gap: 24px;
+    align-items: flex-end;
+    margin-bottom: 24px;
+}
+
+.msh-phase4-filter label {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+
+.msh-phase4-filter input {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 10px 12px;
+    background: #fff;
+    color: #35332f;
+}
+
+.button-dot-primary {
+    background: #35332f !important;
+    color: #FAF9F6 !important;
+    border-radius: 12px !important;
+    border: none !important;
+    box-shadow: none !important;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: "futura-pt", "Helvetica Neue", Arial, sans-serif;
+}
+
+.button-dot-primary:hover,
+.button-dot-primary:focus {
+    background: #daff00 !important;
+    color: #35332f !important;
+}
+
+.msh-phase4-card {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 16px;
+    padding: 32px;
+    margin-bottom: 32px;
+    box-shadow: 0 12px 32px rgba(53, 51, 47, 0.05);
+}
+
+.msh-phase4-card__header {
+    margin-bottom: 24px;
+}
+
+.msh-phase4-card__header h2 {
+    margin: 0;
+    font-size: 20px;
+}
+
+.msh-phase4-card__header p {
+    margin: 8px 0 0;
+    color: #35332f;
+    opacity: 0.8;
+}
+
+.msh-phase4-table-wrap {
+    overflow-x: auto;
+    border-radius: 12px;
+}
+
+.msh-phase4-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+}
+
+.msh-phase4-table th,
+.msh-phase4-table td {
+    padding: 14px 16px;
+    border-bottom: 1px solid #eee;
+    text-align: left;
+    font-size: 14px;
+    color: #35332f;
+}
+
+.msh-phase4-table th {
+    background: #FAF9F6;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    font-family: "futura-pt", "Helvetica Neue", Arial, sans-serif;
+    font-size: 12px;
+}
+
+.msh-phase4-badge {
+    display: inline-block;
+    background: #daff00;
+    color: #35332f;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    margin-left: 10px;
+    text-transform: uppercase;
+}
+
+.msh-phase4-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.msh-phase4-note-row {
+    display: none;
+}
+
+.msh-phase4-note-row.is-open {
+    display: table-row;
+    background: #FAF9F6;
+}
+
+.msh-phase4-note-form textarea {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid #ddd;
+    padding: 12px;
+    resize: vertical;
+    min-height: 80px;
+}
+
+.msh-phase4-notes {
+    margin-top: 16px;
+    list-style: none;
+    padding: 0;
+}
+
+.msh-phase4-notes li {
+    border-left: 3px solid #daff00;
+    padding: 12px 16px;
+    margin-bottom: 12px;
+    background: #fff;
+    border-radius: 12px;
+}
+
+.msh-phase4-notes strong {
+    display: block;
+    font-family: "futura-pt", "Helvetica Neue", Arial, sans-serif;
+    letter-spacing: 0.06em;
+    margin-bottom: 4px;
+}
+
+.msh-phase4-note-toggle {
+    color: #35332f;
+    text-decoration: underline;
+}
+
+.msh-phase4-diff {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 24px;
+    overflow: auto;
+}
+
+.msh-phase4-empty {
+    background: #FAF9F6;
+    padding: 18px 24px;
+    border-radius: 12px;
+    border: 1px dashed #ddd;
+}
+
+.msh-phase4-form {
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+}
+
+.msh-phase4-two-column {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 24px;
+}
+
+.msh-phase4-form label span {
+    font-size: 13px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.msh-phase4-form input,
+.msh-phase4-form textarea {
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: 12px;
+    color: #35332f;
+    background: #fff;
+    width: 100%;
+}
+
+.msh-phase4-campaign {
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    background: #fff;
+}
+
+.msh-phase4-campaign__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.msh-phase4-description {
+    margin-top: 0;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.msh-phase4-status {
+    background: #FAF9F6;
+    border: 1px solid #ddd;
+    border-radius: 999px;
+    padding: 6px 16px;
+    font-size: 11px;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.status-running {
+    border-color: #daff00;
+}
+
+.status-approved,
+.status-completed {
+    border-color: #6AC44C;
+}
+
+.status-in_review {
+    border-color: #FFB400;
+}
+
+.status-changes_requested {
+    border-color: #FF6B6B;
+}
+
+.msh-phase4-campaign__footer {
+    margin-top: 16px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+}
+
+.msh-phase4-winner {
+    font-weight: 600;
+    color: #35332f;
+}
+
+.msh-phase4-queue {
+    border: 1px solid #eee;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 24px;
+    background: #fff;
+}
+
+.msh-phase4-queue__header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 16px;
+    margin-bottom: 16px;
+}
+
+.msh-phase4-meta {
+    margin: 6px 0 0;
+    opacity: 0.75;
+}
+
+.msh-phase4-queue__body {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+.msh-phase4-version-preview,
+.msh-phase4-history,
+.msh-phase4-comments {
+    background: #FAF9F6;
+    border-radius: 12px;
+    padding: 16px;
+    border: 1px solid #eee;
+}
+
+.msh-phase4-history ul,
+.msh-phase4-comments ul {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+}
+
+.msh-phase4-history li,
+.msh-phase4-comments li {
+    margin-bottom: 12px;
+}
+
+.msh-phase4-queue__footer textarea {
+    margin: 0 0 12px;
+}
+
+.msh-phase4-decisions {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+@media (max-width: 782px) {
+    .msh-phase4-filter {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .msh-phase4-campaign__header,
+    .msh-phase4-queue__header,
+    .msh-phase4-campaign__footer {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+}

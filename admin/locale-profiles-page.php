@@ -1,252 +1,313 @@
 <?php
 /**
- * Locale Profiles Admin Page
+ * Locale Profiles Manager
  *
- * Visual interface for managing locale-specific AI prompt profiles.
+ * Brand-compliant interface for managing locale-specific optimization settings.
  *
- * @package    MSH_Image_Optimizer
- * @subpackage Admin
+ * @package MSH_Image_Optimizer
+ * @since 2.0.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Get locale manager
-$locale_manager = MSH_Locale_Profile_Manager::get_instance();
-$site_locale    = get_locale();
+/**
+ * Locale Profiles Page Class
+ */
+class MSH_Locale_Profiles_Page {
 
-// Handle form submissions
-if ( isset( $_POST['msh_save_locale_profile'] ) && check_admin_referer( 'msh_locale_profile' ) ) {
-	$locale = sanitize_text_field( $_POST['locale'] ?? $site_locale );
+	/**
+	 * Page slug
+	 */
+	const PAGE_SLUG = 'msh-locale-profiles';
 
-	$profile_data = array(
-		'tone'                  => sanitize_text_field( $_POST['tone'] ?? 'professional' ),
-		'formality_level'       => intval( $_POST['formality_level'] ?? 3 ),
-		'cta_style'             => sanitize_text_field( $_POST['cta_style'] ?? 'subtle' ),
-		'special_instructions'  => sanitize_textarea_field( $_POST['special_instructions'] ?? '' ),
-		'forbidden_terms'       => sanitize_textarea_field( $_POST['forbidden_terms'] ?? '' ),
-		'confidence_threshold'  => floatval( $_POST['confidence_threshold'] ?? 0.7 ),
-	);
+	/**
+	 * Constructor
+	 */
+	public function __construct() {
+		add_action( 'admin_menu', array( $this, 'register_menu' ), 25 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+	}
 
-	$result = $locale_manager->set_profile( $locale, $profile_data );
+	/**
+	 * Register submenu page
+	 */
+	public function register_menu() {
+		add_submenu_page(
+			'msh-optimizer',
+			__( 'Locale Profiles', 'msh-image-optimizer' ),
+			'<span class="dashicons dashicons-translation"></span> ' . __( 'Locale Profiles', 'msh-image-optimizer' ),
+			'manage_options',
+			self::PAGE_SLUG,
+			array( $this, 'render' )
+		);
+	}
 
-	if ( $result ) {
-		echo '<div class="notice notice-success"><p>' . esc_html__( 'Locale profile saved successfully.', 'msh-image-optimizer' ) . '</p></div>';
-	} else {
-		echo '<div class="notice notice-error"><p>' . esc_html__( 'Error saving locale profile.', 'msh-image-optimizer' ) . '</p></div>';
+	/**
+	 * Enqueue assets
+	 *
+	 * @param string $hook Current page hook.
+	 */
+	public function enqueue_assets( $hook ) {
+		if ( 'the-dot_page_' . self::PAGE_SLUG !== $hook ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'msh-image-optimizer-fonts',
+			'https://use.typekit.net/gac6jnd.css',
+			array(),
+			null
+		);
+	}
+
+	/**
+	 * Render locale profiles page
+	 */
+	public function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'msh-image-optimizer' ) );
+		}
+
+		?>
+		<div class="wrap msh-locale-page">
+			<h1 class="msh-page-title"><?php esc_html_e( 'Locale Profiles', 'msh-image-optimizer' ); ?></h1>
+			<p class="msh-page-subtitle"><?php esc_html_e( 'Configure locale-specific optimization settings and cultural adaptation rules.', 'msh-image-optimizer' ); ?></p>
+
+			<div class="msh-locale-container">
+				<!-- Active Locales -->
+				<div class="msh-locale-active">
+					<h2><?php esc_html_e( 'Active Locales', 'msh-image-optimizer' ); ?></h2>
+
+					<div class="msh-notice msh-notice-info">
+						<p><?php esc_html_e( 'Locale profile management is coming in Phase 3. This will allow you to configure AI behavior for different languages and regions.', 'msh-image-optimizer' ); ?></p>
+					</div>
+
+					<div class="msh-locale-list">
+						<!-- English (Default) -->
+						<div class="msh-locale-card">
+							<div class="msh-locale-card-header">
+								<div class="msh-locale-flag">🇺🇸</div>
+								<div class="msh-locale-info">
+									<div class="msh-locale-name">English (United States)</div>
+									<div class="msh-locale-code">en_US</div>
+								</div>
+								<span class="msh-locale-badge"><?php esc_html_e( 'Default', 'msh-image-optimizer' ); ?></span>
+							</div>
+							<div class="msh-locale-card-body">
+								<p><?php esc_html_e( 'Primary locale for metadata generation.', 'msh-image-optimizer' ); ?></p>
+							</div>
+							<div class="msh-locale-card-footer">
+								<button class="button button-secondary msh-btn-configure" disabled><?php esc_html_e( 'Configure', 'msh-image-optimizer' ); ?></button>
+							</div>
+						</div>
+
+						<!-- Spanish -->
+						<div class="msh-locale-card msh-locale-card-disabled">
+							<div class="msh-locale-card-header">
+								<div class="msh-locale-flag">🇪🇸</div>
+								<div class="msh-locale-info">
+									<div class="msh-locale-name">Spanish (Spain)</div>
+									<div class="msh-locale-code">es_ES</div>
+								</div>
+								<span class="msh-locale-badge msh-locale-badge-inactive"><?php esc_html_e( 'Inactive', 'msh-image-optimizer' ); ?></span>
+							</div>
+							<div class="msh-locale-card-body">
+								<p><?php esc_html_e( 'Enable Spanish metadata generation with cultural adaptation.', 'msh-image-optimizer' ); ?></p>
+							</div>
+							<div class="msh-locale-card-footer">
+								<button class="button button-primary msh-btn-enable" disabled><?php esc_html_e( 'Enable', 'msh-image-optimizer' ); ?></button>
+							</div>
+						</div>
+
+						<!-- French -->
+						<div class="msh-locale-card msh-locale-card-disabled">
+							<div class="msh-locale-card-header">
+								<div class="msh-locale-flag">🇫🇷</div>
+								<div class="msh-locale-info">
+									<div class="msh-locale-name">French (France)</div>
+									<div class="msh-locale-code">fr_FR</div>
+								</div>
+								<span class="msh-locale-badge msh-locale-badge-inactive"><?php esc_html_e( 'Inactive', 'msh-image-optimizer' ); ?></span>
+							</div>
+							<div class="msh-locale-card-body">
+								<p><?php esc_html_e( 'Enable French metadata generation with cultural adaptation.', 'msh-image-optimizer' ); ?></p>
+							</div>
+							<div class="msh-locale-card-footer">
+								<button class="button button-primary msh-btn-enable" disabled><?php esc_html_e( 'Enable', 'msh-image-optimizer' ); ?></button>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</div>
+
+		<style>
+		.msh-locale-page {
+			background: #FAF9F6;
+			padding: 20px;
+		}
+
+		.msh-page-title {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: #35332f;
+			font-size: 28px;
+			margin-bottom: 8px;
+		}
+
+		.msh-page-subtitle {
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #8b8883;
+			font-size: 16px;
+			margin-bottom: 40px;
+		}
+
+		.msh-locale-active h2 {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: #35332f;
+			font-size: 20px;
+			margin-bottom: 20px;
+		}
+
+		.msh-notice {
+			padding: 16px;
+			border-radius: 8px;
+			margin-bottom: 20px;
+		}
+
+		.msh-notice-info {
+			background: #e8f4fd;
+			border-left: 4px solid #0073aa;
+		}
+
+		.msh-notice p {
+			margin: 0;
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #35332f;
+			font-size: 14px;
+		}
+
+		.msh-locale-list {
+			display: grid;
+			grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+			gap: 20px;
+		}
+
+		.msh-locale-card {
+			background: #fff;
+			border: 1px solid #ddd;
+			border-radius: 12px;
+			overflow: hidden;
+			transition: border-color 0.2s;
+		}
+
+		.msh-locale-card:hover {
+			border-color: #daff00;
+		}
+
+		.msh-locale-card-disabled {
+			opacity: 0.6;
+		}
+
+		.msh-locale-card-header {
+			padding: 20px;
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			border-bottom: 1px solid #eee;
+		}
+
+		.msh-locale-flag {
+			font-size: 32px;
+			line-height: 1;
+		}
+
+		.msh-locale-info {
+			flex: 1;
+		}
+
+		.msh-locale-name {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			color: #35332f;
+			font-size: 14px;
+			font-weight: 700;
+		}
+
+		.msh-locale-code {
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #8b8883;
+			font-size: 12px;
+			margin-top: 4px;
+		}
+
+		.msh-locale-badge {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.05em;
+			font-size: 10px;
+			padding: 4px 8px;
+			border-radius: 4px;
+			background: #daff00;
+			color: #35332f;
+			font-weight: 700;
+		}
+
+		.msh-locale-badge-inactive {
+			background: #eee;
+			color: #8b8883;
+		}
+
+		.msh-locale-card-body {
+			padding: 20px;
+		}
+
+		.msh-locale-card-body p {
+			margin: 0;
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #8b8883;
+			font-size: 14px;
+			line-height: 1.6;
+		}
+
+		.msh-locale-card-footer {
+			padding: 20px;
+			border-top: 1px solid #eee;
+			text-align: right;
+		}
+
+		.msh-btn-configure,
+		.msh-btn-enable {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			padding: 8px 16px !important;
+			border-radius: 8px;
+		}
+
+		.msh-btn-enable {
+			background: #35332f !important;
+			border-color: #35332f !important;
+			color: #FAF9F6 !important;
+		}
+
+		.msh-btn-enable:hover:not(:disabled) {
+			background: #daff00 !important;
+			border-color: #daff00 !important;
+			color: #35332f !important;
+		}
+		</style>
+		<?php
 	}
 }
 
-// Get current profile
-$current_profile = $locale_manager->get_profile( $site_locale ) ?: array(
-	'tone'                 => 'professional',
-	'formality_level'      => 3,
-	'cta_style'            => 'subtle',
-	'special_instructions' => '',
-	'forbidden_terms'      => '',
-	'confidence_threshold' => 0.7,
-);
-
-// Enqueue brand fonts
-wp_enqueue_style( 'msh-brand-fonts', 'https://use.typekit.net/gac6jnd.css', array(), null );
-?>
-
-<link rel="stylesheet" href="<?php echo esc_url( MSH_IO_ASSETS_URL . 'css/image-optimizer-settings.css' ); ?>">
-
-<style>
-/* Additional overrides for locale profiles page */
-#wpcontent, #wpbody, #wpbody-content {
-	background-color: #FAF9F6;
+// Initialize
+if ( is_admin() ) {
+	new MSH_Locale_Profiles_Page();
 }
-
-.msh-locale-wrap {
-	background-color: #FAF9F6;
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-	color: #35332f;
-	padding: 20px;
-	max-width: 1200px;
-}
-
-.msh-locale-wrap h1,
-.msh-locale-wrap h2 {
-	font-family: 'futura-pt', Arial, sans-serif !important;
-	text-transform: uppercase !important;
-	letter-spacing: 0.08em !important;
-	font-weight: 400 !important;
-	color: #35332f !important;
-	margin-bottom: 24px;
-}
-
-.form-table input[type="range"] {
-	width: 200px;
-	accent-color: #35332f;
-}
-
-.form-table textarea {
-	width: 100%;
-	max-width: 600px;
-	min-height: 100px;
-	border: 1px solid #ccc;
-	border-radius: 6px;
-	padding: 12px 16px;
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-	font-size: 14px;
-	color: #35332f;
-	background-color: #fff;
-	resize: vertical;
-}
-
-.form-table textarea:hover {
-	border-color: #daff00;
-	box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
-}
-
-.form-table textarea:focus {
-	outline: none !important;
-	border-color: #35332f !important;
-	box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
-}
-
-.form-table input[type="number"] {
-	width: 120px;
-	height: 44px;
-	border: 1px solid #ccc;
-	border-radius: 6px;
-	padding: 0 16px;
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-size: 14px;
-	color: #35332f;
-	background-color: #fff;
-}
-
-.form-table input[type="number"]:hover {
-	border-color: #daff00;
-	box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
-}
-
-.form-table input[type="number"]:focus {
-	outline: none !important;
-	border-color: #35332f !important;
-	box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
-}
-</style>
-
-<div class="wrap msh-settings-wrap msh-locale-wrap">
-	<h1><?php esc_html_e( 'Locale Profiles', 'msh-image-optimizer' ); ?></h1>
-	<p class="description">
-		<?php esc_html_e( 'Configure locale-specific settings for AI-generated metadata. These settings control tone, formality, and cultural adaptation for each language.', 'msh-image-optimizer' ); ?>
-	</p>
-
-	<div class="msh-settings-card">
-		<form method="post" action="">
-			<?php wp_nonce_field( 'msh_locale_profile' ); ?>
-
-			<table class="form-table">
-				<tr>
-					<th scope="row">
-						<label for="locale"><?php esc_html_e( 'Locale', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<input type="text" id="locale" name="locale" value="<?php echo esc_attr( $site_locale ); ?>" />
-						<p class="description"><?php esc_html_e( 'Locale code (e.g., en_US, fr_FR, es_ES)', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="tone"><?php esc_html_e( 'Tone', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<select id="tone" name="tone">
-							<option value="professional" <?php selected( $current_profile['tone'], 'professional' ); ?>><?php esc_html_e( 'Professional', 'msh-image-optimizer' ); ?></option>
-							<option value="friendly" <?php selected( $current_profile['tone'], 'friendly' ); ?>><?php esc_html_e( 'Friendly', 'msh-image-optimizer' ); ?></option>
-							<option value="casual" <?php selected( $current_profile['tone'], 'casual' ); ?>><?php esc_html_e( 'Casual', 'msh-image-optimizer' ); ?></option>
-							<option value="formal" <?php selected( $current_profile['tone'], 'formal' ); ?>><?php esc_html_e( 'Formal', 'msh-image-optimizer' ); ?></option>
-							<option value="technical" <?php selected( $current_profile['tone'], 'technical' ); ?>><?php esc_html_e( 'Technical', 'msh-image-optimizer' ); ?></option>
-						</select>
-						<p class="description"><?php esc_html_e( 'Overall communication style for metadata', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="formality_level"><?php esc_html_e( 'Formality Level', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<input type="range" id="formality_level" name="formality_level" min="1" max="5" value="<?php echo esc_attr( $current_profile['formality_level'] ); ?>" />
-						<span id="formality_value"><?php echo esc_html( $current_profile['formality_level'] ); ?></span> / 5
-						<p class="description"><?php esc_html_e( '1 = Very casual, 5 = Very formal', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="cta_style"><?php esc_html_e( 'Call-to-Action Style', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<select id="cta_style" name="cta_style">
-							<option value="subtle" <?php selected( $current_profile['cta_style'], 'subtle' ); ?>><?php esc_html_e( 'Subtle', 'msh-image-optimizer' ); ?></option>
-							<option value="moderate" <?php selected( $current_profile['cta_style'], 'moderate' ); ?>><?php esc_html_e( 'Moderate', 'msh-image-optimizer' ); ?></option>
-							<option value="strong" <?php selected( $current_profile['cta_style'], 'strong' ); ?>><?php esc_html_e( 'Strong', 'msh-image-optimizer' ); ?></option>
-							<option value="none" <?php selected( $current_profile['cta_style'], 'none' ); ?>><?php esc_html_e( 'None', 'msh-image-optimizer' ); ?></option>
-						</select>
-						<p class="description"><?php esc_html_e( 'How assertive should call-to-action language be?', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="special_instructions"><?php esc_html_e( 'Special Instructions', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<textarea id="special_instructions" name="special_instructions" rows="4"><?php echo esc_textarea( $current_profile['special_instructions'] ); ?></textarea>
-						<p class="description"><?php esc_html_e( 'Custom guidelines for this locale (e.g., "Avoid idioms", "Use metric units")', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="forbidden_terms"><?php esc_html_e( 'Forbidden Terms', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<textarea id="forbidden_terms" name="forbidden_terms" rows="3"><?php echo esc_textarea( $current_profile['forbidden_terms'] ); ?></textarea>
-						<p class="description"><?php esc_html_e( 'One term per line. These words will be flagged in metadata validation.', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="confidence_threshold"><?php esc_html_e( 'Confidence Threshold', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<input type="number" id="confidence_threshold" name="confidence_threshold" min="0" max="1" step="0.05" value="<?php echo esc_attr( $current_profile['confidence_threshold'] ); ?>" />
-						<p class="description"><?php esc_html_e( 'Minimum AI confidence level (0.0 - 1.0). Lower = more suggestions.', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-			</table>
-
-			<p class="submit">
-				<input type="submit" name="msh_save_locale_profile" class="button button-primary button-dot-primary" value="<?php esc_attr_e( 'Save Locale Profile', 'msh-image-optimizer' ); ?>" />
-			</p>
-		</form>
-	</div>
-
-	<!-- WP-CLI Reference -->
-	<div class="msh-cli-reference msh-settings-card">
-		<h2><?php esc_html_e( 'WP-CLI Commands', 'msh-image-optimizer' ); ?></h2>
-		<p><?php esc_html_e( 'You can also manage locale profiles via WP-CLI:', 'msh-image-optimizer' ); ?></p>
-		<pre><code>wp msh locale profile_list
-wp msh locale profile_show --locale=<?php echo esc_html( $site_locale ); ?>
-
-wp msh locale test_prompt --media-id=123 --locale=<?php echo esc_html( $site_locale ); ?>
-</code></pre>
-	</div>
-</div>
-
-<script>
-// Update formality level display
-document.getElementById('formality_level').addEventListener('input', function() {
-	document.getElementById('formality_value').textContent = this.value;
-});
-</script>

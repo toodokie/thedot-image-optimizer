@@ -1,442 +1,281 @@
 <?php
 /**
- * Glossary Manager Admin Page
+ * Glossary Manager - Term Management UI
  *
- * Visual interface for managing protected terms and translations.
+ * Brand-compliant glossary interface for managing terminology.
  *
- * @package    MSH_Image_Optimizer
- * @subpackage Admin
+ * @package MSH_Image_Optimizer
+ * @since 2.0.0
  */
 
 if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
-// Get locale manager
-$locale_manager = MSH_Locale_Profile_Manager::get_instance();
-$site_locale    = get_locale();
+/**
+ * Glossary Page Class
+ */
+class MSH_Glossary_Page {
 
-// Handle delete action
-if ( isset( $_POST['msh_delete_glossary_term'] ) && check_admin_referer( 'msh_delete_glossary' ) ) {
-	$entry_id = intval( $_POST['entry_id'] );
-	$result   = $locale_manager->delete_glossary_entry( $entry_id );
+	/**
+	 * Page slug
+	 */
+	const PAGE_SLUG = 'msh-glossary';
 
-	if ( $result ) {
-		echo '<div class="notice notice-success"><p>' . esc_html__( 'Glossary term deleted.', 'msh-image-optimizer' ) . '</p></div>';
-	} else {
-		echo '<div class="notice notice-error"><p>' . esc_html__( 'Failed to delete glossary term.', 'msh-image-optimizer' ) . '</p></div>';
+	/**
+	 * Constructor
+	 */
+	public function __construct() {
+		add_action( 'admin_menu', array( $this, 'register_menu' ), 30 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 	}
-}
 
-// Handle add/edit action
-if ( isset( $_POST['msh_save_glossary_term'] ) && check_admin_referer( 'msh_save_glossary' ) ) {
-	$locale      = sanitize_text_field( $_POST['locale'] ?? $site_locale );
-	$term        = sanitize_text_field( $_POST['term'] ?? '' );
-	$translation = sanitize_text_field( $_POST['translation'] ?? '' );
-	$category    = sanitize_text_field( $_POST['category'] ?? 'general' );
-	$protected   = isset( $_POST['protected'] ) ? 1 : 0;
-
-	if ( ! empty( $term ) ) {
-		$glossary_data = array(
-			'term'        => $term,
-			'translation' => $translation,
-			'category'    => $category,
-			'protected'   => $protected,
+	/**
+	 * Register submenu page
+	 */
+	public function register_menu() {
+		add_submenu_page(
+			'msh-optimizer',
+			__( 'Glossary', 'msh-image-optimizer' ),
+			'<span class="dashicons dashicons-book"></span> ' . __( 'Glossary', 'msh-image-optimizer' ),
+			'manage_options',
+			self::PAGE_SLUG,
+			array( $this, 'render' )
 		);
+	}
 
-		$result = $locale_manager->add_glossary_entry( $locale, $glossary_data );
-
-		if ( $result ) {
-			echo '<div class="notice notice-success"><p>' . esc_html__( 'Glossary term saved successfully.', 'msh-image-optimizer' ) . '</p></div>';
-		} else {
-			echo '<div class="notice notice-warning"><p>' . esc_html__( 'Term may already exist in glossary.', 'msh-image-optimizer' ) . '</p></div>';
+	/**
+	 * Enqueue assets
+	 *
+	 * @param string $hook Current page hook.
+	 */
+	public function enqueue_assets( $hook ) {
+		if ( 'the-dot_page_' . self::PAGE_SLUG !== $hook ) {
+			return;
 		}
+
+		wp_enqueue_style(
+			'msh-image-optimizer-fonts',
+			'https://use.typekit.net/gac6jnd.css',
+			array(),
+			null
+		);
+	}
+
+	/**
+	 * Render glossary page
+	 */
+	public function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'msh-image-optimizer' ) );
+		}
+
+		?>
+		<div class="wrap msh-glossary-page">
+			<h1 class="msh-page-title"><?php esc_html_e( 'Glossary Manager', 'msh-image-optimizer' ); ?></h1>
+			<p class="msh-page-subtitle"><?php esc_html_e( 'Manage terminology for consistent AI-generated metadata across all locales.', 'msh-image-optimizer' ); ?></p>
+
+			<div class="msh-glossary-container">
+				<!-- Add New Term Form -->
+				<div class="msh-glossary-add-form">
+					<h2><?php esc_html_e( 'Add New Term', 'msh-image-optimizer' ); ?></h2>
+					<form method="post" action="">
+						<?php wp_nonce_field( 'msh_add_glossary_term', 'msh_glossary_nonce' ); ?>
+
+						<div class="msh-form-row">
+							<label for="term-source"><?php esc_html_e( 'Source Term', 'msh-image-optimizer' ); ?></label>
+							<input type="text" id="term-source" name="source_term" placeholder="<?php esc_attr_e( 'e.g., physical therapy', 'msh-image-optimizer' ); ?>" required />
+						</div>
+
+						<div class="msh-form-row">
+							<label for="term-replacement"><?php esc_html_e( 'Preferred Term', 'msh-image-optimizer' ); ?></label>
+							<input type="text" id="term-replacement" name="replacement_term" placeholder="<?php esc_attr_e( 'e.g., physiotherapy', 'msh-image-optimizer' ); ?>" required />
+						</div>
+
+						<div class="msh-form-row">
+							<label for="term-context"><?php esc_html_e( 'Context / Notes', 'msh-image-optimizer' ); ?></label>
+							<textarea id="term-context" name="term_context" rows="3" placeholder="<?php esc_attr_e( 'Optional: Add context for when this replacement should be used...', 'msh-image-optimizer' ); ?>"></textarea>
+						</div>
+
+						<button type="submit" class="button button-primary msh-btn-add"><?php esc_html_e( 'Add Term', 'msh-image-optimizer' ); ?></button>
+					</form>
+				</div>
+
+				<!-- Glossary Terms Table -->
+				<div class="msh-glossary-terms">
+					<h2><?php esc_html_e( 'Current Glossary', 'msh-image-optimizer' ); ?></h2>
+
+					<div class="msh-notice msh-notice-info">
+						<p><?php esc_html_e( 'Glossary functionality is coming in Phase 3. This interface will allow you to define terminology that AI uses when generating metadata.', 'msh-image-optimizer' ); ?></p>
+					</div>
+
+					<table class="msh-glossary-table">
+						<thead>
+							<tr>
+								<th><?php esc_html_e( 'Source Term', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Preferred Term', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Context', 'msh-image-optimizer' ); ?></th>
+								<th><?php esc_html_e( 'Actions', 'msh-image-optimizer' ); ?></th>
+							</tr>
+						</thead>
+						<tbody>
+							<tr>
+								<td colspan="4" class="msh-empty-state"><?php esc_html_e( 'No glossary terms defined yet. Add your first term above.', 'msh-image-optimizer' ); ?></td>
+							</tr>
+						</tbody>
+					</table>
+				</div>
+			</div>
+		</div>
+
+		<style>
+		.msh-glossary-page {
+			background: #FAF9F6;
+			padding: 20px;
+		}
+
+		.msh-page-title {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: #35332f;
+			font-size: 28px;
+			margin-bottom: 8px;
+		}
+
+		.msh-page-subtitle {
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #8b8883;
+			font-size: 16px;
+			margin-bottom: 40px;
+		}
+
+		.msh-glossary-container {
+			display: grid;
+			grid-template-columns: 350px 1fr;
+			gap: 30px;
+		}
+
+		.msh-glossary-add-form,
+		.msh-glossary-terms {
+			background: #fff;
+			border: 1px solid #ddd;
+			border-radius: 12px;
+			padding: 24px;
+		}
+
+		.msh-glossary-add-form h2,
+		.msh-glossary-terms h2 {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: #35332f;
+			font-size: 16px;
+			margin-bottom: 20px;
+		}
+
+		.msh-form-row {
+			margin-bottom: 20px;
+		}
+
+		.msh-form-row label {
+			display: block;
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #35332f;
+			font-size: 14px;
+			margin-bottom: 8px;
+			font-weight: 600;
+		}
+
+		.msh-form-row input[type="text"],
+		.msh-form-row textarea {
+			width: 100%;
+			padding: 10px 12px;
+			border: 1px solid #ddd;
+			border-radius: 8px;
+			font-family: 'ff-real-text-pro', sans-serif;
+			font-size: 14px;
+			color: #35332f;
+		}
+
+		.msh-form-row input[type="text"]:focus,
+		.msh-form-row textarea:focus {
+			outline: none;
+			border-color: #daff00;
+		}
+
+		.msh-btn-add {
+			background: #35332f !important;
+			border-color: #35332f !important;
+			color: #FAF9F6 !important;
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			padding: 10px 20px !important;
+			border-radius: 8px;
+			cursor: pointer;
+			transition: background 0.2s;
+		}
+
+		.msh-btn-add:hover {
+			background: #daff00 !important;
+			border-color: #daff00 !important;
+			color: #35332f !important;
+		}
+
+		.msh-notice {
+			padding: 16px;
+			border-radius: 8px;
+			margin-bottom: 20px;
+		}
+
+		.msh-notice-info {
+			background: #e8f4fd;
+			border-left: 4px solid #0073aa;
+		}
+
+		.msh-notice p {
+			margin: 0;
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #35332f;
+			font-size: 14px;
+		}
+
+		.msh-glossary-table {
+			width: 100%;
+			border-collapse: collapse;
+		}
+
+		.msh-glossary-table th {
+			font-family: 'futura-pt', sans-serif;
+			text-transform: uppercase;
+			letter-spacing: 0.08em;
+			color: #35332f;
+			font-size: 12px;
+			text-align: left;
+			padding: 12px;
+			border-bottom: 2px solid #ddd;
+		}
+
+		.msh-glossary-table td {
+			font-family: 'ff-real-text-pro', sans-serif;
+			color: #35332f;
+			font-size: 14px;
+			padding: 12px;
+			border-bottom: 1px solid #eee;
+		}
+
+		.msh-empty-state {
+			text-align: center;
+			color: #8b8883 !important;
+			padding: 40px !important;
+		}
+		</style>
+		<?php
 	}
 }
 
-// Get glossary terms for current locale
-$glossary_terms = $locale_manager->get_glossary_entries( $site_locale );
-
-// Enqueue brand fonts
-wp_enqueue_style( 'msh-brand-fonts', 'https://use.typekit.net/gac6jnd.css', array(), null );
-?>
-
-<style>
-/* Brand-compliant styling - matches image-optimizer-settings.css */
-#wpcontent, #wpbody, #wpbody-content {
-	background-color: #FAF9F6;
+// Initialize
+if ( is_admin() ) {
+	new MSH_Glossary_Page();
 }
-
-.msh-glossary-wrap {
-	background-color: #FAF9F6;
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-	color: #35332f;
-	padding: 20px;
-	max-width: 1200px;
-}
-
-.msh-glossary-wrap h1,
-.msh-glossary-wrap h2 {
-	font-family: 'futura-pt', Arial, sans-serif !important;
-	text-transform: uppercase !important;
-	letter-spacing: 0.08em !important;
-	font-weight: 400 !important;
-	color: #35332f !important;
-	margin-top: 0;
-	margin-bottom: 24px;
-}
-
-.msh-glossary-wrap h1 {
-	font-size: 24px;
-}
-
-.msh-glossary-wrap h2 {
-	font-size: 18px;
-	margin-top: 32px;
-}
-
-.msh-glossary-wrap .description {
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-	font-size: 14px;
-	color: #4a4945;
-	line-height: 1.6;
-	margin-bottom: 32px;
-}
-
-.msh-settings-card {
-	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 12px;
-	padding: 32px;
-	margin-bottom: 32px;
-	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-}
-
-.form-table {
-	background: transparent;
-}
-
-.form-table th {
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-size: 14px;
-	font-weight: 400;
-	color: #35332f;
-	letter-spacing: 0.5px;
-	padding: 12px 0 12px 0;
-	width: 200px;
-}
-
-.form-table td {
-	padding: 12px 0;
-}
-
-.form-table input[type="text"],
-.form-table select {
-	width: 100%;
-	max-width: 400px;
-	height: 44px;
-	border: 1px solid #ccc;
-	border-radius: 6px;
-	padding: 0 16px;
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-size: 14px;
-	color: #35332f;
-	background-color: #fff;
-	transition: border-color 0.2s ease, box-shadow 0.2s ease;
-}
-
-.form-table input[type="text"]:hover,
-.form-table select:hover {
-	border-color: #daff00;
-	box-shadow: 0 0 8px rgba(218, 255, 0, 0.3);
-}
-
-.form-table input[type="text"]:focus,
-.form-table select:focus {
-	outline: none !important;
-	border-color: #35332f !important;
-	box-shadow: 0 0 0 4px rgba(53, 51, 47, 0.15) !important;
-}
-
-.form-table .description {
-	font-size: 13px;
-	color: #4a4945;
-	margin-top: 8px;
-	font-style: normal;
-}
-
-.form-table input[type="checkbox"] {
-	width: 22px !important;
-	height: 22px !important;
-	border: 1px solid #ccc !important;
-	border-radius: 4px !important;
-	background-color: #fff !important;
-	appearance: none !important;
-	cursor: pointer !important;
-	position: relative !important;
-}
-
-.form-table input[type="checkbox"]:checked {
-	background-color: #daff00 !important;
-	border-color: #35332f !important;
-}
-
-.form-table input[type="checkbox"]:checked::after {
-	content: "";
-	position: absolute;
-	width: 6px;
-	height: 12px;
-	border: 2px solid #35332f;
-	border-top: none;
-	border-left: none;
-	transform: rotate(45deg);
-	top: 2px;
-	left: 7px;
-}
-
-.submit .button-primary {
-	font-family: 'futura-pt', Arial, sans-serif !important;
-	text-transform: uppercase !important;
-	letter-spacing: 2px !important;
-	font-weight: 500 !important;
-	padding: 14px 32px !important;
-	height: auto !important;
-	border-radius: 6px !important;
-	background-color: #35332f !important;
-	color: #faf9f6 !important;
-	border: 1px solid #35332f !important;
-	transition: background-color 0.2s ease, border-color 0.2s ease, color 0.2s ease !important;
-	box-shadow: none !important;
-}
-
-.submit .button-primary:hover {
-	background-color: #daff00 !important;
-	border-color: #35332f !important;
-	color: #35332f !important;
-}
-
-.wp-list-table {
-	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 8px;
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-}
-
-.wp-list-table thead th {
-	font-family: 'futura-pt', Arial, sans-serif;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	font-size: 12px;
-	font-weight: 400;
-	color: #35332f;
-	background: #faf9f6;
-	border-bottom: 2px solid #ddd;
-}
-
-.wp-list-table tbody td {
-	color: #35332f;
-	font-size: 14px;
-}
-
-.wp-list-table .dashicons {
-	color: #35332f;
-	font-size: 18px;
-	width: 18px;
-	height: 18px;
-}
-
-.wp-list-table .dashicons-lock {
-	color: #daff00;
-}
-
-.button-link-delete {
-	color: #35332f !important;
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-size: 13px;
-	text-decoration: none;
-}
-
-.button-link-delete:hover {
-	color: #8b8883 !important;
-	text-decoration: underline;
-}
-
-.msh-cli-reference {
-	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 12px;
-	padding: 32px;
-	margin-top: 40px;
-}
-
-.msh-cli-reference h2 {
-	margin-top: 0;
-}
-
-.msh-cli-reference p {
-	font-size: 14px;
-	color: #4a4945;
-	line-height: 1.6;
-}
-
-.msh-cli-reference pre {
-	background: #faf9f6;
-	padding: 20px;
-	border-left: 4px solid #daff00;
-	border-radius: 6px;
-	overflow-x: auto;
-	margin-top: 16px;
-}
-
-.msh-cli-reference code {
-	font-family: 'Courier New', monospace;
-	font-size: 13px;
-	color: #35332f;
-	line-height: 1.8;
-}
-</style>
-
-<div class="wrap msh-glossary-wrap">
-	<h1><?php esc_html_e( 'Glossary Manager', 'msh-image-optimizer' ); ?></h1>
-	<p class="description">
-		<?php esc_html_e( 'Manage protected brand terms and translations. Protected terms will not be translated or modified by AI.', 'msh-image-optimizer' ); ?>
-	</p>
-
-	<!-- Add New Term Form -->
-	<div class="msh-settings-card">
-		<h2><?php esc_html_e( 'Add New Term', 'msh-image-optimizer' ); ?></h2>
-
-		<form method="post" action="">
-			<?php wp_nonce_field( 'msh_save_glossary' ); ?>
-
-			<table class="form-table">
-				<tr>
-					<th scope="row">
-						<label for="locale"><?php esc_html_e( 'Locale', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<input type="text" id="locale" name="locale" value="<?php echo esc_attr( $site_locale ); ?>" class="regular-text" />
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="term"><?php esc_html_e( 'Term', 'msh-image-optimizer' ); ?> *</label>
-					</th>
-					<td>
-						<input type="text" id="term" name="term" required />
-						<p class="description"><?php esc_html_e( 'The original term (e.g., "WordPress", "YourBrand")', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="translation"><?php esc_html_e( 'Translation', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<input type="text" id="translation" name="translation" />
-						<p class="description"><?php esc_html_e( 'Translation for this locale (leave empty for protected terms)', 'msh-image-optimizer' ); ?></p>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<label for="category"><?php esc_html_e( 'Category', 'msh-image-optimizer' ); ?></label>
-					</th>
-					<td>
-						<select id="category" name="category">
-							<option value="general"><?php esc_html_e( 'General', 'msh-image-optimizer' ); ?></option>
-							<option value="brand"><?php esc_html_e( 'Brand', 'msh-image-optimizer' ); ?></option>
-							<option value="product"><?php esc_html_e( 'Product', 'msh-image-optimizer' ); ?></option>
-							<option value="technical"><?php esc_html_e( 'Technical', 'msh-image-optimizer' ); ?></option>
-						</select>
-					</td>
-				</tr>
-
-				<tr>
-					<th scope="row">
-						<?php esc_html_e( 'Protection', 'msh-image-optimizer' ); ?>
-					</th>
-					<td>
-						<label>
-							<input type="checkbox" id="protected" name="protected" value="1" />
-							<?php esc_html_e( 'Protected term (never translate or modify)', 'msh-image-optimizer' ); ?>
-						</label>
-					</td>
-				</tr>
-			</table>
-
-			<p class="submit">
-				<input type="submit" name="msh_save_glossary_term" class="button button-primary" value="<?php esc_attr_e( 'Add Term', 'msh-image-optimizer' ); ?>" />
-			</p>
-		</form>
-	</div>
-
-	<!-- Existing Terms Table -->
-	<div class="msh-settings-card">
-		<h2><?php esc_html_e( 'Current Glossary', 'msh-image-optimizer' ); ?> (<?php echo esc_html( $site_locale ); ?>)</h2>
-
-		<?php if ( empty( $glossary_terms ) ) : ?>
-			<p><?php esc_html_e( 'No glossary terms defined yet.', 'msh-image-optimizer' ); ?></p>
-		<?php else : ?>
-			<table class="wp-list-table widefat fixed striped">
-				<thead>
-					<tr>
-						<th><?php esc_html_e( 'Term', 'msh-image-optimizer' ); ?></th>
-						<th><?php esc_html_e( 'Translation', 'msh-image-optimizer' ); ?></th>
-						<th><?php esc_html_e( 'Category', 'msh-image-optimizer' ); ?></th>
-						<th><?php esc_html_e( 'Protected', 'msh-image-optimizer' ); ?></th>
-						<th><?php esc_html_e( 'Actions', 'msh-image-optimizer' ); ?></th>
-					</tr>
-				</thead>
-				<tbody>
-					<?php foreach ( $glossary_terms as $term_data ) : ?>
-					<tr>
-						<td><strong><?php echo esc_html( $term_data['term'] ); ?></strong></td>
-						<td>
-							<?php
-							if ( ! empty( $term_data['translation'] ) ) {
-								echo esc_html( $term_data['translation'] );
-							} else {
-								echo '<em>' . esc_html__( '(no translation)', 'msh-image-optimizer' ) . '</em>';
-							}
-							?>
-						</td>
-						<td><?php echo esc_html( $term_data['category'] ?? 'general' ); ?></td>
-						<td>
-							<?php if ( ! empty( $term_data['protected'] ) ) : ?>
-								<span class="dashicons dashicons-lock" title="<?php esc_attr_e( 'Protected', 'msh-image-optimizer' ); ?>"></span>
-							<?php else : ?>
-								<span class="dashicons dashicons-unlock" title="<?php esc_attr_e( 'Not protected', 'msh-image-optimizer' ); ?>"></span>
-							<?php endif; ?>
-						</td>
-						<td>
-							<form method="post" style="display: inline;">
-								<?php wp_nonce_field( 'msh_delete_glossary' ); ?>
-								<input type="hidden" name="entry_id" value="<?php echo esc_attr( $term_data['id'] ?? 0 ); ?>" />
-								<button type="submit" name="msh_delete_glossary_term" class="button button-small button-link-delete">
-									<?php esc_html_e( 'Delete', 'msh-image-optimizer' ); ?>
-								</button>
-							</form>
-						</td>
-					</tr>
-					<?php endforeach; ?>
-				</tbody>
-			</table>
-		<?php endif; ?>
-	</div>
-
-	<!-- WP-CLI Reference -->
-	<div class="msh-cli-reference">
-		<h2><?php esc_html_e( 'WP-CLI Commands', 'msh-image-optimizer' ); ?></h2>
-		<p><?php esc_html_e( 'You can also manage glossary terms via WP-CLI:', 'msh-image-optimizer' ); ?></p>
-		<pre><code>wp msh locale glossary_list --locale=<?php echo esc_html( $site_locale ); ?>
-
-wp msh locale glossary_add \
-  --locale=<?php echo esc_html( $site_locale ); ?> \
-  --term="WordPress" \
-  --protected=1 \
-  --category=brand
-</code></pre>
-	</div>
-</div>

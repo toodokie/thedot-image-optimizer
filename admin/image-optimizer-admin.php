@@ -16,8 +16,7 @@ class MSH_Image_Optimizer_Admin {
 	 * @since 1.2.0
 	 */
 	public function __construct() {
-		// Menu registered by MSH_Optimizer_Menu class instead
-		// add_action( 'admin_menu', array( $this, 'add_admin_menu' ) );
+		add_action( 'admin_menu', array( $this, 'add_admin_menu' ), 15 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_admin_scripts' ) );
 		add_action( 'admin_head', array( $this, 'add_admin_favicon' ) );
 		add_action( 'wp_ajax_msh_save_onboarding_context', array( $this, 'ajax_save_onboarding_context' ) );
@@ -34,7 +33,7 @@ class MSH_Image_Optimizer_Admin {
 	 */
 	public function add_admin_favicon() {
 		$screen = get_current_screen();
-		if ( $screen && $screen->id === 'media_page_msh-image-optimizer' ) {
+		if ( $screen && $screen->id === 'the-dot_page_msh-image-optimizer' ) {
 			$icons_url = trailingslashit( MSH_IO_ASSETS_URL ) . 'icons/';
 
 			// Standard favicon formats - match actual filenames
@@ -108,9 +107,10 @@ class MSH_Image_Optimizer_Admin {
 	 * @return void
 	 */
 	public function add_admin_menu() {
-		add_media_page(
-			'The Dot Image Optimizer',
-			'Image Optimizer',
+		add_submenu_page(
+			'msh-optimizer',
+			__( 'Image Optimizer', 'msh-image-optimizer' ),
+			'<span class="dashicons dashicons-images-alt2"></span> ' . __( 'Image Optimizer', 'msh-image-optimizer' ),
 			'manage_options',
 			'msh-image-optimizer',
 			array( $this, 'admin_page' )
@@ -126,7 +126,6 @@ class MSH_Image_Optimizer_Admin {
 	 * @return void
 	 */
 	public function enqueue_admin_scripts( $hook ) {
-		// Updated hook for new top-level menu location (parent slug is 'msh-optimizer')
 		if ( 'the-dot_page_msh-image-optimizer' !== $hook ) {
 			return;
 		}
@@ -1483,5 +1482,4 @@ class MSH_Image_Optimizer_Admin {
 }
 
 // Initialize the admin interface
-global $msh_image_optimizer_admin;
-$msh_image_optimizer_admin = new MSH_Image_Optimizer_Admin();
+new MSH_Image_Optimizer_Admin();

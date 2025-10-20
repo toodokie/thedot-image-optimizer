@@ -76,16 +76,13 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
 
-        // Phase 4R+ - Intelligent Metadata Orchestration
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-database.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-event-bus.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-fingerprint-builder.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-cli.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-metadata-core.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-staleness-engine.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-decision-layer.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-cloud-sync-driver.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-sync-cli.php';
+        // Phase 4 - Advanced metadata governance.
+        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-version-manager.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-ab-testing.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-approval-workflow.php';
+        if ( defined( 'WP_CLI' ) && WP_CLI ) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-phase4-cli.php';
+        }
 
         // Context Fusion Layer (Phase 2)
         require_once MSH_IO_PLUGIN_DIR . 'includes/context-fusion/class-msh-context-database.php';
@@ -113,13 +110,33 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/ai-translation/class-msh-metadata-validator.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/ai-translation/class-msh-locale-cli.php';
 
-        // Admin menu structure (must load first)
+        // Phase 5+9: Automation & Enterprise Infrastructure
+        require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-database-schema.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-job-engine.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-regeneration-worker.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-queue-manager.php';
+        if ( defined( 'WP_CLI' ) && WP_CLI ) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-database-cli.php';
+        }
+
+        // Phase 5+9: Helper function stubs (TEMPORARY - will be replaced with real implementations)
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-helper-stubs.php';
+
+        // Admin menu structure (must load first, priority 5)
         require_once MSH_IO_PLUGIN_DIR . 'admin/class-msh-optimizer-menu.php';
 
+        // Admin pages
+        require_once MSH_IO_PLUGIN_DIR . 'admin/dashboard-page.php';
+        require_once MSH_IO_PLUGIN_DIR . 'admin/glossary-page.php';
+        require_once MSH_IO_PLUGIN_DIR . 'admin/locale-profiles-page.php';
+        require_once MSH_IO_PLUGIN_DIR . 'admin/class-msh-hub-page.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-admin.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-settings.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/context-fusion-admin.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/context-analytics-page.php';
+        require_once MSH_IO_PLUGIN_DIR . 'admin/version-history-page.php';
+        require_once MSH_IO_PLUGIN_DIR . 'admin/ab-testing-page.php';
+        require_once MSH_IO_PLUGIN_DIR . 'admin/approval-queue-page.php';
     }
 
     public function init() {
@@ -153,6 +170,10 @@ final class MSH_Image_Optimizer_Plugin {
         if (class_exists('MSH_I18n_Metadata')) {
             MSH_I18n_Metadata::get_instance();
         }
+        // Phase 5+9: Initialize Queue Manager (schedules cron jobs)
+        if (class_exists('MSH_Queue_Manager')) {
+            MSH_Queue_Manager::get_instance();
+        }
         if (class_exists('MSH_I18n_Integration')) {
             MSH_I18n_Integration::get_instance();
         }
@@ -165,10 +186,18 @@ final class MSH_Image_Optimizer_Plugin {
         if (class_exists('MSH_Context_Performance')) {
             MSH_Context_Performance::get_instance();
         }
+        if (class_exists('MSH_Version_Manager')) {
+            MSH_Version_Manager::get_instance();
+        }
+        if (class_exists('MSH_AB_Testing')) {
+            MSH_AB_Testing::get_instance();
+        }
+        if (class_exists('MSH_Approval_Workflow')) {
+            MSH_Approval_Workflow::get_instance();
+        }
         if (class_exists('MSH_Context_Fusion_Admin') && is_admin()) {
             MSH_Context_Fusion_Admin::get_instance();
         }
-
         // Phase 3: AI Translation & Cultural Adaptation
         if (class_exists('MSH_Locale_Database')) {
             MSH_Locale_Database::get_instance();
@@ -182,32 +211,6 @@ final class MSH_Image_Optimizer_Plugin {
         if (class_exists('MSH_Metadata_Validator')) {
             MSH_Metadata_Validator::get_instance();
         }
-
-        // Phase 4R+: Intelligent Metadata Orchestration
-        if (class_exists('MSH_Event_Bus')) {
-            MSH_Event_Bus::get_instance();
-        }
-        if (class_exists('MSH_Fingerprint_Builder')) {
-            MSH_Fingerprint_Builder::get_instance();
-        }
-        if (class_exists('MSH_Metadata_Core')) {
-            MSH_Metadata_Core::get_instance();
-        }
-        if (class_exists('MSH_Staleness_Engine')) {
-            MSH_Staleness_Engine::get_instance();
-        }
-        if (class_exists('MSH_Decision_Layer')) {
-            MSH_Decision_Layer::get_instance();
-        }
-        if (class_exists('MSH_Cloud_Sync_Driver')) {
-            MSH_Cloud_Sync_Driver::get_instance();
-        }
-
-        // Initialize top-level admin menu
-        if (class_exists('MSH_Optimizer_Menu') && is_admin()) {
-            MSH_Optimizer_Menu::get_instance();
-        }
-
         // Ensure admin assets are enqueued by the admin file.
         do_action('msh_image_optimizer_plugin_loaded');
     }
@@ -220,14 +223,9 @@ MSH_Image_Optimizer_Plugin::instance();
  * Activation hook - Create database tables
  */
 function msh_image_optimizer_activate() {
-    // Create context fusion table (Phase 2)
+    // Create context fusion table
     if ( class_exists( 'MSH_Context_Database' ) ) {
         MSH_Context_Database::init();
-    }
-
-    // Create Phase 4R+ metadata orchestration tables
-    if ( class_exists( 'MSH_Metadata_Database' ) ) {
-        MSH_Metadata_Database::init();
     }
 }
 register_activation_hook( __FILE__, 'msh_image_optimizer_activate' );
@@ -250,10 +248,10 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
     if ( class_exists( 'MSH_Locale_CLI' ) ) {
         WP_CLI::add_command( 'msh locale', 'MSH_Locale_CLI' );
     }
-    if ( class_exists( 'MSH_Sync_CLI' ) ) {
-        WP_CLI::add_command( 'msh sync', 'MSH_Sync_CLI' );
+    if ( class_exists( 'MSH_Version_CLI' ) ) {
+        WP_CLI::add_command( 'msh version', 'MSH_Version_CLI' );
     }
-    if ( class_exists( 'MSH_Metadata_CLI' ) ) {
-        WP_CLI::add_command( 'msh metadata', 'MSH_Metadata_CLI' );
+    if ( class_exists( 'MSH_AB_Testing_CLI' ) ) {
+        WP_CLI::add_command( 'msh ab', 'MSH_AB_Testing_CLI' );
     }
 }

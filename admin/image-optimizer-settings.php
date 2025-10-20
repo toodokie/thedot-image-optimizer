@@ -18,20 +18,20 @@ class MSH_Image_Optimizer_Settings {
 	const ADMIN_POST_ACTION = 'msh_save_context_settings';
 
 	public function __construct() {
-		// Menu registered by MSH_Optimizer_Menu class instead
-		// add_action( 'admin_menu', array( $this, 'register_settings_page' ) );
+		add_action( 'admin_menu', array( $this, 'register_settings_page' ), 55 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
 		add_action( 'admin_post_' . self::ADMIN_POST_ACTION, array( $this, 'handle_save' ) );
 		add_action( 'msh_image_optimizer_settings_notices', array( $this, 'output_notice' ) );
 	}
 
 	/**
-	 * Register menu item under Settings.
+	 * Register menu item under The Dot menu.
 	 */
 	public function register_settings_page() {
-		add_options_page(
-			__( 'Image Optimizer', 'msh-image-optimizer' ),
-			__( 'Image Optimizer', 'msh-image-optimizer' ),
+		add_submenu_page(
+			'msh-optimizer',
+			__( 'Settings', 'msh-image-optimizer' ),
+			'<span class="dashicons dashicons-admin-generic"></span> ' . __( 'Settings', 'msh-image-optimizer' ),
 			'manage_options',
 			self::PAGE_SLUG,
 			array( $this, 'render_settings_page' )
@@ -44,7 +44,6 @@ class MSH_Image_Optimizer_Settings {
 	 * @param string $hook Current admin hook.
 	 */
 	public function enqueue_assets( $hook ) {
-		// Updated hook for new top-level menu location (parent slug is 'msh-optimizer')
 		$screen = 'the-dot_page_' . self::PAGE_SLUG;
 		if ( $hook !== $screen ) {
 			return;
@@ -1007,5 +1006,4 @@ class MSH_Image_Optimizer_Settings {
 	}
 }
 
-global $msh_image_optimizer_settings;
-$msh_image_optimizer_settings = new MSH_Image_Optimizer_Settings();
+new MSH_Image_Optimizer_Settings();

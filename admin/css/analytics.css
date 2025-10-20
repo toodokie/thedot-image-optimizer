@@ -1,72 +1,15 @@
 /**
- * Context Analytics Dashboard Styles - BRAND COMPLIANT
- * Monochrome palette with neon yellow accents only
+ * Context Analytics Dashboard Styles
  *
  * @package MSH_Image_Optimizer
  * @since 2.0.0
  */
 
-/* ============================================
-   GLOBAL PAGE STYLES
-   ============================================ */
-#wpcontent, #wpbody, #wpbody-content {
-	background-color: #FAF9F6;
-}
-
 .msh-analytics-page {
 	max-width: 1400px;
-	background-color: #FAF9F6;
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-	color: #35332f;
-	padding: 20px;
 }
 
-/* ============================================
-   TYPOGRAPHY HIERARCHY
-   ============================================ */
-.msh-analytics-page h1 {
-	font-family: 'futura-pt', Arial, sans-serif !important;
-	text-transform: uppercase !important;
-	letter-spacing: 0.08em !important;
-	font-size: 24px !important;
-	font-weight: 400 !important;
-	color: #35332f !important;
-	margin-bottom: 24px;
-}
-
-.msh-analytics-page h2,
-.msh-analytics-widget h2 {
-	font-family: 'futura-pt', Arial, sans-serif !important;
-	text-transform: uppercase !important;
-	letter-spacing: 0.08em !important;
-	font-size: 18px !important;
-	font-weight: 400 !important;
-	color: #35332f !important;
-	margin: 0 0 15px;
-	border-bottom: 1px solid #ddd;
-	padding-bottom: 10px;
-}
-
-.msh-card-header h3 {
-	font-family: 'futura-pt', Arial, sans-serif !important;
-	text-transform: uppercase !important;
-	letter-spacing: 0.08em !important;
-	font-size: 12px !important;
-	font-weight: 400 !important;
-	color: #8b8883 !important;
-	margin: 0 0 10px;
-}
-
-.msh-analytics-widget .description {
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-	font-size: 13px;
-	color: #8b8883;
-	margin: -10px 0 15px;
-}
-
-/* ============================================
-   OVERVIEW CARDS
-   ============================================ */
+/* Overview Cards */
 .msh-analytics-cards {
 	display: grid;
 	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
@@ -76,37 +19,36 @@
 
 .msh-card {
 	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 12px;
-	padding: 24px;
-	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
-	transition: transform 0.2s ease, box-shadow 0.2s ease;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
-.msh-card:hover {
-	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(218, 255, 0, 0.15);
+.msh-card-header h3 {
+	margin: 0 0 10px;
+	font-size: 14px;
+	font-weight: 400;
+	color: #646970;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
 }
 
 .msh-card-value {
-	font-family: 'futura-pt', Arial, sans-serif;
 	font-size: 36px;
-	font-weight: 400;
-	color: #35332f;
+	font-weight: 600;
+	color: #1d2327;
 	margin: 10px 0;
 	line-height: 1;
 }
 
 .msh-card-footer {
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
 	font-size: 13px;
-	color: #8b8883;
+	color: #646970;
 	margin-top: 10px;
 }
 
-/* ============================================
-   LAYOUT GRID
-   ============================================ */
+/* Two Column Grid */
 .msh-analytics-grid {
 	display: grid;
 	grid-template-columns: 1fr 1fr;
@@ -126,20 +68,31 @@
 	gap: 20px;
 }
 
-/* ============================================
-   ANALYTICS WIDGETS
-   ============================================ */
+/* Analytics Widgets */
 .msh-analytics-widget {
 	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 12px;
-	padding: 24px;
-	box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	padding: 20px;
+	box-shadow: 0 1px 1px rgba(0, 0, 0, 0.04);
 }
 
-/* ============================================
-   INTENT DISTRIBUTION - MONOCHROME
-   ============================================ */
+.msh-analytics-widget h2 {
+	margin: 0 0 15px;
+	font-size: 18px;
+	font-weight: 600;
+	color: #1d2327;
+	border-bottom: 1px solid #f0f0f1;
+	padding-bottom: 10px;
+}
+
+.msh-analytics-widget .description {
+	margin: -10px 0 15px;
+	color: #646970;
+	font-size: 13px;
+}
+
+/* Intent Distribution Chart */
 .msh-intent-chart {
 	display: flex;
 	flex-direction: column;
@@ -154,51 +107,42 @@
 }
 
 .msh-intent-label {
-	font-family: 'futura-pt', Arial, sans-serif;
 	font-size: 13px;
-	font-weight: 400;
-	color: #35332f;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
+	font-weight: 500;
 }
 
 .msh-intent-bar {
-	background: #f0f0f0;
-	border-radius: 12px;
+	background: #f0f0f1;
+	border-radius: 4px;
 	height: 24px;
 	overflow: hidden;
-	border: 1px solid #e0e0e0;
 }
 
 .msh-intent-fill {
 	height: 100%;
-	border-radius: 12px;
+	border-radius: 4px;
 	transition: width 0.3s ease;
 }
 
-/* Monochrome gradients - darkest to lightest charcoal */
 .msh-intent-fill.msh-intent-on-topic {
-	background: linear-gradient(90deg, #35332f 0%, #4a4945 100%);
+	background: linear-gradient(90deg, #46b450 0%, #5ec760 100%);
 }
 
 .msh-intent-fill.msh-intent-off-topic {
-	background: linear-gradient(90deg, #8b8883 0%, #a09d99 100%);
+	background: linear-gradient(90deg, #d63638 0%, #e65054 100%);
 }
 
 .msh-intent-fill.msh-intent-unknown {
-	background: linear-gradient(90deg, #c0bdb9 0%, #d4d2ce 100%);
+	background: linear-gradient(90deg, #dba617 0%, #ffb900 100%);
 }
 
 .msh-intent-count {
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
 	font-size: 13px;
-	color: #8b8883;
+	color: #646970;
 	text-align: right;
 }
 
-/* ============================================
-   QUALITY DISTRIBUTION - MONOCHROME
-   ============================================ */
+/* Quality Distribution */
 .msh-quality-chart {
 	display: flex;
 	flex-direction: column;
@@ -213,161 +157,113 @@
 }
 
 .msh-quality-bar {
-	background: #f0f0f0;
-	border-radius: 12px;
+	background: #f0f0f1;
+	border-radius: 4px;
 	height: 24px;
 	overflow: hidden;
-	border: 1px solid #e0e0e0;
 }
 
 .msh-quality-fill {
 	height: 100%;
-	border-radius: 12px;
+	border-radius: 4px;
 	transition: width 0.3s ease;
 }
 
-/* Monochrome quality scale - excellent to poor */
 .msh-quality-fill.msh-quality-excellent {
-	background: linear-gradient(90deg, #35332f 0%, #4a4945 100%);
+	background: linear-gradient(90deg, #46b450 0%, #5ec760 100%);
 }
 
 .msh-quality-fill.msh-quality-good {
-	background: linear-gradient(90deg, #5a5854 0%, #6e6b67 100%);
+	background: linear-gradient(90deg, #4ab866 0%, #72d685 100%);
 }
 
 .msh-quality-fill.msh-quality-fair {
-	background: linear-gradient(90deg, #8b8883 0%, #a09d99 100%);
+	background: linear-gradient(90deg, #dba617 0%, #ffb900 100%);
 }
 
 .msh-quality-fill.msh-quality-poor {
-	background: linear-gradient(90deg, #c0bdb9 0%, #d4d2ce 100%);
+	background: linear-gradient(90deg, #d63638 0%, #e65054 100%);
 }
 
 .msh-quality-count {
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
 	font-size: 13px;
-	color: #8b8883;
+	color: #646970;
 	text-align: right;
 }
 
-/* ============================================
-   BADGES - MONOCHROME WITH YELLOW ACCENT
-   ============================================ */
+/* Badges */
 .msh-badge {
 	display: inline-block;
-	padding: 4px 10px;
-	border-radius: 12px;
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-size: 11px;
-	font-weight: 400;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 500;
+	color: #fff;
 }
 
 .msh-badge-excellent {
-	background: #35332f;
-	color: #daff00;
-	border: 1px solid #35332f;
+	background: #46b450;
 }
 
 .msh-badge-good {
-	background: #fff;
-	color: #35332f;
-	border: 1px solid #35332f;
+	background: #72aee6;
 }
 
 .msh-badge-fair {
-	background: #f0f0f0;
-	color: #35332f;
-	border: 1px solid #8b8883;
+	background: #dba617;
 }
 
 .msh-badge-poor {
-	background: #fff;
-	color: #8b8883;
-	border: 1px solid #ddd;
+	background: #d63638;
 }
 
 .msh-intent-badge {
 	display: inline-block;
-	padding: 4px 10px;
-	border-radius: 12px;
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-size: 11px;
-	font-weight: 400;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 500;
+	color: #fff;
 }
 
 .msh-intent-badge.msh-intent-on-topic {
-	background: #35332f;
-	color: #daff00;
-	border: 1px solid #35332f;
+	background: #46b450;
 }
 
 .msh-intent-badge.msh-intent-off-topic {
-	background: #f0f0f0;
-	color: #35332f;
-	border: 1px solid #8b8883;
+	background: #d63638;
 }
 
 .msh-intent-badge.msh-intent-unknown {
-	background: #fff;
-	color: #8b8883;
-	border: 1px solid #ddd;
+	background: #dba617;
 }
 
-/* ============================================
-   TABLES
-   ============================================ */
+/* Tables */
 .msh-analytics-widget table {
 	margin-top: 10px;
-	width: 100%;
-	border-collapse: collapse;
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
 }
 
 .msh-analytics-widget table th {
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-weight: 400;
-	font-size: 12px;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: #35332f;
-	text-align: left;
-	padding: 12px 8px;
-	border-bottom: 2px solid #ddd;
+	font-weight: 600;
+	color: #1d2327;
 }
 
 .msh-analytics-widget table td {
-	padding: 12px 8px;
 	vertical-align: middle;
-	color: #35332f;
-	font-size: 14px;
-	border-bottom: 1px solid #f0f0f0;
-}
-
-.msh-analytics-widget table tr:hover {
-	background-color: #faf9f6;
 }
 
 .msh-analytics-widget table a {
 	text-decoration: none;
-	color: #35332f;
+	color: #2271b1;
 	font-weight: 500;
-	border-bottom: 1px solid transparent;
-	transition: border-color 0.2s ease;
 }
 
 .msh-analytics-widget table a:hover {
-	color: #35332f;
-	border-bottom-color: #daff00;
-	text-decoration: none;
+	color: #135e96;
+	text-decoration: underline;
 }
 
-/* ============================================
-   KEYWORD CLOUD - MONOCHROME WITH YELLOW HOVER
-   ============================================ */
+/* Keyword Cloud */
 .msh-keyword-cloud {
 	display: flex;
 	flex-wrap: wrap;
@@ -377,63 +273,23 @@
 
 .msh-keyword-tag {
 	display: inline-block;
-	padding: 8px 16px;
-	background: #fff;
-	border: 1px solid #ddd;
-	border-radius: 12px;
-	color: #35332f;
-	font-family: 'futura-pt', Arial, sans-serif;
-	font-size: 13px;
-	font-weight: 400;
-	text-transform: uppercase;
-	letter-spacing: 0.05em;
+	padding: 6px 12px;
+	background: #f0f0f1;
+	border-radius: 4px;
+	color: #1d2327;
+	font-weight: 500;
 	transition: all 0.2s ease;
-	cursor: default;
 }
 
 .msh-keyword-tag:hover {
-	background: #daff00;
-	color: #35332f;
-	border-color: #daff00;
+	background: #2271b1;
+	color: #fff;
 	transform: translateY(-2px);
-	box-shadow: 0 4px 12px rgba(218, 255, 0, 0.3);
+	box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .msh-keyword-count {
 	font-size: 0.85em;
 	opacity: 0.7;
 	margin-left: 4px;
-}
-
-/* ============================================
-   LOADING STATES
-   ============================================ */
-.msh-analytics-loading {
-	display: flex;
-	align-items: center;
-	justify-content: center;
-	padding: 40px;
-	color: #8b8883;
-	font-family: 'futura-pt', Arial, sans-serif;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	font-size: 14px;
-}
-
-/* ============================================
-   EMPTY STATES
-   ============================================ */
-.msh-analytics-empty {
-	text-align: center;
-	padding: 40px 20px;
-	color: #8b8883;
-	font-family: 'ff-real-text-pro', Arial, sans-serif;
-}
-
-.msh-analytics-empty h3 {
-	font-family: 'futura-pt', Arial, sans-serif;
-	text-transform: uppercase;
-	letter-spacing: 0.08em;
-	color: #35332f;
-	margin-bottom: 12px;
 }

@@ -22,8 +22,7 @@ class MSH_Context_Analytics_Page {
 	 * Initialize
 	 */
 	public function __construct() {
-		// Menu registered by MSH_Optimizer_Menu class instead
-		// add_action( 'admin_menu', array( $this, 'add_menu_page' ) );
+		add_action( 'admin_menu', array( $this, 'add_menu_page' ), 20 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_scripts' ) );
 	}
 
@@ -32,9 +31,9 @@ class MSH_Context_Analytics_Page {
 	 */
 	public function add_menu_page() {
 		add_submenu_page(
-			'upload.php',
+			'msh-optimizer',
 			__( 'Context Analytics', 'msh-image-optimizer' ),
-			__( 'Context Analytics', 'msh-image-optimizer' ),
+			'<span class="dashicons dashicons-chart-bar"></span> ' . __( 'Context Analytics', 'msh-image-optimizer' ),
 			'manage_options',
 			'msh-context-analytics',
 			array( $this, 'render_page' )
@@ -47,7 +46,6 @@ class MSH_Context_Analytics_Page {
 	 * @param string $hook Current admin page hook.
 	 */
 	public function enqueue_scripts( $hook ) {
-		// Updated hook for new top-level menu location (parent slug is 'msh-optimizer')
 		if ( 'the-dot_page_msh-context-analytics' !== $hook ) {
 			return;
 		}
@@ -374,5 +372,4 @@ class MSH_Context_Analytics_Page {
 }
 
 // Initialize
-global $msh_context_analytics_page;
-$msh_context_analytics_page = new MSH_Context_Analytics_Page();
+new MSH_Context_Analytics_Page();
