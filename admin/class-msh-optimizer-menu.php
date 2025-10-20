@@ -82,12 +82,12 @@ class MSH_Optimizer_Menu {
 			__( 'The Dot', 'msh-image-optimizer' ),
 			'manage_options',
 			'msh-optimizer',
-			array( $this, 'render_dashboard' ),
+			array( 'MSH_Dashboard_Page', 'render' ),
 			$this->get_menu_icon(),
 			self::MENU_POSITION
 		);
 
-		// 1. Dashboard (always visible)
+		// 1. Dashboard (always visible - same slug as parent to avoid duplicate)
 		add_submenu_page(
 			'msh-optimizer',
 			__( 'Dashboard', 'msh-image-optimizer' ),
