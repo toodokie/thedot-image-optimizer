@@ -108,7 +108,7 @@
 		},
 
 		/**
-		 * Placeholder bindings retained from earlier scaffold.
+		 * Metadata row actions and supporting UI helpers.
 		 */
 		
 		bindGlobalUiHandlers: function() {

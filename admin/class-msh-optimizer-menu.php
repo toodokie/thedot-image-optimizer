@@ -377,9 +377,19 @@ class MSH_Optimizer_Menu {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'msh-image-optimizer' ) );
 		}
 
-		if ( class_exists( 'MSH_Image_Optimizer_Settings' ) ) {
+		if ( ! class_exists( 'MSH_Image_Optimizer_Settings' ) ) {
+			wp_die( esc_html__( 'Settings class not found.', 'msh-image-optimizer' ) );
+		}
+
+		try {
 			$settings = new MSH_Image_Optimizer_Settings();
-			$settings->render_settings_page();
+			if ( method_exists( $settings, 'render_settings_page' ) ) {
+				$settings->render_settings_page();
+			} else {
+				wp_die( esc_html__( 'Settings render method not found.', 'msh-image-optimizer' ) );
+			}
+		} catch ( Exception $e ) {
+			wp_die( esc_html( $e->getMessage() ) );
 		}
 	}
 
