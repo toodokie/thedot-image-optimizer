@@ -48,11 +48,23 @@ class MSH_Hub_Page {
 		// Menu registration now handled by class-msh-optimizer-menu.php
 		// add_action( 'admin_menu', array( $this, 'register_menu' ), 35 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+
+		// Metadata browsing
 		add_action( 'wp_ajax_msh_get_metadata_entries', array( $this, 'ajax_get_metadata_entries' ) );
 		add_action( 'wp_ajax_msh_get_cache_entries', array( $this, 'ajax_get_metadata_entries' ) );
+
+		// Metadata row actions (for AI #2's buttons)
+		add_action( 'wp_ajax_msh_preview_metadata', array( $this, 'ajax_preview_metadata' ) );
+		add_action( 'wp_ajax_msh_copy_metadata', array( $this, 'ajax_copy_metadata' ) );
+		add_action( 'wp_ajax_msh_update_metadata', array( $this, 'ajax_update_metadata' ) );
+		add_action( 'wp_ajax_msh_toggle_lock', array( $this, 'ajax_toggle_lock' ) );
 		add_action( 'wp_ajax_msh_regenerate_entry', array( $this, 'ajax_regenerate_entry' ) );
+
+		// Queue management
 		add_action( 'wp_ajax_msh_refresh_queue_stats', array( $this, 'ajax_refresh_queue_stats' ) );
 		add_action( 'wp_ajax_msh_process_queue', array( $this, 'ajax_process_queue' ) );
+
+		// Events feed
 		add_action( 'wp_ajax_msh_get_recent_events', array( $this, 'ajax_get_recent_events' ) );
 	}
 
@@ -1024,6 +1036,194 @@ class MSH_Hub_Page {
 				'html' => $markup,
 			)
 		);
+	}
+
+	/**
+	 * AJAX: Preview metadata entry
+	 *
+	 * Returns full metadata for display in modal.
+	 *
+	 * @return void
+	 */
+	public function ajax_preview_metadata() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
+
+		if ( ! $entry_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'msh_i18n_metadata';
+		$entry = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $entry_id ),
+			ARRAY_A
+		);
+
+		if ( ! $entry ) {
+			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'msh-image-optimizer' ) ) );
+		}
+
+		wp_send_json_success( array(
+			'entry' => $entry,
+			'attachment_url' => wp_get_attachment_url( $entry['attachment_id'] ),
+		) );
+	}
+
+	/**
+	 * AJAX: Copy metadata to clipboard
+	 *
+	 * Returns formatted text for clipboard copy.
+	 *
+	 * @return void
+	 */
+	public function ajax_copy_metadata() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
+
+		if ( ! $entry_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'msh_i18n_metadata';
+		$entry = $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $entry_id ),
+			ARRAY_A
+		);
+
+		if ( ! $entry ) {
+			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'msh-image-optimizer' ) ) );
+		}
+
+		// Format for clipboard
+		$text = sprintf(
+			"Title: %s\nAlt: %s\nCaption: %s\nDescription: %s",
+			$entry['title'],
+			$entry['alt_text'],
+			$entry['caption'],
+			$entry['description']
+		);
+
+		wp_send_json_success( array(
+			'text' => $text,
+			'message' => __( 'Copied to clipboard!', 'msh-image-optimizer' ),
+		) );
+	}
+
+	/**
+	 * AJAX: Update metadata entry
+	 *
+	 * Saves inline edits to metadata.
+	 *
+	 * @return void
+	 */
+	public function ajax_update_metadata() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
+		$title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
+		$alt_text = isset( $_POST['alt_text'] ) ? sanitize_text_field( wp_unslash( $_POST['alt_text'] ) ) : '';
+		$caption = isset( $_POST['caption'] ) ? sanitize_textarea_field( wp_unslash( $_POST['caption'] ) ) : '';
+		$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
+
+		if ( ! $entry_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'msh_i18n_metadata';
+
+		$updated = $wpdb->update(
+			$table,
+			array(
+				'title' => $title,
+				'alt_text' => $alt_text,
+				'caption' => $caption,
+				'description' => $description,
+				'updated_at' => current_time( 'mysql' ),
+			),
+			array( 'id' => $entry_id ),
+			array( '%s', '%s', '%s', '%s', '%s' ),
+			array( '%d' )
+		);
+
+		if ( false === $updated ) {
+			wp_send_json_error( array( 'message' => __( 'Failed to update metadata.', 'msh-image-optimizer' ) ) );
+		}
+
+		wp_send_json_success( array(
+			'message' => __( 'Metadata updated successfully.', 'msh-image-optimizer' ),
+		) );
+	}
+
+	/**
+	 * AJAX: Toggle lock/protection status
+	 *
+	 * Toggles the protected flag on metadata entry.
+	 *
+	 * @return void
+	 */
+	public function ajax_toggle_lock() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
+
+		if ( ! $entry_id ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		}
+
+		global $wpdb;
+		$table = $wpdb->prefix . 'msh_i18n_metadata';
+
+		// Get current status
+		$current_status = $wpdb->get_var(
+			$wpdb->prepare( "SELECT protected FROM {$table} WHERE id = %d", $entry_id )
+		);
+
+		if ( null === $current_status ) {
+			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'msh-image-optimizer' ) ) );
+		}
+
+		// Toggle
+		$new_status = $current_status ? 0 : 1;
+
+		$updated = $wpdb->update(
+			$table,
+			array( 'protected' => $new_status ),
+			array( 'id' => $entry_id ),
+			array( '%d' ),
+			array( '%d' )
+		);
+
+		if ( false === $updated ) {
+			wp_send_json_error( array( 'message' => __( 'Failed to toggle lock status.', 'msh-image-optimizer' ) ) );
+		}
+
+		wp_send_json_success( array(
+			'protected' => (bool) $new_status,
+			'message' => $new_status
+				? __( 'Entry locked.', 'msh-image-optimizer' )
+				: __( 'Entry unlocked.', 'msh-image-optimizer' ),
+		) );
 	}
 }
 
