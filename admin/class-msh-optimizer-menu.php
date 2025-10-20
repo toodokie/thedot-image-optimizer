@@ -373,17 +373,13 @@ class MSH_Optimizer_Menu {
 	 * @return void
 	 */
 	public function render_settings_page() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'msh-image-optimizer' ) );
+		}
+
 		if ( class_exists( 'MSH_Image_Optimizer_Settings' ) ) {
-			// Settings class is already instantiated at file bottom, just call render method
-			// We need to access the singleton/global instance
-			global $msh_settings_instance;
-			if ( isset( $msh_settings_instance ) && is_object( $msh_settings_instance ) ) {
-				$msh_settings_instance->render_settings_page();
-			} else {
-				// Fallback: create temporary instance
-				$settings = new MSH_Image_Optimizer_Settings();
-				$settings->render_settings_page();
-			}
+			$settings = new MSH_Image_Optimizer_Settings();
+			$settings->render_settings_page();
 		}
 	}
 
