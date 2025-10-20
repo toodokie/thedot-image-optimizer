@@ -47,6 +47,11 @@ class MSH_Hub_Page {
 	private function __construct() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 35 );
 		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_assets' ) );
+		add_action( 'wp_ajax_msh_get_cache_entries', array( $this, 'ajax_get_cache_entries' ) );
+		add_action( 'wp_ajax_msh_regenerate_entry', array( $this, 'ajax_regenerate_entry' ) );
+		add_action( 'wp_ajax_msh_refresh_queue_stats', array( $this, 'ajax_refresh_queue_stats' ) );
+		add_action( 'wp_ajax_msh_process_queue', array( $this, 'ajax_process_queue' ) );
+		add_action( 'wp_ajax_msh_get_recent_events', array( $this, 'ajax_get_recent_events' ) );
 	}
 
 	/**
@@ -119,6 +124,12 @@ class MSH_Hub_Page {
 					'queueNoJobs'              => esc_html__( 'No jobs waiting in the queue.', 'msh-image-optimizer' ),
 					'queueProcessing'          => esc_html__( 'Processing...', 'msh-image-optimizer' ),
 					'queueProcessingComplete'  => esc_html__( 'Processing Complete', 'msh-image-optimizer' ),
+					'eventsLiveFeed'           => esc_html__( 'Live event feed running – updates every 5 seconds.', 'msh-image-optimizer' ),
+					'eventsPaused'             => esc_html__( 'Live feed paused.', 'msh-image-optimizer' ),
+					'eventsError'              => esc_html__( 'Unable to load recent events. Please try again.', 'msh-image-optimizer' ),
+					'eventsPause'              => esc_html__( 'Pause Live Feed', 'msh-image-optimizer' ),
+					'eventsResume'             => esc_html__( 'Resume Live Feed', 'msh-image-optimizer' ),
+					'eventsNoData'             => esc_html__( 'No recent events yet. The feed will populate as activity occurs.', 'msh-image-optimizer' ),
 				),
 			)
 		);
@@ -211,7 +222,7 @@ class MSH_Hub_Page {
 				$this->render_queue_tab();
 				break;
 			case 'events':
-				echo '<p>' . esc_html__( 'Events tab - Coming soon...', 'msh-image-optimizer' ) . '</p>';
+				$this->render_events_tab();
 				break;
 			case 'sync':
 				if ( function_exists( 'msh_is_pro_active' ) && ! msh_is_pro_active() ) {
@@ -572,6 +583,78 @@ class MSH_Hub_Page {
 	}
 
 	/**
+	 * Render Events tab content.
+	 *
+	 * @return void
+	 */
+	private function render_events_tab() {
+		$events = function_exists( 'msh_get_recent_events' ) ? msh_get_recent_events( array( 'limit' => 20 ) ) : array();
+		?>
+		<div class="msh-events-tab">
+			<div class="msh-events-intro">
+				<p>
+					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
+					<?php esc_html_e( 'Track optimizer activity in real time. Every queue run, sync operation, and telemetry ping appears here for quick diagnostics.', 'msh-image-optimizer' ); ?>
+					<a href="<?php echo esc_url( 'https://github.com/toodokie/thedot-image-optimizer/blob/main/msh-image-optimizer/docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md#event-stream' ); ?>" class="msh-cache-intro__link" target="_blank" rel="noopener noreferrer">
+						<?php esc_html_e( 'Read more', 'msh-image-optimizer' ); ?>
+					</a>
+				</p>
+			</div>
+
+			<div class="msh-events-controls">
+				<button type="button" id="msh-toggle-events" class="msh-queue-process-btn">
+					<?php esc_html_e( 'Pause Live Feed', 'msh-image-optimizer' ); ?>
+				</button>
+				<span id="msh-events-status" class="msh-events-status"><?php esc_html_e( 'Live event feed running – updates every 5 seconds.', 'msh-image-optimizer' ); ?></span>
+			</div>
+
+			<div class="msh-events-stream" id="msh-events-stream">
+				<?php
+				if ( ! empty( $events ) ) {
+					$this->render_events_list( $events );
+				} else {
+					echo '<p class="msh-placeholder">' . esc_html__( 'No recent events yet. The feed will populate as activity occurs.', 'msh-image-optimizer' ) . '</p>';
+				}
+				?>
+			</div>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render events list markup.
+	 *
+	 * @param array $events Recent event objects.
+	 *
+	 * @return void
+	 */
+	private function render_events_list( $events ) {
+		if ( empty( $events ) ) {
+			return;
+		}
+		?>
+		<ul class="msh-events-list">
+			<?php foreach ( $events as $event ) : ?>
+				<li class="msh-event-item">
+					<div class="msh-event-meta">
+						<span class="msh-event-type"><?php echo esc_html( $event->event ?? '' ); ?></span>
+						<span class="msh-event-time"><?php echo esc_html( $event->created_at ?? current_time( 'mysql' ) ); ?></span>
+					</div>
+					<?php if ( ! empty( $event->summary ) ) : ?>
+						<p class="msh-event-summary"><?php echo esc_html( $event->summary ); ?></p>
+					<?php endif; ?>
+					<?php if ( ! empty( $event->details ) && is_array( $event->details ) ) : ?>
+						<pre class="msh-event-details"><?php echo esc_html( wp_json_encode( $event->details, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES ) ); ?></pre>
+					<?php elseif ( ! empty( $event->data ) ) : ?>
+						<pre class="msh-event-details"><?php echo esc_html( (string) $event->data ); ?></pre>
+					<?php endif; ?>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+		<?php
+	}
+
+	/**
 	 * AJAX handler for cache entries filtering.
 	 *
 	 * @return void
@@ -844,6 +927,37 @@ class MSH_Hub_Page {
 		}
 
 		wp_send_json_success( $result );
+	}
+
+	/**
+	 * AJAX handler for retrieving recent events.
+	 *
+	 * @return void
+	 */
+	public function ajax_get_recent_events() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array(
+					'message' => esc_html__( 'Permission denied.', 'msh-image-optimizer' ),
+				)
+			);
+		}
+
+		$events = function_exists( 'msh_get_recent_events' ) ? msh_get_recent_events( array( 'limit' => 20 ) ) : array();
+
+		ob_start();
+		if ( ! empty( $events ) ) {
+			$this->render_events_list( $events );
+		}
+		$markup = ob_get_clean();
+
+		wp_send_json_success(
+			array(
+				'html' => $markup,
+			)
+		);
 	}
 }
 

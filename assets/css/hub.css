@@ -518,6 +518,103 @@
     margin: 0;
 }
 
+/* Events Tab */
+.msh-events-tab {
+    padding: 10px 0 40px;
+}
+
+.msh-events-intro {
+    background: var(--msh-cream);
+    border-left: 4px solid var(--msh-lime);
+    padding: 16px 20px;
+    border-radius: 6px;
+    margin-bottom: 24px;
+    font-family: var(--msh-font-body);
+    line-height: 1.6;
+    color: var(--msh-charcoal);
+}
+
+.msh-events-intro strong {
+    font-family: var(--msh-font-heading);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    font-weight: 600;
+    margin-right: 6px;
+}
+
+.msh-events-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.msh-events-status {
+    font-family: var(--msh-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--msh-warm-gray);
+    font-size: 12px;
+}
+
+.msh-events-stream {
+    background: #fff;
+    border-radius: 8px;
+    border: 1px solid rgba(53, 51, 47, 0.08);
+    max-height: 520px;
+    overflow: auto;
+    padding: 0;
+}
+
+.msh-events-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.msh-event-item {
+    padding: 16px 20px;
+    border-bottom: 1px solid rgba(53, 51, 47, 0.08);
+}
+
+.msh-event-item:last-child {
+    border-bottom: none;
+}
+
+.msh-event-meta {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--msh-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 11px;
+    color: var(--msh-warm-gray);
+    margin-bottom: 8px;
+}
+
+.msh-event-type {
+    color: var(--msh-charcoal);
+}
+
+.msh-event-summary {
+    font-family: var(--msh-font-body);
+    color: var(--msh-charcoal);
+    margin: 0 0 8px;
+}
+
+.msh-event-details {
+    font-family: monospace;
+    font-size: 12px;
+    color: var(--msh-charcoal);
+    background: rgba(53, 51, 47, 0.05);
+    padding: 12px;
+    border-radius: 6px;
+    margin: 0;
+    overflow-x: auto;
+}
+
 /* Status Badges */
 .msh-status-fresh {
     color: #46b450;
@@ -692,6 +789,10 @@
     .msh-priority-column,
     .msh-actions-column {
         padding: 20px;
+    }
+
+    .msh-events-status {
+        width: 100%;
     }
 }
 

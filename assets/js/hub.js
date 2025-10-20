@@ -10,6 +10,8 @@
 
 	const MSH_Hub = {
 		queueRefreshInterval: null,
+		eventsRefreshInterval: null,
+		eventsPaused: false,
 
 		/**
 		 * Bootstrap handlers once DOM ready.
@@ -25,6 +27,7 @@
 			this.bindRegenerateButtons();
 
 			this.bindQueueActions();
+			this.bindEventsFeed();
 
 			// Future features keep their bindings so we do not lose earlier scaffolding.
 			this.bindAdditionalPlaceholders();
@@ -472,6 +475,116 @@
 		 */
 		formatNumber: function(num) {
 			return Number(num || 0).toLocaleString();
+		},
+
+		/**
+		 * Wire up events tab behaviour.
+		 */
+		bindEventsFeed: function() {
+			if (!$('.msh-events-tab').length) {
+				return;
+			}
+
+			$(document).on('click', '#msh-toggle-events', (event) => {
+				event.preventDefault();
+				this.toggleEventsFeed();
+			});
+
+			this.eventsPaused = false;
+			this.refreshEventsFeed();
+			this.startEventsAutoRefresh();
+			this.updateEventsStatus();
+		},
+
+		/**
+		 * Toggle event feed polling.
+		 */
+		toggleEventsFeed: function() {
+			this.eventsPaused = !this.eventsPaused;
+			if (this.eventsPaused) {
+				if (this.eventsRefreshInterval) {
+					clearInterval(this.eventsRefreshInterval);
+					this.eventsRefreshInterval = null;
+				}
+			} else {
+				this.refreshEventsFeed();
+				this.startEventsAutoRefresh();
+			}
+
+			this.updateEventsStatus();
+		},
+
+		/**
+		 * Update status label and button text.
+		 */
+		updateEventsStatus: function() {
+			const strings = (window.mshHubData && window.mshHubData.i18n) || {};
+			const $status = $('#msh-events-status');
+			const $button = $('#msh-toggle-events');
+
+			if (!$status.length || !$button.length) {
+				return;
+			}
+
+			if (this.eventsPaused) {
+				$status.text(strings.eventsPaused || 'Live feed paused.');
+				$button.text(strings.eventsResume || 'Resume Live Feed');
+			} else {
+				$status.text(strings.eventsLiveFeed || 'Live event feed running – updates every 5 seconds.');
+				$button.text(strings.eventsPause || 'Pause Live Feed');
+			}
+		},
+
+		/**
+		 * Pull recent events list.
+		 */
+		refreshEventsFeed: function() {
+			if (this.eventsPaused || !$('.msh-events-tab').length) {
+				return;
+			}
+
+			$.ajax({
+				url: window.mshHubData.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'msh_get_recent_events',
+					nonce: window.mshHubData.ajaxNonce
+				}
+			})
+				.done((response) => {
+					if (!response || !response.success) {
+						const strings = (window.mshHubData && window.mshHubData.i18n) || {};
+						$('#msh-events-stream').html('<p class="msh-placeholder">' + (strings.eventsError || 'Unable to load recent events. Please try again.') + '</p>');
+						return;
+					}
+
+					if (response.data && response.data.html) {
+						$('#msh-events-stream').html(response.data.html);
+					} else {
+						$('#msh-events-stream').html('<p class="msh-placeholder">' + (window.mshHubData && window.mshHubData.i18n ? window.mshHubData.i18n.eventsNoData : 'No recent events yet. The feed will populate as activity occurs.') + '</p>');
+					}
+				})
+				.fail((xhr, status, error) => {
+					console.error('Events feed AJAX error:', status, error);
+					const strings = (window.mshHubData && window.mshHubData.i18n) || {};
+					$('#msh-events-stream').html('<p class="msh-placeholder">' + (strings.eventsError || 'Unable to load recent events. Please try again.') + '</p>');
+				});
+		},
+
+		/**
+		 * Start polling for events.
+		 */
+		startEventsAutoRefresh: function() {
+			if (this.eventsRefreshInterval) {
+				clearInterval(this.eventsRefreshInterval);
+			}
+
+			this.eventsRefreshInterval = setInterval(() => {
+				if (!this.eventsPaused) {
+					this.refreshEventsFeed();
+				}
+			}, 5000);
 		},
 
 		/* ---------------------------------------------------------------------

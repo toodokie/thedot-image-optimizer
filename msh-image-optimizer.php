@@ -115,12 +115,22 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-job-engine.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-regeneration-worker.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-queue-manager.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-automation-triggers.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/automation/class-msh-metrics-collector.php';
+
+        // Initialize automation infrastructure
+        MSH_Database_Schema::get_instance();
+        MSH_Job_Engine::get_instance();
+        MSH_Queue_Manager::get_instance();
+        MSH_Automation_Triggers::get_instance();
+        MSH_Metrics_Collector::get_instance();
+
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-database-cli.php';
         }
 
-        // Phase 5+9: Helper function stubs (TEMPORARY - will be replaced with real implementations)
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-helper-stubs.php';
+        // Phase 5+9: Helper functions (Public API for frontend)
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-helper-functions.php';
 
         // Admin menu structure (must load first, priority 5)
         require_once MSH_IO_PLUGIN_DIR . 'admin/class-msh-optimizer-menu.php';
