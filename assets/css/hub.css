@@ -728,8 +728,8 @@
 
 /* Source Badges */
 .msh-source-ai {
-    background: #e5f5ff;
-    color: #0073aa;
+    background: rgba(53, 51, 47, 0.1);
+    color: var(--msh-charcoal);
     padding: 4px 8px;
     border-radius: 3px;
     font-size: 11px;
@@ -1111,11 +1111,11 @@ body.msh-modal-open {
 }
 
 .msh-toast.is-success {
-    background: #2f855a;
+    background: var(--msh-charcoal);
 }
 
 .msh-toast.is-error {
-    background: #c53030;
+    background: var(--msh-charcoal);
 }
 
 .msh-toast.is-info {
@@ -1146,11 +1146,6 @@ body.msh-modal-open {
     text-align: center;
 }
 
-.msh-placeholder-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
-    opacity: 0.6;
-}
 
 .msh-placeholder-state h3 {
     font-family: var(--msh-font-heading);
@@ -1229,7 +1224,7 @@ body.msh-modal-open {
 }
 
 .msh-stat-value.msh-sync-active {
-    color: #2f855a;
+    color: var(--msh-charcoal);
 }
 
 .msh-stat-value.msh-sync-inactive {
@@ -1240,11 +1235,6 @@ body.msh-modal-open {
     display: flex;
     gap: 12px;
     flex-wrap: wrap;
-}
-
-.msh-pro-icon {
-    font-size: 64px;
-    margin-bottom: 20px;
 }
 
 .msh-pro-features {

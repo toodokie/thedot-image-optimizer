@@ -824,7 +824,6 @@ class MSH_Hub_Page {
 				</div>
 			<?php else : ?>
 				<div class="msh-placeholder-state">
-					<div class="msh-placeholder-icon">📜</div>
 					<h3><?php esc_html_e( 'No Version History Yet', 'msh-image-optimizer' ); ?></h3>
 					<p><?php esc_html_e( 'Once you start optimizing images and making metadata changes, the version timeline will appear here. Each change is tracked with before/after values, timestamps, and source attribution.', 'msh-image-optimizer' ); ?></p>
 					<p class="msh-placeholder-note">
@@ -852,7 +851,6 @@ class MSH_Hub_Page {
 			?>
 			<div class="msh-sync-tab">
 				<div class="msh-pro-upsell">
-					<div class="msh-pro-icon">🔒</div>
 					<h2><?php esc_html_e( 'Cloud Sync – Pro Feature', 'msh-image-optimizer' ); ?></h2>
 					<p class="msh-pro-description">
 						<?php esc_html_e( 'Sync optimized metadata across multiple WordPress sites, maintain consistency across staging/production environments, and backup your metadata to the cloud for disaster recovery.', 'msh-image-optimizer' ); ?>
