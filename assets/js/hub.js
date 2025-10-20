@@ -19,6 +19,7 @@
 		modalFooter: null,
 		toast: null,
 		toastTimeout: null,
+		globalHandlersBound: false,
 
 		/**
 		 * Bootstrap handlers once DOM ready.
