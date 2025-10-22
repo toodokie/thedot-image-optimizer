@@ -520,18 +520,17 @@ function msh_get_version_history( $args = array() ) {
 		'attachment_id' => 0,
 		'field'         => '',
 		'source'        => '',
+		'locale'        => '',
 	);
 
 	$args = wp_parse_args( $args, $defaults );
-	$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+	$versions_table = $wpdb->prefix . 'msh_optimizer_metadata';
 
-	// For Phase 1, we simulate version history from cache table updates
-	// In future phases, this will query a dedicated version_history table
 	$where_clauses = array( '1=1' );
 	$query_args = array();
 
 	if ( ! empty( $args['attachment_id'] ) ) {
-		$where_clauses[] = 'attachment_id = %d';
+		$where_clauses[] = 'media_id = %d';
 		$query_args[] = (int) $args['attachment_id'];
 	}
 
@@ -541,8 +540,13 @@ function msh_get_version_history( $args = array() ) {
 	}
 
 	if ( ! empty( $args['source'] ) ) {
-		$where_clauses[] = 'chosen_source = %s';
+		$where_clauses[] = 'source = %s';
 		$query_args[] = sanitize_text_field( $args['source'] );
+	}
+
+	if ( ! empty( $args['locale'] ) ) {
+		$where_clauses[] = 'locale = %s';
+		$query_args[] = sanitize_text_field( $args['locale'] );
 	}
 
 	$where_sql = implode( ' AND ', $where_clauses );
@@ -550,17 +554,17 @@ function msh_get_version_history( $args = array() ) {
 
 	$query_args[] = $limit;
 
-	$query = "SELECT 
+	$query = "SELECT
 		id,
-		attachment_id,
+		media_id as attachment_id,
 		field,
-		chosen_value as new_value,
-		chosen_source as source,
-		updated_at as timestamp,
-		1 as version
-	FROM {$cache_table}
+		value as new_value,
+		source,
+		created_at as timestamp,
+		version
+	FROM {$versions_table}
 	WHERE {$where_sql}
-	ORDER BY updated_at DESC
+	ORDER BY created_at DESC
 	LIMIT %d";
 
 	if ( ! empty( $query_args ) ) {
@@ -569,9 +573,24 @@ function msh_get_version_history( $args = array() ) {
 
 	$results = $wpdb->get_results( $query, ARRAY_A );
 
-	// Add old_value placeholder (will be real data when we have version tracking table)
+	// Get old_value by fetching the previous version
 	foreach ( $results as &$entry ) {
-		$entry['old_value'] = ''; // Placeholder - future version will track previous values
+		$prev_version = (int) $entry['version'] - 1;
+
+		if ( $prev_version > 0 ) {
+			$old_value = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT value FROM {$versions_table} WHERE media_id = %d AND field = %s AND version = %d",
+					$entry['attachment_id'],
+					$entry['field'],
+					$prev_version
+				)
+			);
+			$entry['old_value'] = $old_value ? $old_value : '';
+		} else {
+			$entry['old_value'] = ''; // First version has no previous value
+		}
+
 		$entry['timestamp'] = mysql2date( 'Y-m-d H:i:s', $entry['timestamp'] );
 	}
 
