@@ -190,7 +190,7 @@ class MSH_Dashboard_Page {
 
 			<!-- CTA -->
 			<div class="msh-cta-section">
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer' ) ); ?>" class="button button-primary button-hero">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer' ) ); ?>" class="button button-dot-primary button-hero">
 					<?php esc_html_e( 'Optimize Now', 'msh-image-optimizer' ); ?>
 				</a>
 			</div>
@@ -232,8 +232,9 @@ class MSH_Dashboard_Page {
 		$estimated_images = self::estimate_remaining_images( $credits );
 		$usage_percent = self::get_usage_percent( $credits );
 		$next_renewal = self::get_next_renewal_date();
-		$is_pro = defined( 'MSH_DEV_MODE' ) && MSH_DEV_MODE;
-		if ( ! $is_pro && class_exists( 'MSH_License_Manager' ) ) {
+		// Check actual license status (don't use dev mode for UI display)
+		$is_pro = false;
+		if ( class_exists( 'MSH_License_Manager' ) ) {
 			$is_pro = MSH_License_Manager::get_instance()->is_pro_active();
 		}
 		?>
@@ -287,7 +288,7 @@ class MSH_Dashboard_Page {
 			<!-- CTA -->
 			<?php if ( ! $is_pro ) : ?>
 			<div class="msh-balance-cta">
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer-settings&section=license' ) ); ?>" class="button button-primary">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer-settings&section=license' ) ); ?>" class="button button-dot-primary">
 					<?php esc_html_e( 'Upgrade Plan', 'msh-image-optimizer' ); ?>
 				</a>
 			</div>
@@ -316,7 +317,7 @@ class MSH_Dashboard_Page {
 				</div>
 				<?php if ( ! empty( $tip['cta'] ) ) : ?>
 				<div class="msh-tip-cta">
-					<a href="<?php echo esc_url( $tip['cta']['href'] ); ?>" target="_blank" class="button button-secondary">
+					<a href="<?php echo esc_url( $tip['cta']['href'] ); ?>" target="_blank" class="button button-dot-secondary">
 						<?php echo esc_html( $tip['cta']['label'] ); ?>
 						<span class="dashicons dashicons-external"></span>
 					</a>

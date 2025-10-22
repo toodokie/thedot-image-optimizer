@@ -519,8 +519,52 @@ class MSH_Image_Optimizer_Admin {
 									<?php esc_html_e( 'Keep me posted about AI metadata and duplicate detection features', 'msh-image-optimizer' ); ?>
 								</label>
 
-								<p class="step-description small-print"><?php esc_html_e( 'Saving completes the setup. You can edit these details at any time.', 'msh-image-optimizer' ); ?></p>
+								<?php
+								$is_pro = function_exists( 'msh_is_pro_active' ) && msh_is_pro_active();
+								if ( ! $is_pro ) :
+									?>
+									<p class="step-description small-print"><?php esc_html_e( 'Saving completes the setup. You can edit these details at any time.', 'msh-image-optimizer' ); ?></p>
+								<?php endif; ?>
 							</div>
+
+							<?php
+							// Step 5: AI Configuration (Pro Only)
+							$is_pro = function_exists( 'msh_is_pro_active' ) && msh_is_pro_active();
+							if ( $is_pro ) :
+								?>
+							<div class="onboarding-step" data-step="5">
+								<h3><?php esc_html_e( 'AI Configuration (Optional)', 'msh-image-optimizer' ); ?></h3>
+								<p class="step-description"><?php esc_html_e( 'Bring Your Own Key (BYOK): Provide your own AI provider API key for automated metadata generation. Leave blank to use bundled credits.', 'msh-image-optimizer' ); ?></p>
+
+								<label for="msh_api_provider"><?php esc_html_e( 'AI Provider', 'msh-image-optimizer' ); ?></label>
+								<select id="msh_api_provider" name="api_provider" class="msh-select">
+									<option value=""><?php esc_html_e( 'Use bundled credits (default)', 'msh-image-optimizer' ); ?></option>
+									<option value="openai"><?php esc_html_e( 'OpenAI (GPT-4 Vision)', 'msh-image-optimizer' ); ?></option>
+									<option value="anthropic"><?php esc_html_e( 'Anthropic (Claude 3.5 Sonnet)', 'msh-image-optimizer' ); ?></option>
+									<option value="google"><?php esc_html_e( 'Google (Gemini 1.5 Pro)', 'msh-image-optimizer' ); ?></option>
+								</select>
+
+								<label for="msh_api_key"><?php esc_html_e( 'API Key (Optional)', 'msh-image-optimizer' ); ?></label>
+								<input type="password" id="msh_api_key" name="api_key" class="msh-input" placeholder="<?php esc_attr_e( 'Leave blank to use bundled credits', 'msh-image-optimizer' ); ?>" />
+								<p class="field-help">
+									<?php esc_html_e( 'Your API key is stored securely and never shared. Get your key from: ', 'msh-image-optimizer' ); ?>
+									<strong>OpenAI</strong>: platform.openai.com/api-keys |
+									<strong>Anthropic</strong>: console.anthropic.com |
+									<strong>Google</strong>: makersuite.google.com
+								</p>
+
+								<label for="msh_primary_locale"><?php esc_html_e( 'Primary Language', 'msh-image-optimizer' ); ?></label>
+								<select id="msh_primary_locale" name="primary_locale" class="msh-select">
+									<option value="en_US"><?php esc_html_e( 'English (US)', 'msh-image-optimizer' ); ?></option>
+									<option value="en_GB"><?php esc_html_e( 'English (UK)', 'msh-image-optimizer' ); ?></option>
+									<option value="fr_FR"><?php esc_html_e( 'French (France)', 'msh-image-optimizer' ); ?></option>
+									<option value="es_ES"><?php esc_html_e( 'Spanish (Spain)', 'msh-image-optimizer' ); ?></option>
+									<option value="de_DE"><?php esc_html_e( 'German (Germany)', 'msh-image-optimizer' ); ?></option>
+								</select>
+
+								<p class="step-description small-print"><?php esc_html_e( 'Saving completes the setup. You can edit these details at any time from Settings.', 'msh-image-optimizer' ); ?></p>
+							</div>
+							<?php endif; ?>
 						</form>
 						<div class="wizard-navigation">
 							<button type="button" class="button button-dot-secondary wizard-prev" disabled><?php esc_html_e( 'Back', 'msh-image-optimizer' ); ?></button>
@@ -1280,6 +1324,25 @@ class MSH_Image_Optimizer_Admin {
 		update_option( 'msh_onboarding_context', $sanitized, false );
 		$signature = MSH_Image_Optimizer_Context_Helper::build_context_signature( $sanitized );
 		update_option( 'msh_context_signature', $signature, false );
+
+		// Save Pro-only AI configuration settings (Step 5)
+		$is_pro = function_exists( 'msh_is_pro_active' ) && msh_is_pro_active();
+		if ( $is_pro ) {
+			// Save API provider
+			if ( ! empty( $raw_context['api_provider'] ) ) {
+				update_option( 'msh_api_provider', sanitize_text_field( $raw_context['api_provider'] ), false );
+			}
+
+			// Save API key
+			if ( ! empty( $raw_context['api_key'] ) ) {
+				update_option( 'msh_api_key', sanitize_text_field( $raw_context['api_key'] ), false );
+			}
+
+			// Save primary locale
+			if ( ! empty( $raw_context['primary_locale'] ) ) {
+				update_option( 'msh_primary_locale', sanitize_text_field( $raw_context['primary_locale'] ), false );
+			}
+		}
 		if ( $previous_signature !== $signature && class_exists( 'MSH_Image_Optimizer' ) ) {
 			$optimizer = MSH_Image_Optimizer::get_instance();
 			if ( $optimizer && method_exists( $optimizer, 'handle_context_signature_change' ) ) {

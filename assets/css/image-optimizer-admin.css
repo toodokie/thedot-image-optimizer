@@ -643,7 +643,15 @@ select.msh-select,
 .radio-grid label:hover,
 .radio-grid label:focus-within {
     border-color: #35332f;
-    background-color: #fffceb;
+    background-color: #ffffff;
+    box-shadow: 0 0 8px rgba(53, 51, 47, 0.15);
+}
+
+.radio-grid label strong {
+    font-family: var(--font-primary);
+    font-size: 1.125rem;
+    font-weight: 400;
+    color: #35332f;
 }
 
 .radio-grid label span {
@@ -652,8 +660,21 @@ select.msh-select,
 }
 
 .radio-grid input[type="radio"] {
-    accent-color: #35332f;
+    accent-color: #35332f !important;
     margin-right: 10px;
+    width: 20px;
+    height: 20px;
+}
+
+.radio-grid input[type="radio"]:checked {
+    accent-color: #35332f !important;
+    background-color: #35332f !important;
+    border-color: #35332f !important;
+}
+
+.radio-grid input[type="radio"]:focus {
+    outline: 2px solid #35332f;
+    outline-offset: 2px;
 }
 
 .msh-onboarding-wizard input[type="checkbox"] {
@@ -3459,6 +3480,7 @@ tr.context-updated {
     font-size: 1.125rem;
     font-weight: 300;
     color: #35332f;
+    margin-top: 24px;
 }
 
 /* Edit Current Filename Button */

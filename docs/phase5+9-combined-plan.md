@@ -1841,3 +1841,94 @@ wp msh license feature cloud_sync
 **End of Phase 5+9 Combined Plan**
 
 Questions or ready to begin Track A development?
+
+
+---
+
+## Phase 6: License Server & Payment Infrastructure
+
+**Status:** 📋 Planned (Future Phase)  
+**Priority:** High (Required for monetization)  
+**Dependencies:** Phase 5+9 complete (Pro feature flags in place)
+
+### Overview
+
+To enable Pro/Agency plan sales and activate license-gated features in the plugin, a **separate license API server** must be built outside the WordPress plugin.
+
+**📄 See Full Documentation:** [LICENSING-ARCHITECTURE.md](./LICENSING-ARCHITECTURE.md)
+
+### Key Components
+
+1. **License API Server** (`license.thedot.com`)
+   - Separate Node.js/PHP application (NOT in WordPress plugin)
+   - Handles license key generation, validation, activation tracking
+   - Integrates with Stripe/LemonSqueezy via webhooks
+
+2. **Database** (PostgreSQL/MySQL)
+   - `licenses` table: Keys, plans, status, expiration
+   - `license_activations` table: Site tracking, activation limits
+
+3. **Payment Integration**
+   - Stripe or LemonSqueezy webhooks
+   - Automatic license generation on purchase
+   - Subscription management (renewal, cancellation)
+
+4. **WordPress Plugin Integration**
+   - Lightweight SDK for API communication
+   - Local storage in `wp_options`
+   - Daily cron verification
+   - Feature gating via `msh_is_pro_active()`
+
+### Why Separate Server?
+
+✅ **Security**: Payment secrets never in WordPress  
+✅ **Scalability**: Independent deployment and scaling  
+✅ **Compliance**: Easier PCI/GDPR compliance  
+✅ **Testing**: Cleaner CI/CD pipeline  
+✅ **WordPress.org**: Plugin remains review-friendly  
+
+### Recommended Architecture
+
+**Monorepo Structure:**
+```
+the-dot-optimizer/
+├─ apps/
+│  ├─ wp-plugin/         # MSH Image Optimizer
+│  └─ license-api/       # License server (Node/PHP)
+├─ packages/
+│  └─ license-sdk/       # Client library
+├─ infra/
+│  └─ docker-compose.yml # Local dev (Postgres + Mailhog)
+└─ README.md
+```
+
+### API Endpoints (Contract)
+
+- `POST /activate` - Activate license on new site
+- `POST /verify` - Daily license status check
+- `POST /deactivate` - Free up activation slot
+- `POST /portal` - Generate Stripe Customer Portal URL
+
+### Timeline Estimate
+
+- **Setup & Infrastructure**: 1-2 weeks
+- **Core API Development**: 2-3 weeks  
+- **Payment Integration**: 1-2 weeks
+- **Plugin Integration**: 1 week
+- **Testing & QA**: 1 week
+- **Total**: 6-9 weeks
+
+### Dependencies
+
+- Stripe or LemonSqueezy account
+- Domain: `license.thedot.com`
+- Hosting: Railway/Render/AWS (~$10-20/month)
+- SSL certificate (Let's Encrypt)
+
+---
+
+**For complete details, database schema, security considerations, and code examples:**  
+👉 **[Read LICENSING-ARCHITECTURE.md](./LICENSING-ARCHITECTURE.md)**
+
+---
+

@@ -665,7 +665,7 @@ class MSH_Hub_Page {
 						</button>
 
 						<?php if ( $has_failed_jobs ) : ?>
-							<button type="button" id="msh-clear-failed" class="button button-secondary">
+							<button type="button" id="msh-clear-failed" class="button button-dot-secondary">
 								<?php esc_html_e( 'Clear Failed Jobs', 'msh-image-optimizer' ); ?>
 							</button>
 						<?php endif; ?>
@@ -888,10 +888,10 @@ class MSH_Hub_Page {
 					</div>
 
 					<div class="msh-pro-cta">
-						<a href="https://thedot.com/pricing" target="_blank" rel="noopener noreferrer" class="button button-primary">
+						<a href="https://thedot.com/pricing" target="_blank" rel="noopener noreferrer" class="button button-dot-primary">
 							<?php esc_html_e( 'Upgrade to Pro', 'msh-image-optimizer' ); ?>
 						</a>
-						<a href="https://thedot.com/features/sync" target="_blank" rel="noopener noreferrer" class="button button-secondary">
+						<a href="https://thedot.com/features/sync" target="_blank" rel="noopener noreferrer" class="button button-dot-secondary">
 							<?php esc_html_e( 'Learn More', 'msh-image-optimizer' ); ?>
 						</a>
 					</div>
@@ -947,13 +947,13 @@ class MSH_Hub_Page {
 			</div>
 
 			<div class="msh-sync-actions">
-				<button type="button" class="button button-primary" id="msh-trigger-sync">
+				<button type="button" class="button button-dot-primary" id="msh-trigger-sync">
 					<?php esc_html_e( 'Sync Now', 'msh-image-optimizer' ); ?>
 				</button>
-				<button type="button" class="button button-secondary" id="msh-configure-sync">
+				<button type="button" class="button button-dot-secondary" id="msh-configure-sync">
 					<?php esc_html_e( 'Configure Sync', 'msh-image-optimizer' ); ?>
 				</button>
-				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer-settings&tab=sync' ) ); ?>" class="button">
+				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer-settings&tab=sync' ) ); ?>" class="button button-dot-secondary">
 					<?php esc_html_e( 'Sync Settings', 'msh-image-optimizer' ); ?>
 				</a>
 			</div>

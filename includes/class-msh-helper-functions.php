@@ -318,13 +318,32 @@ function msh_enqueue_job( $job_type, $attachment_id, $options = array() ) {
 /**
  * Check if Pro license is active.
  *
- * STUB: Always returns false until licensing system is built.
+ * This function always returns the actual license status, ignoring dev mode.
+ * Use this for UI display decisions (showing/hiding upgrade buttons, etc.).
  *
  * @return bool True if Pro license active, false otherwise.
  */
 function msh_is_pro_active() {
-	// TODO: Implement license checking in Phase 6
-	return apply_filters( 'msh_is_pro_active', false );
+	$license_status = get_option( 'msh_license_status', 'inactive' );
+	$is_active = ( 'active' === $license_status );
+	return apply_filters( 'msh_is_pro_active', $is_active );
+}
+
+/**
+ * Check if user can use Pro features.
+ *
+ * This function respects dev mode bypass, allowing developers to test Pro
+ * features without an active license. Use this for functional gating.
+ *
+ * @return bool True if can use Pro features, false otherwise.
+ */
+function msh_can_use_pro_features() {
+	// Dev mode bypass
+	if ( defined( 'MSH_DEV_MODE' ) && MSH_DEV_MODE ) {
+		return true;
+	}
+
+	return msh_is_pro_active();
 }
 
 /**

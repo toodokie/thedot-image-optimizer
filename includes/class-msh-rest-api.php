@@ -173,10 +173,21 @@ class MSH_REST_API {
 	/**
 	 * Permission callback - Check if user can manage options.
 	 *
-	 * @return bool
+	 * Uses WordPress cookie authentication for logged-in admin users.
+	 *
+	 * @return bool|WP_Error
 	 */
 	public function check_admin_permission() {
-		return current_user_can( 'manage_options' );
+		// Check if user has admin capabilities
+		if ( ! current_user_can( 'manage_options' ) ) {
+			return new WP_Error(
+				'rest_forbidden',
+				__( 'Sorry, you are not allowed to do that.', 'msh-image-optimizer' ),
+				array( 'status' => 401 )
+			);
+		}
+
+		return true;
 	}
 
 	/**
