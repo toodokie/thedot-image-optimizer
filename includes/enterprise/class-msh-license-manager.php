@@ -243,18 +243,35 @@ class MSH_License_Manager {
 	}
 
 	/**
-	 * Check if Pro features are active.
+	 * Check if Pro license is active.
+	 *
+	 * This method always returns the actual license status from the database,
+	 * ignoring dev mode. Use this for UI display decisions (showing/hiding
+	 * upgrade buttons, plan badges, etc.).
 	 *
 	 * @return bool
 	 */
 	public function is_pro_active() {
+		$status = get_option( self::LICENSE_STATUS_OPTION, 'inactive' );
+		return 'active' === $status;
+	}
+
+	/**
+	 * Check if user can use Pro features.
+	 *
+	 * This method respects dev mode bypass, allowing developers to test Pro
+	 * features without an active license. Use this for functional gating
+	 * (allowing/blocking access to Pro features).
+	 *
+	 * @return bool
+	 */
+	public function can_use_pro_features() {
 		// Dev mode bypass - allows testing Pro features without license
 		if ( defined( 'MSH_DEV_MODE' ) && MSH_DEV_MODE ) {
 			return true;
 		}
 
-		$status = get_option( self::LICENSE_STATUS_OPTION, 'inactive' );
-		return 'active' === $status;
+		return $this->is_pro_active();
 	}
 
 	/**
@@ -348,7 +365,7 @@ class MSH_License_Manager {
 	 * @return bool Whether feature is available.
 	 */
 	public function has_feature( $feature ) {
-		if ( ! $this->is_pro_active() ) {
+		if ( ! $this->can_use_pro_features() ) {
 			return false;
 		}
 

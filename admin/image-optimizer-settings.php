@@ -161,9 +161,33 @@ class MSH_Image_Optimizer_Settings {
 			}
 			?>
 
+			<?php
+			// Tab navigation
+			$active_tab = isset( $_GET['tab'] ) ? sanitize_text_field( $_GET['tab'] ) : 'general';
+			$tabs = array(
+				'general' => __( 'General', 'msh-image-optimizer' ),
+				'context' => __( 'Context', 'msh-image-optimizer' ),
+				'ai'      => __( 'AI', 'msh-image-optimizer' ),
+				'account' => __( 'Account', 'msh-image-optimizer' ),
+				'advanced' => __( 'Advanced', 'msh-image-optimizer' ),
+			);
+			?>
+			<nav class="nav-tab-wrapper">
+				<?php foreach ( $tabs as $tab_key => $tab_label ) : ?>
+					<a href="<?php echo esc_url( add_query_arg( array( 'page' => self::PAGE_SLUG, 'tab' => $tab_key ), admin_url( 'admin.php' ) ) ); ?>"
+					   class="nav-tab <?php echo $active_tab === $tab_key ? 'nav-tab-active' : ''; ?>">
+						<?php echo esc_html( $tab_label ); ?>
+					</a>
+				<?php endforeach; ?>
+			</nav>
+
 			<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="msh-settings-form">
 				<?php wp_nonce_field( self::NONCE_ACTION ); ?>
 				<input type="hidden" name="action" value="<?php echo esc_attr( self::ADMIN_POST_ACTION ); ?>">
+				<input type="hidden" name="active_tab" value="<?php echo esc_attr( $active_tab ); ?>">
+
+				<!-- GENERAL TAB -->
+				<?php if ( 'general' === $active_tab ) : ?>
 
 				<section class="msh-settings-card">
 					<header>
@@ -191,6 +215,47 @@ class MSH_Image_Optimizer_Settings {
 						</p>
 					</fieldset>
 				</section>
+
+				<!-- Optimization Controls (also in General tab) -->
+				<section class="msh-settings-card msh-settings-card--rename">
+					<header>
+						<h2><?php esc_html_e( 'Optimization Controls', 'msh-image-optimizer' ); ?></h2>
+						<p><?php esc_html_e( 'Keep file renaming in sync with your usage index so URLs stay intact across campaigns and migrations.', 'msh-image-optimizer' ); ?></p>
+					</header>
+					<div class="msh-settings-grid">
+						<div class="msh-settings-field msh-settings-checkbox">
+							<input type="hidden" name="options[rename_enabled]" value="0">
+							<label class="msh-checkbox-field">
+								<input type="checkbox" name="options[rename_enabled]" value="1" <?php checked( $rename_enabled ); ?>>
+								<span><?php esc_html_e( 'Enable safe file renaming', 'msh-image-optimizer' ); ?></span>
+							</label>
+							<p class="msh-settings-note">
+								<?php esc_html_e( 'When active, Analyze & Apply can publish SEO-friendly filenames without breaking links. Requires a fresh usage index.', 'msh-image-optimizer' ); ?>
+							</p>
+							<?php
+							$index_status_class = 'status-disabled';
+							$index_status_label = __( 'Renaming disabled', 'msh-image-optimizer' );
+							if ( $rename_enabled ) {
+								if ( ! empty( $index_stats ) ) {
+									$index_status_class = 'status-ready';
+									$index_status_label = __( 'Ready – usage index verified', 'msh-image-optimizer' );
+								} else {
+									$index_status_class = 'status-pending';
+									$index_status_label = __( 'Action needed – build usage index before renaming', 'msh-image-optimizer' );
+								}
+							}
+							?>
+							<div class="msh-status-pill <?php echo esc_attr( $index_status_class ); ?>">
+								<?php echo esc_html( $index_status_label ); ?>
+							</div>
+						</div>
+					</div>
+				</section>
+
+				<?php endif; // End General Tab ?>
+
+				<!-- CONTEXT TAB -->
+				<?php if ( 'context' === $active_tab ) : ?>
 
 				<section class="msh-settings-card">
 					<header>
@@ -370,43 +435,13 @@ class MSH_Image_Optimizer_Settings {
 					<button type="button" class="button button-dot-secondary msh-add-profile">
 						<?php esc_html_e( 'Add Context Profile', 'msh-image-optimizer' ); ?>
 					</button>
-					<p class="msh-settings-note"><?php esc_html_e( 'Changes to profiles are saved when you click “Save Settings” below.', 'msh-image-optimizer' ); ?></p>
+					<p class="msh-settings-note"><?php esc_html_e( 'Changes to profiles are saved when you click "Save Settings" below.', 'msh-image-optimizer' ); ?></p>
 				</section>
 
-				<section class="msh-settings-card msh-settings-card--rename">
-					<header>
-						<h2><?php esc_html_e( 'Optimization Controls', 'msh-image-optimizer' ); ?></h2>
-						<p><?php esc_html_e( 'Keep file renaming in sync with your usage index so URLs stay intact across campaigns and migrations.', 'msh-image-optimizer' ); ?></p>
-					</header>
-					<div class="msh-settings-grid">
-						<div class="msh-settings-field msh-settings-checkbox">
-							<input type="hidden" name="options[rename_enabled]" value="0">
-							<label class="msh-checkbox-field">
-								<input type="checkbox" name="options[rename_enabled]" value="1" <?php checked( $rename_enabled ); ?>>
-								<span><?php esc_html_e( 'Enable safe file renaming', 'msh-image-optimizer' ); ?></span>
-							</label>
-							<p class="msh-settings-note">
-								<?php esc_html_e( 'When active, Analyze & Apply can publish SEO-friendly filenames without breaking links. Requires a fresh usage index.', 'msh-image-optimizer' ); ?>
-							</p>
-							<?php
-							$index_status_class = 'status-disabled';
-							$index_status_label = __( 'Renaming disabled', 'msh-image-optimizer' );
-							if ( $rename_enabled ) {
-								if ( ! empty( $index_stats ) ) {
-									$index_status_class = 'status-ready';
-									$index_status_label = __( 'Ready – usage index verified', 'msh-image-optimizer' );
-								} else {
-									$index_status_class = 'status-pending';
-									$index_status_label = __( 'Action needed – build usage index before renaming', 'msh-image-optimizer' );
-								}
-							}
-							?>
-							<div class="msh-status-pill <?php echo esc_attr( $index_status_class ); ?>">
-								<?php echo esc_html( $index_status_label ); ?>
-							</div>
-						</div>
-					</div>
-				</section>
+				<?php endif; // End Context Tab ?>
+
+				<!-- ADVANCED TAB -->
+				<?php if ( 'advanced' === $active_tab ) : ?>
 
 				<section class="msh-settings-card msh-settings-card--diagnostics">
 					<header>
@@ -473,6 +508,11 @@ class MSH_Image_Optimizer_Settings {
 					</div>
 				</section>
 
+				<?php endif; // End Advanced Tab ?>
+
+				<!-- AI TAB -->
+				<?php if ( 'ai' === $active_tab ) : ?>
+
 				<section class="msh-settings-card msh-settings-card--ai">
 					<header>
 						<h2><?php esc_html_e( 'AI Automation', 'msh-image-optimizer' ); ?></h2>
@@ -499,6 +539,23 @@ class MSH_Image_Optimizer_Settings {
 						</div>
 
 						<div class="msh-settings-field">
+							<label for="msh_ai_provider"><?php esc_html_e( 'AI Provider (optional)', 'msh-image-optimizer' ); ?></label>
+							<select
+								id="msh_ai_provider"
+								name="options[ai_provider]"
+								class="msh-select"
+							>
+								<option value=""><?php esc_html_e( 'Use bundled credits (default)', 'msh-image-optimizer' ); ?></option>
+								<option value="openai" <?php selected( get_option( 'msh_ai_provider', '' ), 'openai' ); ?>><?php esc_html_e( 'OpenAI (GPT-4 Vision)', 'msh-image-optimizer' ); ?></option>
+								<option value="anthropic" <?php selected( get_option( 'msh_ai_provider', '' ), 'anthropic' ); ?>><?php esc_html_e( 'Anthropic (Claude 3.5 Sonnet)', 'msh-image-optimizer' ); ?></option>
+								<option value="google" <?php selected( get_option( 'msh_ai_provider', '' ), 'google' ); ?>><?php esc_html_e( 'Google (Gemini 1.5 Pro)', 'msh-image-optimizer' ); ?></option>
+							</select>
+							<p class="msh-settings-note">
+								<?php esc_html_e( 'Select which AI provider to use for metadata generation. Leave as default to use bundled credits.', 'msh-image-optimizer' ); ?>
+							</p>
+						</div>
+
+						<div class="msh-settings-field">
 							<label for="msh_ai_api_key"><?php esc_html_e( 'Bring-your-own API key (optional)', 'msh-image-optimizer' ); ?></label>
 							<input
 								type="password"
@@ -507,10 +564,13 @@ class MSH_Image_Optimizer_Settings {
 								value="<?php echo esc_attr( $ai_api_key ); ?>"
 								class="msh-input"
 								autocomplete="off"
-								placeholder="<?php esc_attr_e( 'sk-••••', 'msh-image-optimizer' ); ?>"
+								placeholder="<?php esc_attr_e( 'Leave blank to use bundled credits', 'msh-image-optimizer' ); ?>"
 							/>
 							<p class="msh-settings-note">
-								<?php esc_html_e( 'Provide your own OpenAI key to bypass credit billing. Leave blank to use bundled credits.', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Provide your own API key to bypass credit billing. Get keys from: ', 'msh-image-optimizer' ); ?>
+								<strong>OpenAI</strong>: platform.openai.com/api-keys |
+								<strong>Anthropic</strong>: console.anthropic.com |
+								<strong>Google</strong>: makersuite.google.com
 							</p>
 						</div>
 
@@ -554,6 +614,61 @@ class MSH_Image_Optimizer_Settings {
 					</div>
 				</section>
 
+				<?php endif; // End AI Tab ?>
+
+				<!-- ACCOUNT TAB -->
+				<?php if ( 'account' === $active_tab ) : ?>
+
+				<section class="msh-settings-card msh-settings-card--license">
+					<header>
+						<h2><?php esc_html_e( 'License', 'msh-image-optimizer' ); ?></h2>
+						<p><?php esc_html_e( 'Manage your subscription, view license status, and access billing portal.', 'msh-image-optimizer' ); ?></p>
+					</header>
+					<div class="msh-settings-grid">
+						<?php
+						$is_pro = function_exists( 'msh_is_pro_active' ) && msh_is_pro_active();
+						if ( $is_pro ) :
+							// License is active - show status and manage subscription
+							?>
+							<div class="msh-license-status">
+								<div class="msh-license-badge msh-license-active">
+									<span class="dashicons dashicons-yes-alt"></span>
+									<?php esc_html_e( 'Pro License Active', 'msh-image-optimizer' ); ?>
+								</div>
+								<p><?php esc_html_e( 'Your Pro license is active and all features are available.', 'msh-image-optimizer' ); ?></p>
+							</div>
+							<div class="msh-settings-field">
+								<a href="https://billing.thedot.com/customer-portal" target="_blank" class="button button-dot-secondary">
+									<?php esc_html_e( 'Manage Subscription', 'msh-image-optimizer' ); ?>
+									<span class="dashicons dashicons-external"></span>
+								</a>
+								<p class="msh-settings-note">
+									<?php esc_html_e( 'Update payment method, view invoices, or cancel your subscription.', 'msh-image-optimizer' ); ?>
+								</p>
+							</div>
+						<?php else : ?>
+							<!-- Free plan - show upgrade options -->
+							<div class="msh-license-status">
+								<div class="msh-license-badge msh-license-free">
+									<span class="dashicons dashicons-info"></span>
+									<?php esc_html_e( 'Free Plan', 'msh-image-optimizer' ); ?>
+								</div>
+								<p><?php esc_html_e( 'Upgrade to Pro to unlock advanced features like Hub Sync, AI Automation, and priority support.', 'msh-image-optimizer' ); ?></p>
+							</div>
+							<div class="msh-settings-field">
+								<a href="https://thedot.com/pricing" target="_blank" class="button button-dot-primary">
+									<?php esc_html_e( 'Upgrade to Pro', 'msh-image-optimizer' ); ?>
+								</a>
+								<p class="msh-settings-note">
+									<?php esc_html_e( 'View pricing plans and features comparison.', 'msh-image-optimizer' ); ?>
+								</p>
+							</div>
+						<?php endif; ?>
+					</div>
+				</section>
+
+				<?php endif; // End Account Tab ?>
+
 				<div class="msh-settings-actions">
 					<?php submit_button( __( 'Save Settings', 'msh-image-optimizer' ), 'button-dot-primary', 'submit', false ); ?>
 					<a href="<?php echo esc_url( add_query_arg( array( 'msh_saved' => 0 ), admin_url( 'options-general.php?page=' . self::PAGE_SLUG ) ) ); ?>" class="button button-dot-secondary">
@@ -577,7 +692,9 @@ class MSH_Image_Optimizer_Settings {
 
 		check_admin_referer( self::NONCE_ACTION );
 
-		$redirect_url = admin_url( 'admin.php?page=' . self::PAGE_SLUG );
+		// Preserve active tab on redirect
+		$active_tab = isset( $_POST['active_tab'] ) ? sanitize_text_field( $_POST['active_tab'] ) : 'general';
+		$redirect_url = add_query_arg( array( 'tab' => $active_tab ), admin_url( 'admin.php?page=' . self::PAGE_SLUG ) );
 
 		$primary_raw = isset( $_POST['primary'] ) ? wp_unslash( $_POST['primary'] ) : array();
 		$primary     = MSH_Image_Optimizer_Context_Helper::sanitize_context(
