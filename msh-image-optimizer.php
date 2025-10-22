@@ -147,6 +147,9 @@ final class MSH_Image_Optimizer_Plugin {
         // Phase 5+9: Helper functions (Public API for frontend)
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-helper-functions.php';
 
+        // Phase 5+9: REST API endpoints
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-rest-api.php';
+
         // Admin menu structure (must load first, priority 5)
         require_once MSH_IO_PLUGIN_DIR . 'admin/class-msh-optimizer-menu.php';
 
