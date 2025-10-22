@@ -172,6 +172,15 @@
     align-items: flex-end;
 }
 
+.msh-filters form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-end;
+    width: 100%;
+}
+
+
 .msh-filters label {
     font-family: var(--msh-font-heading);
     text-transform: uppercase;
@@ -183,7 +192,8 @@
 }
 
 .msh-filters select,
-.msh-filters input[type="text"] {
+.msh-filters input[type="text"],
+.msh-filters input[type="search"] {
     font-family: var(--msh-font-body);
     padding: 10px 14px;
     border: 1px solid var(--msh-warm-gray);
@@ -326,10 +336,35 @@
     text-transform: uppercase;
     letter-spacing: 0.08em;
     color: var(--msh-charcoal);
+    outline: none;
+    position: relative;
+    border-radius: 4px;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .msh-metadata-actions .button-link:hover {
     color: var(--msh-charcoal);
+}
+
+.msh-metadata-actions .button-link:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(53, 51, 47, 0.25);
+}
+
+/* Lock button states - NO EMOJIS */
+.msh-metadata-actions .msh-action-toggle-lock.is-locked {
+    font-weight: 600;
+    color: var(--msh-charcoal);
+    background-color: rgba(53, 51, 47, 0.08);
+}
+
+.msh-metadata-actions .msh-action-toggle-lock.is-unlocked {
+    color: var(--msh-warm-gray);
+}
+
+.msh-metadata-actions .msh-action-toggle-lock.is-busy {
+    opacity: 0.6;
+    pointer-events: none;
 }
 
 /* Table Styles (for Cache/History tabs) */
@@ -944,21 +979,19 @@ body.msh-modal-open {
     z-index: 100001;
     top: 50%;
     left: 50%;
-    width: min(720px, calc(100% - 40px));
+    width: min(720px, calc(100% - 48px));
     transform: translate(-50%, -50%);
     background: #fff;
     border-radius: 8px;
     box-shadow: 0 18px 48px rgba(0, 0, 0, 0.2);
     display: none;
-    max-height: calc(100vh - 80px);
-    overflow: hidden;
     font-family: var(--msh-font-body);
 }
 
 .msh-modal__content {
     display: flex;
     flex-direction: column;
-    height: 100%;
+    max-height: 90vh;
 }
 
 .msh-modal__header {
@@ -983,12 +1016,59 @@ body.msh-modal-open {
     border: none;
     background: transparent;
     color: var(--msh-charcoal);
-    font-weight: 600;
+    font-family: Arial, sans-serif;
+    font-size: 32px;
+    line-height: 1;
+    font-weight: 300;
     cursor: pointer;
+    padding: 0;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: color 0.2s ease;
 }
 
-.msh-modal__close:hover {
-    color: var(--msh-warm-gray);
+.msh-modal__close:hover,
+.msh-modal__close:focus-visible {
+    color: #000000;
+}
+
+/* Brand-colored primary button (replaces WP blue button-primary) */
+.button.msh-button-primary {
+    background: var(--msh-charcoal);
+    color: #ffffff;
+    border-color: var(--msh-charcoal);
+    font-family: var(--msh-font-heading);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.button.msh-button-primary:hover,
+.button.msh-button-primary:focus {
+    background: #000000;
+    border-color: #000000;
+    color: #ffffff;
+}
+
+/* Brand-colored secondary button (replaces default .button) */
+.button.msh-button-secondary {
+    background: #ffffff;
+    color: var(--msh-charcoal);
+    border: 1px solid rgba(53, 51, 47, 0.3);
+    font-family: var(--msh-font-heading);
+    font-weight: 400;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.button.msh-button-secondary:hover,
+.button.msh-button-secondary:focus {
+    background: var(--msh-cream);
+    border-color: var(--msh-charcoal);
+    color: var(--msh-charcoal);
 }
 
 .msh-modal__body {
@@ -996,6 +1076,8 @@ body.msh-modal-open {
     overflow-y: auto;
     flex: 1 1 auto;
     background: #fff;
+    max-height: calc(90vh - 180px); /* Subtract header + footer height */
+    min-height: 200px;
 }
 
 .msh-modal__footer,
@@ -1270,4 +1352,20 @@ body.msh-modal-open {
     gap: 12px;
     justify-content: center;
     flex-wrap: wrap;
+}
+
+.msh-attachment-link {
+    color: var(--msh-charcoal);
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.msh-attachment-link:hover,
+.msh-attachment-link:focus {
+    color: var(--msh-charcoal);
+    text-decoration: none;
+}
+
+.msh-lock-icon {
+    margin-right: 6px;
 }

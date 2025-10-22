@@ -476,3 +476,222 @@ function msh_get_recent_events( $limit = 20 ) {
 	// Return only requested limit
 	return array_slice( $events, 0, $limit );
 }
+
+/**
+ * Get version history for metadata changes.
+ *
+ * Returns a timeline of all metadata changes tracked by the optimizer.
+ * Each entry shows what changed, when, and by whom (AI vs manual).
+ *
+ * @since 2.0.0
+ * @param array $args {
+ *     Optional query arguments.
+ *     @type int    $limit         Number of entries to return (default 50).
+ *     @type int    $attachment_id Filter by specific attachment.
+ *     @type string $field         Filter by field (title, alt, caption, description).
+ *     @type string $source        Filter by source (ai, manual).
+ * }
+ * @return array Array of history entries with timestamp, attachment_id, field, old_value, new_value, source, version.
+ */
+function msh_get_version_history( $args = array() ) {
+	global $wpdb;
+
+	$defaults = array(
+		'limit'         => 50,
+		'attachment_id' => 0,
+		'field'         => '',
+		'source'        => '',
+	);
+
+	$args = wp_parse_args( $args, $defaults );
+	$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+
+	// For Phase 1, we simulate version history from cache table updates
+	// In future phases, this will query a dedicated version_history table
+	$where_clauses = array( '1=1' );
+	$query_args = array();
+
+	if ( ! empty( $args['attachment_id'] ) ) {
+		$where_clauses[] = 'attachment_id = %d';
+		$query_args[] = (int) $args['attachment_id'];
+	}
+
+	if ( ! empty( $args['field'] ) ) {
+		$where_clauses[] = 'field = %s';
+		$query_args[] = sanitize_text_field( $args['field'] );
+	}
+
+	if ( ! empty( $args['source'] ) ) {
+		$where_clauses[] = 'chosen_source = %s';
+		$query_args[] = sanitize_text_field( $args['source'] );
+	}
+
+	$where_sql = implode( ' AND ', $where_clauses );
+	$limit = max( 1, (int) $args['limit'] );
+
+	$query_args[] = $limit;
+
+	$query = "SELECT 
+		id,
+		attachment_id,
+		field,
+		chosen_value as new_value,
+		chosen_source as source,
+		updated_at as timestamp,
+		1 as version
+	FROM {$cache_table}
+	WHERE {$where_sql}
+	ORDER BY updated_at DESC
+	LIMIT %d";
+
+	if ( ! empty( $query_args ) ) {
+		$query = $wpdb->prepare( $query, $query_args );
+	}
+
+	$results = $wpdb->get_results( $query, ARRAY_A );
+
+	// Add old_value placeholder (will be real data when we have version tracking table)
+	foreach ( $results as &$entry ) {
+		$entry['old_value'] = ''; // Placeholder - future version will track previous values
+		$entry['timestamp'] = mysql2date( 'Y-m-d H:i:s', $entry['timestamp'] );
+	}
+
+	return $results;
+}
+
+/**
+ * Get cloud sync status.
+ *
+ * Returns current sync state, last sync time, and pending items count.
+ * This is a Pro feature.
+ *
+ * @since 2.0.0
+ * @return array {
+ *     Sync status data.
+ *     @type bool   $enabled        Whether sync is enabled.
+ *     @type string $last_sync      Last successful sync timestamp.
+ *     @type string $next_scheduled Next scheduled sync time.
+ *     @type int    $total_synced   Total items synced to cloud.
+ *     @type int    $pending        Items pending sync.
+ * }
+ */
+function msh_get_sync_status() {
+	// Check if Pro is active
+	if ( ! msh_is_pro_active() ) {
+		return array(
+			'enabled'        => false,
+			'last_sync'      => null,
+			'next_scheduled' => null,
+			'total_synced'   => 0,
+			'pending'        => 0,
+		);
+	}
+
+	// Get sync options
+	$sync_enabled = get_option( 'msh_sync_enabled', false );
+	$last_sync = get_option( 'msh_sync_last_run', null );
+	$next_scheduled = get_option( 'msh_sync_next_scheduled', null );
+	$total_synced = (int) get_option( 'msh_sync_total_synced', 0 );
+
+	// Count pending items from cache table
+	global $wpdb;
+	$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+	
+	$pending = $wpdb->get_var(
+		"SELECT COUNT(*)
+		FROM {$cache_table}
+		WHERE synced_at IS NULL OR synced_at = '0000-00-00 00:00:00'"
+	);
+
+	return array(
+		'enabled'        => (bool) $sync_enabled,
+		'last_sync'      => $last_sync ? mysql2date( 'Y-m-d H:i:s', $last_sync ) : null,
+		'next_scheduled' => $next_scheduled ? mysql2date( 'Y-m-d H:i:s', $next_scheduled ) : null,
+		'total_synced'   => $total_synced,
+		'pending'        => (int) $pending,
+	);
+}
+
+/**
+ * Process jobs from the queue.
+ *
+ * Processes a batch of pending jobs with priority ordering.
+ * Uses the Job Engine to fetch and process jobs with the Regeneration Worker.
+ *
+ * @param int         $batch_size Number of jobs to process (default: 10).
+ * @param string|null $priority   Optional priority filter ('high', 'medium', 'normal').
+ * @return array Array with processing results.
+ */
+function msh_process_queue( $batch_size = 10, $priority = null ) {
+	if ( ! class_exists( 'MSH_Job_Engine' ) || ! class_exists( 'MSH_Regeneration_Worker' ) ) {
+		return array(
+			'processed' => 0,
+			'failed'    => 0,
+			'skipped'   => 0,
+			'message'   => __( 'Job processing system not available.', 'msh-image-optimizer' ),
+		);
+	}
+
+	global $wpdb;
+	$jobs_table = $wpdb->prefix . 'msh_jobs';
+	$worker     = MSH_Regeneration_Worker::get_instance();
+
+	// Build query for pending jobs
+	$where_clauses = array( "status = 'pending'" );
+	$query_args    = array();
+
+	if ( $priority && in_array( $priority, array( 'high', 'medium', 'normal' ), true ) ) {
+		$where_clauses[] = 'priority = %s';
+		$query_args[]    = $priority;
+	}
+
+	$where_sql    = implode( ' AND ', $where_clauses );
+	$query        = "SELECT * FROM {$jobs_table} WHERE {$where_sql} ORDER BY CASE priority WHEN 'high' THEN 1 WHEN 'medium' THEN 2 WHEN 'normal' THEN 3 END, created_at ASC LIMIT %d";
+	$query_args[] = $batch_size;
+
+	$jobs = $wpdb->get_results( $wpdb->prepare( $query, $query_args ) );
+
+	if ( empty( $jobs ) ) {
+		return array(
+			'processed' => 0,
+			'failed'    => 0,
+			'skipped'   => 0,
+			'message'   => __( 'No pending jobs in queue.', 'msh-image-optimizer' ),
+		);
+	}
+
+	$processed = 0;
+	$failed    = 0;
+
+	foreach ( $jobs as $job ) {
+		$wpdb->update( $jobs_table, array( 'status' => 'processing', 'started_at' => current_time( 'mysql' ) ), array( 'id' => $job->id ), array( '%s', '%s' ), array( '%d' ) );
+
+		$payload = ! empty( $job->payload ) ? json_decode( $job->payload, true ) : array();
+
+		try {
+			$result = $worker->process( $job, $payload );
+
+			if ( is_wp_error( $result ) ) {
+				$attempts = (int) $job->attempts + 1;
+				$status   = $attempts >= (int) $job->max_attempts ? 'failed' : 'pending';
+				$wpdb->update( $jobs_table, array( 'status' => $status, 'attempts' => $attempts, 'error_message' => $result->get_error_message(), 'completed_at' => $status === 'failed' ? current_time( 'mysql' ) : null ), array( 'id' => $job->id ), array( '%s', '%d', '%s', '%s' ), array( '%d' ) );
+				$failed++;
+			} else {
+				$wpdb->update( $jobs_table, array( 'status' => 'complete', 'completed_at' => current_time( 'mysql' ) ), array( 'id' => $job->id ), array( '%s', '%s' ), array( '%d' ) );
+				$processed++;
+			}
+		} catch ( Exception $e ) {
+			$attempts = (int) $job->attempts + 1;
+			$status   = $attempts >= (int) $job->max_attempts ? 'failed' : 'pending';
+			$wpdb->update( $jobs_table, array( 'status' => $status, 'attempts' => $attempts, 'error_message' => $e->getMessage(), 'completed_at' => $status === 'failed' ? current_time( 'mysql' ) : null ), array( 'id' => $job->id ), array( '%s', '%d', '%s', '%s' ), array( '%d' ) );
+			$failed++;
+		}
+	}
+
+	return array(
+		'processed' => $processed,
+		'failed'    => $failed,
+		'skipped'   => 0,
+		'message'   => sprintf( __( 'Processed %1$d job(s), %2$d failed.', 'msh-image-optimizer' ), $processed, $failed ),
+	);
+}

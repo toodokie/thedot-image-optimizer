@@ -63,6 +63,7 @@ class MSH_Hub_Page {
 		// Queue management
 		add_action( 'wp_ajax_msh_refresh_queue_stats', array( $this, 'ajax_refresh_queue_stats' ) );
 		add_action( 'wp_ajax_msh_process_queue', array( $this, 'ajax_process_queue' ) );
+		add_action( 'wp_ajax_msh_clear_failed_jobs', array( $this, 'ajax_clear_failed_jobs' ) );
 
 		// Events feed
 		add_action( 'wp_ajax_msh_get_recent_events', array( $this, 'ajax_get_recent_events' ) );
@@ -150,6 +151,9 @@ class MSH_Hub_Page {
 					'eventsPause'              => esc_html__( 'Pause Live Feed', 'msh-image-optimizer' ),
 					'eventsResume'             => esc_html__( 'Resume Live Feed', 'msh-image-optimizer' ),
 					'eventsNoData'             => esc_html__( 'No recent events yet. The feed will populate as activity occurs.', 'msh-image-optimizer' ),
+				'metadataActionLock'         => esc_html__( 'Lock', 'msh-image-optimizer' ),
+				'metadataActionUnlock'       => esc_html__( 'Unlock', 'msh-image-optimizer' ),
+				'metadataCopyFallbackInfo'  => esc_html__( 'Copied the visible value because the metadata record was unavailable. Paste it where needed.', 'msh-image-optimizer' ),
 				),
 			)
 		);
@@ -197,7 +201,7 @@ class MSH_Hub_Page {
 		);
 
 		if ( function_exists( 'msh_is_pro_active' ) && ! msh_is_pro_active() ) {
-			$tabs['sync'] .= ' 🔒';
+			$tabs['sync'] .= ' (Pro)';
 		}
 
 		return $tabs;
@@ -494,7 +498,7 @@ class MSH_Hub_Page {
 
 			$media_id    = isset( $entry->media_id ) ? (int) $entry->media_id : 0;
 			$media_label = $media_id ? sprintf( __( 'Attachment #%d', 'msh-image-optimizer' ), $media_id ) : __( 'Unknown media', 'msh-image-optimizer' );
-			$media_html  = esc_html( $media_label );
+			$media_html  = sprintf( '<span class="msh-attachment-link">%s</span>', esc_html( $media_label ) );
 
 			if ( $media_id && function_exists( 'get_edit_post_link' ) ) {
 				$edit_link = get_edit_post_link( $media_id );
@@ -503,7 +507,7 @@ class MSH_Hub_Page {
 					if ( $title ) {
 						$media_label = $title . ' (' . $media_label . ')';
 					}
-					$media_html = sprintf( '<a href="%s">%s</a>', esc_url( $edit_link ), esc_html( $media_label ) );
+					$media_html = sprintf( '<a href="%s" class="msh-attachment-link">%s</a>', esc_url( $edit_link ), esc_html( $media_label ) );
 				}
 			}
 
@@ -511,12 +515,21 @@ class MSH_Hub_Page {
 			$value_raw  = (string) $value;
 			$value_view = esc_html( wp_trim_words( wp_strip_all_tags( $value_raw ), 18 ) );
 			$updated    = isset( $entry->updated_at ) && $entry->updated_at ? mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $entry->updated_at ) : __( 'N/A', 'msh-image-optimizer' );
-			$entry_id   = isset( $entry->id ) ? (int) $entry->id : 0;
+			$entry_id   = 0;
+			foreach ( array( 'id', 'entry_id', 'metadata_id', 'version_id' ) as $id_key ) {
+				if ( isset( $entry->{$id_key} ) && $entry->{$id_key} ) {
+					$entry_id = (int) $entry->{$id_key};
+					break;
+				}
+			}
+			$cache_id  = isset( $entry->cache_id ) ? (int) $entry->cache_id : 0;
 			$is_locked  = ( 'locked' === $status_key ) || ( isset( $entry->locked ) && $entry->locked );
 			$lock_label = $is_locked ? __( 'Unlock', 'msh-image-optimizer' ) : __( 'Lock', 'msh-image-optimizer' );
+			// No emojis - use CSS classes instead
+			$lock_icon_class = $is_locked ? 'is-locked' : 'is-unlocked';
 
 			?>
-			<tr class="msh-metadata-row" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-status="<?php echo esc_attr( $status_key ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>" data-source="<?php echo esc_attr( $source_key ); ?>">
+			<tr class="msh-metadata-row" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-cache-id="<?php echo esc_attr( $cache_id ); ?>" data-status="<?php echo esc_attr( $status_key ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>" data-source="<?php echo esc_attr( $source_key ); ?>">
 				<td><?php echo $media_html; ?></td>
 				<td><code><?php echo esc_html( $entry->locale ?? '' ); ?></code></td>
 				<td><?php echo esc_html( $entry->field ?? '' ); ?></td>
@@ -530,11 +543,13 @@ class MSH_Hub_Page {
 				<td><?php echo esc_html( $updated ); ?></td>
 				<td>
 					<div class="msh-metadata-actions">
-						<button type="button" class="button-link msh-action-preview" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Preview', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-copy" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-value="<?php echo esc_attr( $value_raw ); ?>"><?php esc_html_e( 'Copy', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-edit" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Edit', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-regenerate" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Regenerate', 'msh-image-optimizer' ); ?></button>
-						<button type="button" class="button-link msh-action-toggle-lock" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>" data-locked="<?php echo $is_locked ? '1' : '0'; ?>"><?php echo esc_html( $lock_label ); ?></button>
+						<button type="button" class="button-link msh-action-preview" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-cache-id="<?php echo esc_attr( $cache_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Preview', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-copy" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-cache-id="<?php echo esc_attr( $cache_id ); ?>" data-value="<?php echo esc_attr( $value_raw ); ?>" data-source="<?php echo esc_attr( $source_key ); ?>"><?php esc_html_e( 'Copy', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-edit" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-cache-id="<?php echo esc_attr( $cache_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Edit', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-regenerate" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-cache-id="<?php echo esc_attr( $cache_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>"><?php esc_html_e( 'Regenerate', 'msh-image-optimizer' ); ?></button>
+						<button type="button" class="button-link msh-action-toggle-lock <?php echo esc_attr( $lock_icon_class ); ?>" data-entry-id="<?php echo esc_attr( $entry_id ); ?>" data-cache-id="<?php echo esc_attr( $cache_id ); ?>" data-media-id="<?php echo esc_attr( $media_id ); ?>" data-locale="<?php echo esc_attr( $entry->locale ?? '' ); ?>" data-field="<?php echo esc_attr( $entry->field ?? '' ); ?>" data-locked="<?php echo $is_locked ? '1' : '0'; ?>">
+						<?php echo esc_html( $lock_label ); ?>
+					</button>
 					</div>
 				</td>
 			</tr>
@@ -577,22 +592,18 @@ class MSH_Hub_Page {
 
 			<div class="msh-queue-stats">
 				<div class="msh-stat-card msh-stat-pending">
-					<div class="msh-stat-icon">⏳</div>
 					<div class="msh-stat-value" id="msh-stat-pending"><?php echo esc_html( number_format_i18n( $pending ) ); ?></div>
 					<div class="msh-stat-label"><?php esc_html_e( 'Pending', 'msh-image-optimizer' ); ?></div>
 				</div>
 				<div class="msh-stat-card msh-stat-processing">
-					<div class="msh-stat-icon">⚙️</div>
 					<div class="msh-stat-value" id="msh-stat-processing"><?php echo esc_html( number_format_i18n( $processing ) ); ?></div>
 					<div class="msh-stat-label"><?php esc_html_e( 'Processing', 'msh-image-optimizer' ); ?></div>
 				</div>
 				<div class="msh-stat-card msh-stat-complete">
-					<div class="msh-stat-icon">✓</div>
 					<div class="msh-stat-value" id="msh-stat-complete"><?php echo esc_html( number_format_i18n( $complete ) ); ?></div>
 					<div class="msh-stat-label"><?php esc_html_e( 'Complete (24h)', 'msh-image-optimizer' ); ?></div>
 				</div>
 				<div class="msh-stat-card msh-stat-failed<?php echo $has_failed_jobs ? ' has-alert' : ''; ?>">
-					<div class="msh-stat-icon">✗</div>
 					<div class="msh-stat-value" id="msh-stat-failed"><?php echo esc_html( number_format_i18n( $failed ) ); ?></div>
 					<div class="msh-stat-label"><?php esc_html_e( 'Failed', 'msh-image-optimizer' ); ?></div>
 				</div>
@@ -654,8 +665,8 @@ class MSH_Hub_Page {
 						</button>
 
 						<?php if ( $has_failed_jobs ) : ?>
-							<button type="button" id="msh-clear-failed" class="button-link">
-								<?php esc_html_e( 'Clear Failed Jobs (coming soon)', 'msh-image-optimizer' ); ?>
+							<button type="button" id="msh-clear-failed" class="button button-secondary">
+								<?php esc_html_e( 'Clear Failed Jobs', 'msh-image-optimizer' ); ?>
 							</button>
 						<?php endif; ?>
 
@@ -780,14 +791,14 @@ class MSH_Hub_Page {
 		}
 		?>
 		<div class="msh-history-tab">
-			<div class="msh-cache-intro">
-				<p>
-					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
-					<?php esc_html_e( 'Track all metadata changes over time. Review what was changed, when, and by whom (manual vs AI). Useful for auditing optimization decisions and rollback planning.', 'msh-image-optimizer' ); ?>
-				</p>
-			</div>
-
 			<?php if ( ! empty( $history_entries ) ) : ?>
+				<div class="msh-cache-intro">
+					<p>
+						<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
+						<?php esc_html_e( 'Track all metadata changes over time. Review what was changed, when, and by whom (manual vs AI). Useful for auditing optimization decisions and rollback planning.', 'msh-image-optimizer' ); ?>
+					</p>
+				</div>
+
 				<div class="msh-history-timeline">
 					<table class="msh-table msh-history-table">
 						<thead>
@@ -823,13 +834,22 @@ class MSH_Hub_Page {
 					</table>
 				</div>
 			<?php else : ?>
-				<div class="msh-placeholder-state">
-					<h3><?php esc_html_e( 'No Version History Yet', 'msh-image-optimizer' ); ?></h3>
-					<p><?php esc_html_e( 'Once you start optimizing images and making metadata changes, the version timeline will appear here. Each change is tracked with before/after values, timestamps, and source attribution.', 'msh-image-optimizer' ); ?></p>
-					<p class="msh-placeholder-note">
-						<strong><?php esc_html_e( 'What gets tracked:', 'msh-image-optimizer' ); ?></strong><br>
-						<?php esc_html_e( 'Title updates, ALT text changes, caption edits, description modifications, filename renames, and locale-specific metadata.', 'msh-image-optimizer' ); ?>
+				<div class="msh-pro-upsell">
+					<h2><?php esc_html_e( 'No Version History Yet', 'msh-image-optimizer' ); ?></h2>
+					<p class="msh-pro-description">
+						<?php esc_html_e( 'Once you start optimizing images and making metadata changes, the version timeline will appear here. Each change is tracked with before/after values, timestamps, and source attribution.', 'msh-image-optimizer' ); ?>
 					</p>
+
+					<div class="msh-pro-features">
+						<h3><?php esc_html_e( 'What Gets Tracked:', 'msh-image-optimizer' ); ?></h3>
+						<ul>
+							<li><?php esc_html_e( 'Title updates', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'ALT text changes', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Caption edits', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Description modifications', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Filename renames and locale-specific metadata', 'msh-image-optimizer' ); ?></li>
+						</ul>
+					</div>
 				</div>
 			<?php endif; ?>
 		</div>
@@ -1194,6 +1214,46 @@ class MSH_Hub_Page {
 	}
 
 	/**
+	 * AJAX handler for clearing failed jobs.
+	 *
+	 * @return void
+	 */
+	public function ajax_clear_failed_jobs() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error(
+				array(
+					'message' => esc_html__( 'Permission denied.', 'msh-image-optimizer' ),
+				)
+			);
+		}
+
+		$cleared = function_exists( 'msh_clear_failed_jobs' ) ? msh_clear_failed_jobs() : 0;
+
+		if ( function_exists( 'msh_telemetry' ) ) {
+			msh_telemetry(
+				'hub_clear_failed_jobs',
+				array(
+					'user_id' => get_current_user_id(),
+					'cleared' => $cleared,
+				)
+			);
+		}
+
+		wp_send_json_success(
+			array(
+				'cleared' => $cleared,
+				'message' => sprintf(
+					/* translators: %d: number of cleared jobs */
+					_n( 'Cleared %d failed job.', 'Cleared %d failed jobs.', $cleared, 'msh-image-optimizer' ),
+					$cleared
+				),
+			)
+		);
+	}
+
+	/**
 	 * AJAX handler for retrieving recent events.
 	 *
 	 * @return void
@@ -1238,27 +1298,33 @@ class MSH_Hub_Page {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
 		}
 
-		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
-
-		if ( ! $entry_id ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		$context = $this->build_metadata_request_context( $_POST );
+		if ( is_wp_error( $context ) ) {
+			wp_send_json_error( array( 'message' => $context->get_error_message() ) );
 		}
 
-		global $wpdb;
-		$table = $wpdb->prefix . 'msh_i18n_metadata';
-		$entry = $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $entry_id ),
-			ARRAY_A
+		error_log( '[MSH Hub] ajax_update_metadata context: ' . wp_json_encode( $context ) );
+		$snapshot = $this->get_metadata_snapshot( $context['media_id'], $context['locale'] );
+		$field_key = $this->denormalize_metadata_field_key( $context['field'] );
+
+		if ( $context['entry'] && $field_key && empty( $snapshot[ $field_key ] ) ) {
+			$snapshot[ $field_key ] = $context['entry']['value'];
+		}
+
+		$entry = $context['entry'];
+		$entry['fields'] = $snapshot;
+		$entry['media_id'] = $entry['media_id'] ?? $context['media_id'];
+		$entry['locale'] = $entry['locale'] ?? $context['locale'];
+		$entry['updated_at_display'] = $this->format_metadata_timestamp( $entry['updated_at'] ?? '' );
+
+		$attachment_url = $entry['media_id'] ? wp_get_attachment_url( $entry['media_id'] ) : '';
+
+		wp_send_json_success(
+			array(
+				'entry'          => $entry,
+				'attachment_url' => $attachment_url,
+			)
 		);
-
-		if ( ! $entry ) {
-			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'msh-image-optimizer' ) ) );
-		}
-
-		wp_send_json_success( array(
-			'entry' => $entry,
-			'attachment_url' => wp_get_attachment_url( $entry['attachment_id'] ),
-		) );
 	}
 
 	/**
@@ -1275,36 +1341,42 @@ class MSH_Hub_Page {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
 		}
 
-		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
-
-		if ( ! $entry_id ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		$context = $this->build_metadata_request_context( $_POST );
+		if ( is_wp_error( $context ) ) {
+			wp_send_json_error( array( 'message' => $context->get_error_message() ) );
 		}
 
-		global $wpdb;
-		$table = $wpdb->prefix . 'msh_i18n_metadata';
-		$entry = $wpdb->get_row(
-			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $entry_id ),
-			ARRAY_A
+		$fields = array(
+			'title'       => '',
+			'alt_text'    => '',
+			'caption'     => '',
+			'description' => '',
 		);
 
-		if ( ! $entry ) {
-			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'msh-image-optimizer' ) ) );
+		$snapshot = $this->get_metadata_snapshot( $context['media_id'], $context['locale'] );
+		foreach ( $snapshot as $key => $value ) {
+			$fields[ $key ] = $value;
 		}
 
-		// Format for clipboard
+		$field_key = $this->denormalize_metadata_field_key( $context['field'] );
+		if ( $field_key && isset( $context['entry']['value'] ) ) {
+			$fields[ $field_key ] = $context['entry']['value'];
+		}
+
 		$text = sprintf(
 			"Title: %s\nAlt: %s\nCaption: %s\nDescription: %s",
-			$entry['title'],
-			$entry['alt_text'],
-			$entry['caption'],
-			$entry['description']
+			$fields['title'],
+			$fields['alt_text'],
+			$fields['caption'],
+			$fields['description']
 		);
 
-		wp_send_json_success( array(
-			'text' => $text,
-			'message' => __( 'Copied to clipboard!', 'msh-image-optimizer' ),
-		) );
+		wp_send_json_success(
+			array(
+				'text'    => $text,
+				'message' => __( 'Copied to clipboard!', 'msh-image-optimizer' ),
+			)
+		);
 	}
 
 	/**
@@ -1321,49 +1393,66 @@ class MSH_Hub_Page {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
 		}
 
-		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
-		$title = isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '';
-		$alt_text = isset( $_POST['alt_text'] ) ? sanitize_text_field( wp_unslash( $_POST['alt_text'] ) ) : '';
-		$caption = isset( $_POST['caption'] ) ? sanitize_textarea_field( wp_unslash( $_POST['caption'] ) ) : '';
-		$description = isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '';
-
-		if ( ! $entry_id ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		$context = $this->build_metadata_request_context( $_POST );
+		if ( is_wp_error( $context ) ) {
+			wp_send_json_error( array( 'message' => $context->get_error_message() ) );
 		}
 
-		global $wpdb;
-		$table = $wpdb->prefix . 'msh_i18n_metadata';
+		$media_id = $context['media_id'];
+		$locale   = $context['locale'];
 
-		$updated = $wpdb->update(
-			$table,
-			array(
-				'title' => $title,
-				'alt_text' => $alt_text,
-				'caption' => $caption,
-				'description' => $description,
-				'updated_at' => current_time( 'mysql' ),
-			),
-			array( 'id' => $entry_id ),
-			array( '%s', '%s', '%s', '%s', '%s' ),
-			array( '%d' )
+		if ( ! $media_id || ! $locale ) {
+			wp_send_json_error( array( 'message' => __( 'Unable to resolve metadata context.', 'msh-image-optimizer' ) ) );
+		}
+
+		$fields_payload = array(
+			'title'       => isset( $_POST['title'] ) ? sanitize_text_field( wp_unslash( $_POST['title'] ) ) : '',
+			'alt_text'    => isset( $_POST['alt_text'] ) ? sanitize_text_field( wp_unslash( $_POST['alt_text'] ) ) : '',
+			'caption'     => isset( $_POST['caption'] ) ? sanitize_textarea_field( wp_unslash( $_POST['caption'] ) ) : '',
+			'description' => isset( $_POST['description'] ) ? sanitize_textarea_field( wp_unslash( $_POST['description'] ) ) : '',
 		);
 
-		if ( false === $updated ) {
-			wp_send_json_error( array( 'message' => __( 'Failed to update metadata.', 'msh-image-optimizer' ) ) );
+		$field_map = array(
+			'title'       => 'title',
+			'alt_text'    => 'alt',
+			'caption'     => 'caption',
+			'description' => 'description',
+		);
+
+		$updated_fields = array();
+
+		foreach ( $field_map as $input_key => $field_key ) {
+			if ( ! array_key_exists( $input_key, $fields_payload ) ) {
+				continue;
+			}
+
+			$new_value     = $fields_payload[ $input_key ];
+			$current_entry = $this->resolve_metadata_entry( $context, $field_key );
+			$current_value = isset( $current_entry['value'] ) ? (string) $current_entry['value'] : '';
+
+			if ( (string) $new_value === $current_value ) {
+				continue;
+			}
+
+			$result = $this->persist_metadata_value( $current_entry, $media_id, $locale, $field_key, $new_value );
+			if ( is_wp_error( $result ) ) {
+				wp_send_json_error( array( 'message' => $result->get_error_message() ) );
+			}
+
+			if ( $result ) {
+				$updated_fields[] = $input_key;
+			}
 		}
 
-		wp_send_json_success( array(
-			'message' => __( 'Metadata updated successfully.', 'msh-image-optimizer' ),
-		) );
+		wp_send_json_success(
+			array(
+				'message'        => __( 'Metadata updated successfully.', 'msh-image-optimizer' ),
+				'updated_fields' => $updated_fields,
+			)
+		);
 	}
 
-	/**
-	 * AJAX: Toggle lock/protection status
-	 *
-	 * Toggles the protected flag on metadata entry.
-	 *
-	 * @return void
-	 */
+
 	public function ajax_toggle_lock() {
 		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
 
@@ -1371,45 +1460,368 @@ class MSH_Hub_Page {
 			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
 		}
 
-		$entry_id = isset( $_POST['entry_id'] ) ? absint( $_POST['entry_id'] ) : 0;
-
-		if ( ! $entry_id ) {
-			wp_send_json_error( array( 'message' => __( 'Invalid entry ID.', 'msh-image-optimizer' ) ) );
+		$context = $this->build_metadata_request_context( $_POST );
+		if ( is_wp_error( $context ) ) {
+			wp_send_json_error( array( 'message' => $context->get_error_message() ) );
 		}
 
-		global $wpdb;
-		$table = $wpdb->prefix . 'msh_i18n_metadata';
+		$entry = $this->resolve_metadata_entry( $context, $context['field'] );
 
-		// Get current status
-		$current_status = $wpdb->get_var(
-			$wpdb->prepare( "SELECT protected FROM {$table} WHERE id = %d", $entry_id )
-		);
-
-		if ( null === $current_status ) {
+		if ( empty( $entry['id'] ) ) {
 			wp_send_json_error( array( 'message' => __( 'Entry not found.', 'msh-image-optimizer' ) ) );
 		}
 
-		// Toggle
-		$new_status = $current_status ? 0 : 1;
+		$current_locked = ! empty( $entry['approved_by'] );
+		$new_locked     = ! $current_locked;
 
-		$updated = $wpdb->update(
-			$table,
-			array( 'protected' => $new_status ),
-			array( 'id' => $entry_id ),
-			array( '%d' ),
-			array( '%d' )
-		);
-
-		if ( false === $updated ) {
-			wp_send_json_error( array( 'message' => __( 'Failed to toggle lock status.', 'msh-image-optimizer' ) ) );
+		$result = $this->set_metadata_lock_state( $entry, $new_locked );
+		if ( is_wp_error( $result ) ) {
+			wp_send_json_error( array( 'message' => $result->get_error_message() ) );
 		}
 
-		wp_send_json_success( array(
-			'protected' => (bool) $new_status,
-			'message' => $new_status
-				? __( 'Entry locked.', 'msh-image-optimizer' )
-				: __( 'Entry unlocked.', 'msh-image-optimizer' ),
-		) );
+		wp_send_json_success(
+			array(
+				'protected' => $new_locked,
+				'message'   => $new_locked
+					? __( 'Entry locked.', 'msh-image-optimizer' )
+					: __( 'Entry unlocked.', 'msh-image-optimizer' ),
+			)
+		);
+	}
+
+
+	/**
+	 * Build metadata context from incoming request values.
+	 *
+	 * @param array $request Raw request array.
+	 * @return array|WP_Error
+	 */
+	/**
+	 * Resolve the latest metadata entry for a given field.
+	 *
+	 * @param array  $context Metadata context.
+	 * @param string $field   Field slug.
+	 * @return array Metadata entry data.
+	 */
+	private function resolve_metadata_entry( $context, $field ) {
+		if ( isset( $context['field'] ) && $context['field'] === $field && ! empty( $context['entry'] ) && is_array( $context['entry'] ) ) {
+			return $context['entry'];
+		}
+
+		$versioning = $this->get_versioning_service();
+		if ( $versioning ) {
+			$entry = $versioning->get_active_version( $context['media_id'], $context['locale'], $field );
+			if ( $entry ) {
+				return $entry;
+			}
+		}
+
+		return array(
+			'id'         => 0,
+			'media_id'   => (int) $context['media_id'],
+			'locale'     => $context['locale'],
+			'field'      => $field,
+			'value'      => '',
+			'source'     => '',
+			'updated_at' => null,
+			'approved_by'=> null,
+			'approved_at'=> null,
+		);
+	}
+
+	/**
+	 * Persist an updated metadata value as a new version.
+	 *
+	 * @param array  $entry    Existing entry data.
+	 * @param int    $media_id Attachment ID.
+	 * @param string $locale   Locale code.
+	 * @param string $field    Field slug.
+	 * @param string $value    New value.
+	 * @return bool|WP_Error True on update, error on failure.
+	 */
+	private function persist_metadata_value( $entry, $media_id, $locale, $field, $value ) {
+		$versioning = $this->get_versioning_service();
+		if ( ! $versioning ) {
+			return new WP_Error( 'metadata_service_unavailable', __( 'Metadata service unavailable.', 'msh-image-optimizer' ) );
+		}
+
+		$current_time = current_time( 'mysql' );
+		$user_id      = get_current_user_id();
+
+		$save_result = $versioning->save_version(
+			$media_id,
+			$locale,
+			$field,
+			$value,
+			'manual',
+			array(
+				'approved_by'   => $user_id,
+				'approved_at'   => $current_time,
+				'version_notes' => __( 'Updated via Optimizer Hub', 'msh-image-optimizer' ),
+			)
+		);
+
+		return $save_result ? true : false;
+	}
+
+	/**
+	 * Toggle the lock state for a metadata entry.
+	 *
+	 * @param array $entry Metadata entry payload.
+	 * @param bool  $lock  Desired lock state.
+	 * @return bool|WP_Error True on success, error on failure.
+	 */
+	private function set_metadata_lock_state( $entry, $lock ) {
+		$versioning = $this->get_versioning_service();
+		if ( ! $versioning ) {
+			return new WP_Error( 'metadata_service_unavailable', __( 'Metadata service unavailable.', 'msh-image-optimizer' ) );
+		}
+
+		if ( empty( $entry['id'] ) ) {
+			$entry = $versioning->get_active_version( $entry['media_id'] ?? 0, $entry['locale'] ?? '', $entry['field'] ?? '' );
+			if ( empty( $entry['id'] ) ) {
+				return new WP_Error( 'entry_not_found', __( 'Entry not found.', 'msh-image-optimizer' ) );
+			}
+		}
+
+		$timestamp = current_time( 'mysql' );
+		$update    = $lock
+			? array(
+				'approved_by' => get_current_user_id(),
+				'approved_at' => $timestamp,
+				'updated_at'  => $timestamp,
+			)
+			: array(
+				'approved_by' => null,
+				'approved_at' => null,
+				'updated_at'  => $timestamp,
+			);
+
+		$updated = $versioning->update_version( (int) $entry['id'], $update );
+		if ( ! $updated ) {
+			return new WP_Error( 'lock_update_failed', __( 'Failed to toggle lock status.', 'msh-image-optimizer' ) );
+		}
+
+		return true;
+	}
+
+	/**
+	 * Build metadata context from incoming request values.
+	 *
+	 * @param array $request Raw request array.
+	 * @return array|WP_Error
+	 */
+	private function build_metadata_request_context( $request ) {
+		$entry_id      = isset( $request['entry_id'] ) ? absint( $request['entry_id'] ) : 0;
+		$cache_id      = isset( $request['cache_id'] ) ? absint( $request['cache_id'] ) : 0;
+		$attachment_id = isset( $request['attachment_id'] ) ? absint( $request['attachment_id'] ) : ( isset( $request['media_id'] ) ? absint( $request['media_id'] ) : 0 );
+		$locale        = isset( $request['locale'] ) ? sanitize_text_field( wp_unslash( $request['locale'] ) ) : '';
+		$field_raw     = isset( $request['field'] ) ? sanitize_key( wp_unslash( $request['field'] ) ) : '';
+
+		if ( '' === $locale ) {
+			$locale = get_locale();
+		}
+		$value         = isset( $request['value'] ) ? wp_unslash( $request['value'] ) : '';
+		$source        = isset( $request['source'] ) ? sanitize_text_field( wp_unslash( $request['source'] ) ) : '';
+
+		$normalized_field = $this->normalize_metadata_field_key( $field_raw );
+		$versioning        = $this->get_versioning_service();
+		$entry             = null;
+		$synthetic         = false;
+
+		if ( $versioning && $entry_id ) {
+			$entry = $versioning->get_version_by_id( $entry_id );
+		}
+
+		$cache_record = null;
+		if ( ! $entry && $cache_id ) {
+			$cache_record = $this->get_metadata_cache_record( $cache_id );
+			if ( $cache_record ) {
+				$attachment_id = $attachment_id ?: absint( $cache_record['attachment_id'] ?? 0 );
+				$locale        = $locale ?: ( $cache_record['locale'] ?? '' );
+				$cache_field   = $cache_record['field'] ?? ( $cache_record['metadata_field'] ?? '' );
+				if ( ! $normalized_field && $cache_field ) {
+					$normalized_field = $this->normalize_metadata_field_key( $cache_field );
+					$field_raw        = $cache_field;
+				}
+				if ( '' === $value ) {
+					foreach ( array( 'manual_value', 'ai_value', 'value' ) as $value_key ) {
+						if ( isset( $cache_record[ $value_key ] ) && '' !== $cache_record[ $value_key ] ) {
+							$value = $cache_record[ $value_key ];
+							break;
+						}
+					}
+				}
+				if ( empty( $source ) && isset( $cache_record['chosen_source'] ) ) {
+					$source = sanitize_text_field( $cache_record['chosen_source'] );
+				}
+			}
+		}
+
+		if ( $versioning && ! $entry && $attachment_id && $locale && $normalized_field ) {
+			$entry = $versioning->get_active_version( $attachment_id, $locale, $normalized_field );
+		}
+
+		if ( ! $entry && $attachment_id && $locale && $normalized_field && '' !== $value ) {
+			$entry = array(
+				'id'         => 0,
+				'media_id'   => $attachment_id,
+				'locale'     => $locale,
+				'field'      => $normalized_field,
+				'value'      => $value,
+				'source'     => $source,
+				'updated_at' => current_time( 'mysql' ),
+				'approved_by' => null,
+				'approved_at' => null,
+			);
+			$synthetic = true;
+		}
+
+		if ( ! $entry ) {
+			return new WP_Error( 'entry_not_found', __( 'Entry not found.', 'msh-image-optimizer' ) );
+		}
+
+		$attachment_id = $attachment_id ?: (int) ( $entry['media_id'] ?? 0 );
+		if ( ! $attachment_id ) {
+			return new WP_Error( 'entry_not_found', __( 'Entry not found.', 'msh-image-optimizer' ) );
+		}
+
+		$locale          = $locale ?: ( $entry['locale'] ?? '' );
+		$normalized_field = $entry['field'] ?? $normalized_field;
+
+		return array(
+			'entry'     => $entry,
+			'media_id'  => $attachment_id,
+			'locale'    => $locale,
+			'field'     => $normalized_field,
+			'cache_id'  => $cache_id,
+			'synthetic' => $synthetic,
+		);
+	}
+
+	/**
+	 * Retrieve the metadata versioning service if available.
+	 *
+	 * @return MSH_Metadata_Versioning|null
+	 */
+	private function get_versioning_service() {
+		if ( ! class_exists( 'MSH_Metadata_Versioning' ) ) {
+			$path = plugin_dir_path( __FILE__ ) . '../includes/class-msh-metadata-versioning.php';
+			if ( file_exists( $path ) ) {
+				require_once $path;
+			}
+		}
+
+		if ( class_exists( 'MSH_Metadata_Versioning' ) ) {
+			return MSH_Metadata_Versioning::get_instance();
+		}
+
+		return null;
+	}
+
+	/**
+	 * Build snapshot of active metadata fields for a given attachment/locale.
+	 *
+	 * @param int    $media_id Attachment ID.
+	 * @param string $locale   Locale code.
+	 * @return array
+	 */
+	private function get_metadata_snapshot( $media_id, $locale ) {
+		$snapshot = array();
+
+		if ( ! $media_id || ! $locale ) {
+			return $snapshot;
+		}
+
+		$versioning = $this->get_versioning_service();
+		if ( ! $versioning ) {
+			return $snapshot;
+		}
+
+		$field_map = array(
+			'title'       => 'title',
+			'alt_text'    => 'alt',
+			'caption'     => 'caption',
+			'description' => 'description',
+		);
+
+		foreach ( $field_map as $output_key => $db_key ) {
+			$record = $versioning->get_active_version( $media_id, $locale, $db_key );
+			if ( $record && isset( $record['value'] ) ) {
+				$snapshot[ $output_key ] = $record['value'];
+			}
+		}
+
+		return $snapshot;
+	}
+
+	/**
+	 * Normalize metadata field key.
+	 *
+	 * @param string $field Raw field key.
+	 * @return string
+	 */
+	private function normalize_metadata_field_key( $field ) {
+		$field = strtolower( trim( $field ) );
+
+		if ( in_array( $field, array( 'alt_text', 'alt' ), true ) ) {
+			return 'alt';
+		}
+
+		return $field;
+	}
+
+	/**
+	 * Convert normalized field key to UI-friendly variant.
+	 *
+	 * @param string $field Normalized key.
+	 * @return string
+	 */
+	private function denormalize_metadata_field_key( $field ) {
+		return ( 'alt' === $field ) ? 'alt_text' : $field;
+	}
+
+	/**
+	 * Retrieve cached metadata record when available.
+	 *
+	 * @param int $cache_id Cache record ID.
+	 * @return array|null
+	 */
+	private function get_metadata_cache_record( $cache_id ) {
+		if ( ! $cache_id ) {
+			return null;
+		}
+
+		global $wpdb;
+		static $table_exists = null;
+		$table = $wpdb->prefix . 'optimizer_metadata_cache';
+
+		if ( null === $table_exists ) {
+			$table_exists = ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table );
+		}
+
+		if ( ! $table_exists ) {
+			return null;
+		}
+
+		return $wpdb->get_row(
+			$wpdb->prepare( "SELECT * FROM {$table} WHERE id = %d", $cache_id ),
+			ARRAY_A
+		);
+	}
+
+	/**
+	 * Format metadata timestamp using site settings.
+	 *
+	 * @param string $timestamp Raw timestamp.
+	 * @return string
+	 */
+	private function format_metadata_timestamp( $timestamp ) {
+		if ( empty( $timestamp ) || '0000-00-00 00:00:00' === $timestamp ) {
+			return '';
+		}
+
+		return mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
 	}
 }
 

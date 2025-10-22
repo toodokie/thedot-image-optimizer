@@ -524,4 +524,82 @@ class MSH_Context_Manager {
 			wp_cache_delete( "msh_ctx_locales:{$media_id}", 'msh' );
 		}
 	}
+
+	/**
+	 * Get context data for an attachment.
+	 *
+	 * Retrieves aggregated context from all posts where this attachment is used.
+	 * Used by automation workers to gather context for AI metadata generation.
+	 *
+	 * @param int $attachment_id Attachment post ID.
+	 * @return array Context data array with posts, usage, and metadata.
+	 */
+	public function get_context_for_attachment( $attachment_id ) {
+		$attachment = get_post( $attachment_id );
+
+		if ( ! $attachment || 'attachment' !== $attachment->post_type ) {
+			return array(
+				'attachment_id' => $attachment_id,
+				'posts'         => array(),
+				'usage_count'   => 0,
+				'error'         => 'Attachment not found',
+			);
+		}
+
+		// Get all posts using this attachment
+		$posts_using_media = $this->find_posts_using_media( $attachment_id );
+
+		$context = array(
+			'attachment_id'   => $attachment_id,
+			'attachment_title' => get_the_title( $attachment_id ),
+			'attachment_alt'   => get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ),
+			'attachment_caption' => wp_get_attachment_caption( $attachment_id ),
+			'attachment_description' => $attachment->post_content,
+			'posts'           => array(),
+			'usage_count'     => 0,
+			'primary_context' => null,
+		);
+
+		// Gather context from each post
+		foreach ( $posts_using_media as $post_info ) {
+			$post_id = isset( $post_info['post_id'] ) ? $post_info['post_id'] : $post_info;
+			$post    = get_post( $post_id );
+
+			if ( ! $post ) {
+				continue;
+			}
+
+			$post_context = array(
+				'post_id'    => $post_id,
+				'post_title' => get_the_title( $post_id ),
+				'post_type'  => $post->post_type,
+				'post_excerpt' => $post->post_excerpt,
+			);
+
+			$context['posts'][] = $post_context;
+			$context['usage_count']++;
+
+			// First post becomes primary context
+			if ( null === $context['primary_context'] ) {
+				$context['primary_context'] = $post_context;
+			}
+		}
+
+		// If no usage found, use parent post if available
+		if ( 0 === $context['usage_count'] && $attachment->post_parent > 0 ) {
+			$parent = get_post( $attachment->post_parent );
+			if ( $parent ) {
+				$context['primary_context'] = array(
+					'post_id'    => $parent->ID,
+					'post_title' => get_the_title( $parent->ID ),
+					'post_type'  => $parent->post_type,
+					'post_excerpt' => $parent->post_excerpt,
+				);
+				$context['posts'][] = $context['primary_context'];
+				$context['usage_count'] = 1;
+			}
+		}
+
+		return $context;
+	}
 }

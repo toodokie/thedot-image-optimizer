@@ -141,6 +141,7 @@ final class MSH_Image_Optimizer_Plugin {
 
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-database-cli.php';
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-jobs-cli.php';
         }
 
         // Phase 5+9: Helper functions (Public API for frontend)
@@ -277,5 +278,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
     }
     if ( class_exists( 'MSH_AB_Testing_CLI' ) ) {
         WP_CLI::add_command( 'msh ab', 'MSH_AB_Testing_CLI' );
+    }
+    if ( class_exists( 'MSH_Jobs_CLI' ) ) {
+        WP_CLI::add_command( 'msh jobs', 'MSH_Jobs_CLI' );
     }
 }

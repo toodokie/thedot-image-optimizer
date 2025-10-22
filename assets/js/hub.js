@@ -96,6 +96,7 @@
 		bindRegenerateButtons: function() {
 			$(document).on('click', '.msh-regenerate-btn', (event) => {
 				event.preventDefault();
+				event.stopPropagation();
 				const $button = $(event.currentTarget);
 				const attachmentId = $button.data('attachment-id');
 				const locale = $button.data('locale');
@@ -155,6 +156,12 @@
 				event.preventDefault();
 				const $button = $(event.currentTarget);
 				const context = this.getRowContext($button);
+
+				if (!context.entryId && !context.attachmentId) {
+					this.handleCopyFallback(context, $button, 'missing_identifier');
+					return;
+				}
+
 				this.handleCopyClick(context, $button);
 			});
 
@@ -203,6 +210,7 @@
 		getRowContext: function($button) {
 			const context = {
 				entryId: null,
+				cacheId: null,
 				attachmentId: null,
 				locale: '',
 				field: '',
@@ -221,6 +229,7 @@
 			}
 
 			const entryId = parseInt($row.data('entryId'), 10);
+			const cacheId = parseInt($row.data('cacheId'), 10);
 			const attachmentId = parseInt($row.data('mediaId'), 10);
 			const locale = $row.data('locale') || '';
 			const field = $row.data('field') || '';
@@ -228,11 +237,37 @@
 			const source = $row.data('source') || '';
 
 			context.entryId = Number.isFinite(entryId) && entryId > 0 ? entryId : null;
+			context.cacheId = Number.isFinite(cacheId) && cacheId > 0 ? cacheId : null;
 			context.attachmentId = Number.isFinite(attachmentId) ? attachmentId : null;
 			context.locale = locale;
 			context.field = field;
 			context.status = status;
 			context.source = source;
+
+			const buttonEntryId = parseInt($button.data('entryId'), 10);
+			if (Number.isFinite(buttonEntryId) && buttonEntryId > 0) {
+				context.entryId = buttonEntryId;
+			}
+
+			const buttonAttachment = parseInt($button.data('mediaId') || $button.data('attachmentId'), 10);
+			if (Number.isFinite(buttonAttachment)) {
+				context.attachmentId = buttonAttachment;
+			}
+
+			const buttonLocale = $button.data('locale');
+			if (buttonLocale) {
+				context.locale = buttonLocale;
+			}
+
+			const buttonField = $button.data('field');
+			if (buttonField) {
+				context.field = buttonField;
+			}
+
+			const buttonCache = parseInt($button.data('cacheId') || $button.data('cache_id'), 10);
+			if (Number.isFinite(buttonCache) && buttonCache > 0) {
+				context.cacheId = buttonCache;
+			}
 
 			const $valueCell = $row.find('.msh-metadata-value');
 			if ($valueCell.length) {
@@ -248,20 +283,52 @@
 		},
 
 		getEntryIdFromButton: function($button) {
-			if (!$button || !$button.length) {
-				return null;
-			}
-
-			const entryId = parseInt($button.data('entryId'), 10);
-			return Number.isFinite(entryId) && entryId > 0 ? entryId : null;
+			const context = this.getRowContext($button);
+			return context.entryId;
 		},
 
-		handlePreviewClick: function(entryId, $button) {
+		buildMetadataPayload: function(context, extras) {
+			const payload = $.extend({}, extras);
+
+			if (!context) {
+				return payload;
+			}
+
+			if (context.entryId) {
+				payload.entry_id = context.entryId;
+			}
+
+			if (context.cacheId) {
+				payload.cache_id = context.cacheId;
+			}
+
+			if (context.attachmentId) {
+				payload.attachment_id = context.attachmentId;
+			}
+
+			if (context.locale) {
+				payload.locale = context.locale;
+			}
+
+			if (context.field) {
+				payload.field = context.field;
+			}
+
+			if (typeof context.value !== 'undefined') {
+				payload.value = context.value;
+			}
+
+			if (context.source) {
+				payload.source = context.source;
+			}
+
+			return payload;
+		},
+
+		handlePreviewClick: function(context, $button) {
 			this.toggleButtonBusy($button, true, this.getString('metadataLoadingPreview', 'Loading preview...'));
 
-			this.postAction('msh_preview_metadata', {
-				entry_id: entryId
-			})
+			this.postAction('msh_preview_metadata', this.buildMetadataPayload(context))
 				.done((response) => {
 					if (!response || !response.success || !response.data) {
 						this.handleAjaxError(response, 'Unable to load metadata preview.');
@@ -324,7 +391,7 @@
 
 			const $footer = $('<div>');
 			const $closeButton = $('<button>', {
-				class: 'button button-primary',
+				class: 'button msh-button-primary',
 				text: this.getString('close', 'Close'),
 				'data-msh-modal-close': 'true'
 			});
@@ -376,7 +443,7 @@
 				return map[key];
 			}
 
-			return key.replace(/_/g, ' ').replace(/\w/g, (char) => char.toUpperCase());
+			return key.replace(/_/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase());
 		},
 
 		getString: function(key, fallback) {
@@ -384,13 +451,13 @@
 			return strings[key] || fallback;
 		},
 
-		handleCopyClick: function(entryId, $button) {
+		handleCopyClick: function(context, $button) {
 			this.toggleButtonBusy($button, true, this.getString('metadataCopying', 'Copying...'));
 
-			this.postAction('msh_copy_metadata', { entry_id: entryId })
+			this.postAction('msh_copy_metadata', this.buildMetadataPayload(context))
 				.done((response) => {
 					if (!response || !response.success || !response.data) {
-						this.handleAjaxError(response, 'Unable to copy metadata.');
+						this.handleCopyFallback(context, $button, 'missing_entry');
 						return;
 					}
 
@@ -406,23 +473,33 @@
 				})
 				.fail((xhr, status, error) => {
 					console.error('Copy AJAX error:', status, error);
-					this.showToast(this.getString('metadataCopyError', 'Unable to copy metadata.'), 'error');
+					this.handleCopyFallback(context, $button, 'ajax_error');
 				})
 				.always(() => {
 					this.toggleButtonBusy($button, false);
 				});
 		},
 
-		handleCopyFallback: function($button) {
-			const value = $button.data('value');
+		handleCopyFallback: function(context, $button, reason) {
+			let value = $button ? $button.data('value') : undefined;
+
+			if ((value === undefined || value === null || value === '') && context && typeof context.value !== 'undefined') {
+				value = context.value;
+			}
+
 			if (value === undefined || value === null || value === '') {
 				this.showToast(this.getString('metadataCopyUnavailable', 'Nothing to copy for this row.'), 'error');
 				return;
 			}
 
+			const fallbackReasons = ['missing_identifier', 'missing_entry', 'ajax_error'];
+			const successMessage = fallbackReasons.includes(reason)
+				? this.getString('metadataCopyFallbackInfo', 'Copied the visible value because the metadata record was unavailable. Paste it where needed.')
+				: this.getString('metadataCopied', 'Copied to clipboard!');
+
 			this.copyTextToClipboard(String(value))
 				.then(() => {
-					this.showToast(this.getString('metadataCopied', 'Copied to clipboard!'), 'success');
+					this.showToast(successMessage, 'success');
 				})
 				.catch(() => {
 					this.showToast(this.getString('metadataCopyUnsupported', 'Copy to clipboard is not supported in this browser.'), 'error');
@@ -456,10 +533,10 @@
 			return deferred.promise();
 		},
 
-		handleEditClick: function(entryId, $button) {
+		handleEditClick: function(context, $button) {
 			this.toggleButtonBusy($button, true, this.getString('metadataLoadingEditForm', 'Preparing editor...'));
 
-			this.loadEntryDetails(entryId)
+			this.loadEntryDetails(context)
 				.done((response) => {
 					if (!response || !response.success || !response.data) {
 						this.handleAjaxError(response, 'Unable to load metadata details.');
@@ -467,7 +544,7 @@
 					}
 
 					const entry = response.data.entry || {};
-					this.openEditModal(entryId, entry);
+					this.openEditModal(context, entry);
 				})
 				.fail((xhr, status, error) => {
 					console.error('Edit metadata AJAX error:', status, error);
@@ -478,18 +555,24 @@
 				});
 		},
 
-		openEditModal: function(entryId, entry) {
+		openEditModal: function(context, entry) {
 			const title = this.getString('metadataEditTitle', 'Edit Metadata');
 			const values = this.buildFieldValues(entry);
 			const supportedFields = ['title', 'alt_text', 'caption', 'description'];
 			const $form = $('<form>', { class: 'msh-metadata-edit-form' });
 
-			$form.append($('<input>', { type: 'hidden', name: 'entry_id', value: entryId }));
-			if (entry.locale) {
-				$form.append($('<input>', { type: 'hidden', name: 'locale', value: entry.locale }));
+			const metaPayload = this.buildMetadataPayload(context);
+			if (metaPayload.entry_id) {
+				$form.append($('<input>', { type: 'hidden', name: 'entry_id', value: metaPayload.entry_id }));
 			}
-			if (entry.field) {
-				$form.append($('<input>', { type: 'hidden', name: 'field', value: entry.field }));
+			if (metaPayload.attachment_id) {
+				$form.append($('<input>', { type: 'hidden', name: 'attachment_id', value: metaPayload.attachment_id }));
+			}
+			if (metaPayload.locale) {
+				$form.append($('<input>', { type: 'hidden', name: 'locale', value: metaPayload.locale }));
+			}
+			if (metaPayload.field) {
+				$form.append($('<input>', { type: 'hidden', name: 'field', value: metaPayload.field }));
 			}
 
 			supportedFields.forEach((fieldKey) => {
@@ -501,29 +584,31 @@
 			});
 
 			const $footer = $('<div>', { class: 'msh-modal__actions' });
-			const $cancel = $('<button>', { type: 'button', class: 'button', text: this.getString('cancel', 'Cancel'), 'data-msh-modal-close': 'true' });
-			const $save = $('<button>', { type: 'submit', class: 'button button-primary msh-modal-save', text: this.getString('saveChanges', 'Save Changes') });
+			const $cancel = $('<button>', { type: 'button', class: 'button msh-button-secondary', text: this.getString('cancel', 'Cancel'), 'data-msh-modal-close': 'true' });
+			const $save = $('<button>', { type: 'submit', class: 'button msh-button-primary msh-modal-save', text: this.getString('saveChanges', 'Save Changes') });
 			$footer.append($cancel, $save);
+
+			// Append footer inside form so submit button is part of form
+			$form.append($footer);
 
 			$form.on('submit', (event) => {
 				event.preventDefault();
-				this.submitEditForm(entryId, $form);
+				this.submitEditForm(context, $form);
 			});
 
-			this.openModal(title, $form, $footer);
+			this.openModal(title, $form, null);
 		},
 
-		submitEditForm: function(entryId, $form) {
+		submitEditForm: function(context, $form) {
 			const $saveButton = $form.find('.msh-modal-save');
 			this.toggleButtonBusy($saveButton, true, this.getString('saving', 'Saving...'));
 
-			const payload = {
-				entry_id: entryId,
+			const payload = this.buildMetadataPayload(context, {
 				title: $form.find('[name="title"]').val() || '',
 				alt_text: $form.find('[name="alt_text"]').val() || '',
 				caption: $form.find('[name="caption"]').val() || '',
 				description: $form.find('[name="description"]').val() || ''
-			};
+			});
 
 			this.postAction('msh_update_metadata', payload)
 				.done((response) => {
@@ -546,28 +631,79 @@
 				});
 		},
 
-		handleToggleLockClick: function(entryId, $button) {
-			this.toggleButtonBusy($button, true, this.getString('metadataLocking', 'Updating...'));
+		handleToggleLockClick: function(context, $button) {
+			const wasLocked = this.isLockButtonLocked($button);
+			const optimisticLock = !wasLocked;
 
-			this.postAction('msh_toggle_lock', { entry_id: entryId })
+			this.setLockButtonBusy($button, true);
+			this.setLockButtonState($button, optimisticLock);
+
+			this.postAction('msh_toggle_lock', this.buildMetadataPayload(context))
 				.done((response) => {
 					if (!response || !response.success || !response.data) {
+						this.setLockButtonState($button, wasLocked);
 						this.handleAjaxError(response, 'Unable to toggle lock state.');
 						return;
 					}
 
-					const protectedFlag = response.data.protected === undefined ? null : response.data.protected;
+					const protectedFlag = response.data.protected === undefined ? optimisticLock : !!response.data.protected;
 					const message = (response.data && response.data.message) || (protectedFlag ? this.getString('metadataLockEnabled', 'Entry locked.') : this.getString('metadataLockDisabled', 'Entry unlocked.'));
+
+					this.setLockButtonState($button, protectedFlag);
 					this.showToast(message, 'success');
 					this.reloadMetadataTable();
 				})
 				.fail((xhr, status, error) => {
 					console.error('Toggle lock AJAX error:', status, error);
+					this.setLockButtonState($button, wasLocked);
 					this.showToast(this.getString('metadataLockError', 'Unable to toggle lock state.'), 'error');
 				})
 				.always(() => {
-					this.toggleButtonBusy($button, false);
+					this.setLockButtonBusy($button, false);
 				});
+		},
+
+		isLockButtonLocked: function($button) {
+			if (!$button || !$button.length) {
+				return false;
+			}
+
+			const lockedAttr = $button.data('locked');
+			return lockedAttr === '1' || lockedAttr === 1 || lockedAttr === true;
+		},
+
+		setLockButtonState: function($button, locked) {
+			if (!$button || !$button.length) {
+				return;
+			}
+
+			$button.data('locked', locked ? '1' : '0');
+			$button.attr('aria-pressed', locked ? 'true' : 'false');
+
+			const labelText = locked
+				? this.getString('metadataActionUnlock', 'Unlock')
+				: this.getString('metadataActionLock', 'Lock');
+
+			$button.text(labelText);
+
+			// Update CSS classes for visual state (no emojis)
+			if (locked) {
+				$button.addClass('is-locked').removeClass('is-unlocked');
+			} else {
+				$button.addClass('is-unlocked').removeClass('is-locked');
+			}
+		},
+
+		setLockButtonBusy: function($button, enable) {
+			if (!$button || !$button.length) {
+				return;
+			}
+
+			if (enable) {
+				$button.prop('disabled', true).addClass('is-busy').attr('aria-busy', 'true');
+			} else {
+				$button.prop('disabled', false).removeClass('is-busy').removeAttr('aria-busy');
+			}
 		},
 
 		reloadMetadataTable: function() {
@@ -586,8 +722,8 @@
 			return 1;
 		},
 
-		loadEntryDetails: function(entryId) {
-			return this.postAction('msh_preview_metadata', { entry_id: entryId });
+		loadEntryDetails: function(context) {
+			return this.postAction('msh_preview_metadata', this.buildMetadataPayload(context));
 		},
 
 		postAction: function(action, data) {
@@ -626,7 +762,7 @@
 			const $content = $('<div>', { class: 'msh-modal__content' });
 			const $header = $('<div>', { class: 'msh-modal__header' });
 			const $title = $('<h2>', { class: 'msh-modal__title', id: 'msh-hub-modal-title' });
-			const $close = $('<button>', { type: 'button', class: 'msh-modal__close button-link', 'aria-label': this.getString('close', 'Close'), 'data-msh-modal-close': 'true' });
+			const $close = $('<button>', { type: 'button', class: 'msh-modal__close', html: '&times;', 'aria-label': this.getString('close', 'Close'), 'data-msh-modal-close': 'true' });
 			const $body = $('<div>', { class: 'msh-modal__body' });
 			const $footer = $('<div>', { class: 'msh-modal__footer' });
 
@@ -928,6 +1064,8 @@
 				$button.html(originalHtml).removeClass('button-primary');
 			}, 2000);
 			this.reloadMetadataTable();
+			// Always refresh queue stats after regenerate
+			this.refreshQueueStats();
 		},
 
 		shouldFallbackToAjax: function(error) {
@@ -1128,6 +1266,11 @@
 				this.processQueue();
 			});
 
+			$(document).on('click', '#msh-clear-failed', (event) => {
+				event.preventDefault();
+				this.clearFailedJobs();
+			});
+
 			$(document).on('change', '#msh-auto-refresh', (event) => {
 				const enabled = $(event.currentTarget).is(':checked');
 				if (enabled) {
@@ -1147,10 +1290,7 @@
 		 * Refresh queue statistics via AJAX.
 		 */
 		refreshQueueStats: function() {
-			if (!$('.msh-queue-tab').length) {
-				return;
-			}
-
+			// Refresh queue stats from any tab
 			$.ajax({
 				url: window.mshHubData.ajaxUrl,
 				type: 'POST',
@@ -1277,6 +1417,72 @@
 				.fail((xhr, status, error) => {
 					console.error('Process queue AJAX error:', status, error);
 					alert('Failed to process queue. Check console for details.');
+					$button.text(originalText).prop('disabled', false);
+				});
+		},
+
+		/**
+		 * Clear failed jobs from the queue.
+		 */
+		clearFailedJobs: function() {
+			const $button = $('#msh-clear-failed');
+			if (!$button.length) {
+				return;
+			}
+
+			const strings = (window.mshHubData && window.mshHubData.i18n) || {};
+			const confirmMessage = strings.queueClearFailedConfirm || 'Are you sure you want to clear all failed jobs? This action cannot be undone.';
+
+			if (!confirm(confirmMessage)) {
+				return;
+			}
+
+			const originalText = $button.text();
+			const clearingLabel = strings.queueClearing || 'Clearing...';
+			const clearedLabel = strings.queueCleared || 'Cleared';
+
+			$button.prop('disabled', true).text(clearingLabel);
+
+			$.ajax({
+				url: window.mshHubData.ajaxUrl,
+				type: 'POST',
+				dataType: 'json',
+				data: {
+					action: 'msh_clear_failed_jobs',
+					nonce: window.mshHubData.ajaxNonce
+				}
+			})
+				.done((response) => {
+					if (!response || !response.success) {
+						const message = response && response.data && response.data.message
+							? response.data.message
+							: 'Unable to clear failed jobs.';
+						this.showToast(message, 'error');
+						$button.text(originalText).prop('disabled', false);
+						return;
+					}
+
+					const cleared = (response.data && response.data.cleared) || 0;
+					const message = response.data && response.data.message
+						? response.data.message
+						: strings.queueClearedSuccess || 'Failed jobs cleared.';
+
+					this.showToast(message, 'success');
+					$button.text(clearedLabel);
+					this.refreshQueueStats();
+
+					setTimeout(() => {
+						$button.text(originalText).prop('disabled', false);
+
+						// Hide button if no more failed jobs
+						if ($('#msh-stat-failed').text() === '0') {
+							$button.closest('.msh-queue-failed-actions').hide();
+						}
+					}, 2000);
+				})
+				.fail((xhr, status, error) => {
+					console.error('Clear failed jobs AJAX error:', status, error);
+					this.showToast(strings.queueClearError || 'Failed to clear jobs. Please try again.', 'error');
 					$button.text(originalText).prop('disabled', false);
 				});
 		},
