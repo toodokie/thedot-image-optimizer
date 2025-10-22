@@ -1507,17 +1507,17 @@ body.msh-modal-open {
 }
 
 .msh-change-old {
-    background: rgba(220, 50, 50, 0.06);
+    background: var(--msh-cream);
     color: var(--msh-warm-gray);
     font-style: italic;
-    border: 1px solid rgba(220, 50, 50, 0.12);
+    border: 1px solid rgba(53, 51, 47, 0.12);
 }
 
 .msh-change-new {
-    background: rgba(70, 180, 80, 0.06);
+    background: var(--msh-cream);
     color: var(--msh-charcoal);
     font-weight: 500;
-    border: 1px solid rgba(70, 180, 80, 0.12);
+    border: 1px solid rgba(53, 51, 47, 0.12);
 }
 
 .msh-change-arrow {
