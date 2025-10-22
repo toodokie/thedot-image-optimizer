@@ -14,7 +14,7 @@
 
 **Current Focus:**
 - ✅ Track A: Automation fixed, Metadata tab working
-- ⚠️ Track B: Queue/History/Sync tabs need testing
+- 🔄 Track B: Metadata ✅, History ✅, Queue ⏭️, Events 🚧, Sync 🚧
 - ✅ Track C: Settings tabs, license UI, onboarding complete (Oct 22)
 
 ---
@@ -271,9 +271,13 @@
    - Pause/resume button
    - Needs completion and testing
 
-5. 🚧 **Hub History Tab** (PARTIAL)
-   - Empty state or version timeline
-   - Needs completion and testing
+5. ✅ **Hub History Tab** (COMPLETE - Oct 22)
+   - Version history timeline with all metadata changes
+   - Fixed `msh_get_version_history()` to query correct table
+   - Shows old→new value comparison with timestamps
+   - Brand-compliant styling with cream backgrounds
+   - Source badges (AI/Manual)
+   - **Status:** ✅ Tested and working
 
 6. 🚧 **Hub Sync Tab** (PARTIAL)
    - Pro upsell card exists
@@ -294,8 +298,9 @@
 
 **Testing Status:**
 - ⏭️ Queue tab ready for browser testing
-- ⏭️ Metadata tab ready for browser testing (verify AI #2's fixes)
-- ⏸️ Events, History, Sync tabs need completion first
+- ✅ Metadata tab tested and working (Oct 22)
+- ✅ History tab tested and working (Oct 22)
+- ⏸️ Events, Sync tabs need completion first
 
 ---
 
