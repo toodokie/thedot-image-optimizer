@@ -1,18 +1,21 @@
 # MSH Image Optimizer - Complete Project Status
 
-**Last Updated:** October 20, 2025
+**Last Updated:** October 22, 2025
 **Current Version:** v2.0.0-alpha
-**Active Work:** Phase 5+9 Track A Testing
+**Active Work:** Phase 5+9 Testing & Polish
 
 ---
 
 ## Quick Summary
 
 **Phases Complete:** 1, 2, 3, 4, 4R+
-**Phases In Progress:** 5+9 (3 tracks: A testing, B partial, C partial)
-**Phases Pending:** 6, 7, 8, 10+
+**Phases In Progress:** 5+9 (Track A ✅ fixed, Track B ⚠️ partial, Track C ✅ mostly done)
+**Phases Pending:** 6 (License Server), 7, 8, 10+
 
-**Current Focus:** Testing Phase 5+9 Track A (Automation Infrastructure)
+**Current Focus:**
+- ✅ Track A: Automation fixed, Metadata tab working
+- ⚠️ Track B: Queue/History/Sync tabs need testing
+- ✅ Track C: Settings tabs, license UI, onboarding complete (Oct 22)
 
 ---
 
@@ -214,7 +217,10 @@
 
 **Testing Status:**
 - ✅ **WP-CLI:** Tested via command line (90% pass rate)
-- ⏭️ **Hub UI:** Backend verified, ready for browser testing
+- ✅ **Hub Metadata Tab:** All 4 critical bugs fixed (Oct 22), re-tested and working
+- ⚠️ **Hub Queue Tab:** Not yet tested (stopped after Metadata tab bugs)
+- ⚠️ **Hub History Tab:** Not yet tested
+- ⚠️ **Hub Sync Tab:** Not yet tested
 - ⏭️ **Automation:** Ready for image upload testing
 - ⏭️ **Integration:** End-to-end workflow testing pending
 
@@ -293,26 +299,53 @@
 
 ---
 
-#### Track C: Enterprise Features (⚠️ PARTIAL)
+#### Track C: Enterprise Features (✅ MOSTLY COMPLETE)
 **Owner:** Either AI (after Track A+B foundations)
-**Status:** ⚠️ **PARTIALLY COMPLETE** (License + Telemetry done, rest pending)
+**Status:** ✅ **MOSTLY COMPLETE** (Oct 22 - Settings tabs, license UI, onboarding done)
 
 **What It Does:**
 - License management and plan gating
 - Telemetry and analytics
 - Remote sync to cloud storage
 - Onboarding wizard for new users
+- Settings page organization
 
 **Components Status:**
 
-1. ✅ **License Manager** (COMPLETE)
+1. ✅ **License Manager** (COMPLETE - Oct 22 Enhanced)
    - License validation
    - Plan management (free, pro, enterprise)
    - Feature gating based on plan
+   - **Dual functions for Pro checks:**
+     - `is_pro_active()` - Returns actual license status (for UI)
+     - `can_use_pro_features()` - Respects dev mode (for functional gating)
    - **File:** `includes/enterprise/class-msh-license-manager.php`
-   - **Testing:** ✅ Verified working (shows "inactive", plan "free")
+   - **Testing:** ✅ Verified working, dev mode bug fixed Oct 22
 
-2. ✅ **Telemetry System** (COMPLETE)
+2. ✅ **Settings Page Tabs** (COMPLETE - Oct 22)
+   - 5 tabs: General, Context, AI, Account, Advanced
+   - Hub-style navigation (futura-pt, uppercase, charcoal underline)
+   - Tab-based conditional rendering
+   - Save handler preserves active tab
+   - **File:** `admin/image-optimizer-settings.php`
+   - **Testing:** ✅ All tabs functional, styling matches Hub
+
+3. ✅ **Account Tab with License UI** (COMPLETE - Oct 22)
+   - License status badges (Active/Free)
+   - Pro users: "Manage Subscription" button → billing portal
+   - Free users: "Upgrade to Pro" button → pricing page
+   - Brand-compliant badge styling
+   - **Testing:** ✅ UI complete, buttons styled correctly
+
+4. ✅ **Onboarding Wizard** (COMPLETE - Oct 22)
+   - 5-step wizard: Business info, Brand voice, AI interest, Completion, AI Config (Pro)
+   - Step 5 (AI Configuration) is Pro-only
+   - Support for 3 AI providers: OpenAI, Anthropic, Google Gemini (BYOK)
+   - All fields optional with "bundled credits" default
+   - **File:** `admin/image-optimizer-admin.php` (consolidated wizard)
+   - **Testing:** ✅ Wizard functional, Step 5 shows for Pro only
+
+5. ✅ **Telemetry System** (COMPLETE)
    - Event logging (opt-in)
    - Usage tracking
    - Database table: `wp_msh_telemetry`
@@ -320,21 +353,14 @@
    - **Helper:** `msh_telemetry($event, $data)`
    - **Testing:** ✅ Verified working (can log events, table exists)
 
-3. ⏸️ **Remote Sync** (PENDING)
+6. ⏸️ **Remote Sync** (PENDING)
    - S3 integration
    - Supabase integration
    - Sync job results to cloud
    - **File:** File exists, needs S3/Supabase configuration
    - **Status:** Not tested, needs API credentials
 
-4. ⏸️ **Onboarding Wizard** (PENDING)
-   - Welcome screen
-   - API key setup
-   - Language selection
-   - Feature walkthrough
-   - **Status:** Not implemented
-
-5. ⏸️ **Metrics Dashboard** (PENDING)
+7. ⏸️ **Metrics Dashboard** (PENDING)
    - Usage statistics
    - Performance metrics
    - Database table: `wp_msh_metrics`
