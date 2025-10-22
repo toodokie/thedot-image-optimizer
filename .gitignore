@@ -1,0 +1,5 @@
+# Symlink to WordPress plugin (tracked in separate repo)
+msh-image-optimizer
+
+# Backup directories
+*.backup.*
