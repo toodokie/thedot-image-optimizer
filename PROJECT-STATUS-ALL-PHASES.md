@@ -609,12 +609,78 @@ MSH_Feature_Flags::is_enabled($key, $context)
 
    **Future Platforms:** Duda, Wix, Squarespace (demand-driven)
 
-9. ⏸️ **Phase 11+: Advanced Enhancements**
-   - Advanced AI models
-   - Custom training
-   - Industry-specific templates
-   - Multi-site network support
-   - White-label options
+9. ⏸️ **Phase 11: Perceptual Hash Multi-Site Sync** (2-3 weeks, post-launch)
+   **Status:** Planned for Agency/Enterprise Tier
+   **Trigger:** After WordPress.org launch OR 5+ customers requesting multi-site features
+
+   **What It Solves:**
+   - Franchise networks (same image uploaded to 100+ sites with different IDs)
+   - Staging → Production workflows (preserve metadata when IDs change)
+   - International brands (sync metadata across regional sites)
+   - Agency workflows (manage identical images across client sites)
+
+   **Implementation:**
+   - Compute perceptual hashes (dHash + pHash) on image upload
+   - Store in `wp_msh_media_fingerprints` table indexed by hash
+   - Cloud sync uses pHash as stable ID instead of attachment_id
+   - Deterministic visual similarity matching (same image = same metadata)
+   - Network admin panel for managing cross-site metadata
+
+   **Technical Approach:**
+   ```php
+   // Compute stable visual fingerprint
+   add_action('add_attachment', function($att_id) {
+       $phash = MSH_Perceptual_Hash::compute(get_attached_file($att_id));
+       update_post_meta($att_id, '_msh_phash', $phash);
+       MSH_Fingerprint_Index::upsert($att_id, $phash);
+   });
+
+   // Sync by hash, not by ID
+   {
+     "attachment_id": 1234,      // Backward compatible
+     "phash": "a1c3...fe",       // NEW: stable across sites
+     "msh_descriptor": {...},
+     "updated_at": "2025-10-23T10:12:00Z"
+   }
+   ```
+
+   **Enterprise Features (Phase 12-13):**
+   - Visual duplicate detection with Hamming distance
+   - "Link similar images" admin tool
+   - Central brand asset library with approval workflow
+   - DAM integration (Brandfolder, Bynder, Cloudinary)
+   - Staging/production deployment automation
+   - Role-based access control (HQ admin, site editor, viewer)
+   - Audit logs for compliance tracking
+   - Batch operations (update 1000s of sites simultaneously)
+   - White-label branding
+   - SSO/SAML integration
+
+   **Why Post-Launch:**
+   - ✅ Single-site plugin works without this (95% of market)
+   - ✅ Adds 2-3 weeks to development timeline
+   - ✅ Enterprise features require validation first
+   - ✅ Current architecture already supports it (easy to add later)
+
+   **Market Positioning:**
+   - Individual sites: $0-$99/year (no pHash needed)
+   - Agency tier: $299-$999/year (basic pHash sync)
+   - Enterprise tier: $10k-$50k/year (full DAM features)
+
+   **Competitive Advantage:**
+   - WordPress-native (vs external DAM platforms)
+   - AI-powered metadata (vs manual tagging)
+   - 10x cheaper than Brandfolder/Bynder
+   - Easier adoption (plugin vs platform migration)
+
+   **See Also:** Enterprise discussion in session notes (Oct 23, 2025)
+
+10. ⏸️ **Phase 12+: Additional Enterprise Features**
+   - Advanced AI models with custom training
+   - Industry-specific template libraries
+   - Extended DAM integrations
+   - Advanced workflow automation
+   - Custom SLA tiers
 
 ---
 
@@ -644,6 +710,19 @@ MSH_Feature_Flags::is_enabled($key, $context)
 - **Phase 10 Stage 2 (Cloud MVP):** 6-8 weeks (after Gate 1)
 - **Phase 10 Stage 3 (Multi-Platform):** 10-12 weeks (after Gate 2)
 - **Total:** ~9-12 months to full multi-platform
+
+### To Enterprise Features (Phase 11+)
+- **WordPress.org Launch:** ~4-5 months
+- **Market Validation:** 3-6 months (gather customer feedback)
+- **Phase 11 (Perceptual Hash Sync):** 2-3 weeks (when triggered)
+- **Phase 12-13 (Full Enterprise):** 6-8 weeks (for $10k+ contracts)
+- **Total:** ~12-18 months to enterprise-ready platform
+
+**Trigger Events:**
+- 5+ customers requesting multi-site features
+- First agency/franchise customer signs up
+- Enterprise prospect with $10k+ budget identified
+- DAM integration explicitly requested
 
 ---
 
