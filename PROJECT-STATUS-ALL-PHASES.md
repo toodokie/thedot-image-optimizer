@@ -8,14 +8,17 @@
 
 ## Quick Summary
 
-**Phases Complete:** 1, 2, 3, 4, 4R+
-**Phases In Progress:** 5+9 (Track A ✅ fixed, Track B ⚠️ partial, Track C ✅ mostly done)
-**Phases Pending:** 6 (License Server), 7, 8, 10+
+**Phases Complete:** 1, 2, 3, 4, 4R+, 5+9 ✅
+**Next Up:** Infrastructure (Flags + Migrations) → Phase 6 → Phase 10 Stages 1-2
+**Launch Target:** 13-15 weeks (3-4 months) to WordPress.org
 
 **Current Focus:**
-- ✅ Track A: Automation fixed, all features working
-- 🔄 Track B: Metadata ✅, History ✅, Queue ✅, Events 🚧, Sync 🚧
-- ✅ Track C: Settings tabs, license UI, onboarding complete (Oct 22)
+- ✅ Phase 5+9 Track A: Automation complete (Oct 22)
+- ✅ Phase 5+9 Track B: All Hub tabs complete (Oct 22)
+- ✅ Phase 5+9 Track C: Sync + Settings + License complete (Oct 23)
+- 🔄 **NEXT:** Feature Flags (other AI) + Migration Framework (parallel, Week 1-2)
+
+**Revised Roadmap:** See [NEXT-PHASES-PLAN.md](NEXT-PHASES-PLAN.md) for complete timeline
 
 ---
 
@@ -428,6 +431,7 @@
 - Side-by-side diff view (AI vs Active vs Manual) with version history
 - Batch actions filtered by locale & intent
 - REST endpoints for context/generation/activation/rollback/jobs
+- Per-locale image sitemap generator with hreflang support (Idea #6) behind a feature flag for phased rollout
 
 **Estimated Effort:** 3-4 weeks
 **Priority:** High (for full multilingual workflow)
@@ -653,6 +657,7 @@
 - ✅ REST API working
 - ✅ License Manager tested
 - ✅ Telemetry working
+- ✅ Migration tooling & feature flag controls ready for Expand → Backfill → Switch → Contract rollouts (Ideas #1 & #2) ahead of Phase 6
 - ✅ Remote Sync configured
 - ✅ Onboarding Wizard complete
 
