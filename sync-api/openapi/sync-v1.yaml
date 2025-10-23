@@ -1,0 +1,618 @@
+openapi: 3.1.0
+info:
+  title: MSH Image Optimizer Sync API
+  version: 1.0.0
+  description: |
+    Multi-site metadata synchronization API for MSH Image Optimizer.
+
+    **Architecture:**
+    - Portable between Supabase and Google Cloud
+    - JWT-based authentication via license keys
+    - Field-level conflict resolution with revision tracking
+    - Cursor-based pagination for large datasets
+
+    **Migration Path:**
+    - Phase 1: Supabase Edge Functions + Postgres
+    - Phase 2: Google Cloud Run + Cloud SQL
+    - Transition: Blue/green cutover via reverse proxy
+
+  contact:
+    name: The Dot
+    url: https://thedot.com/support
+
+servers:
+  - url: https://sync.thedot.com/api/v1
+    description: Production (proxied to current backend)
+  - url: http://localhost:54321/functions/v1
+    description: Local development (Supabase)
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT minted by license server with claims:
+        - iss: license.thedot.com
+        - aud: sync
+        - license_key: string
+        - plan: free|pro|enterprise
+        - exp: unix timestamp
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum:
+                - UNAUTHORIZED
+                - FORBIDDEN
+                - RATE_LIMIT
+                - CONFLICT
+                - VALIDATION_ERROR
+                - SERVER_ERROR
+            message:
+              type: string
+            details:
+              type: object
+
+    Handshake:
+      type: object
+      required: [site_id, url, plugin_version]
+      properties:
+        site_id:
+          type: string
+          format: uuid
+          description: Unique site identifier (generated on first handshake)
+        url:
+          type: string
+          format: uri
+          example: https://example.com
+        plugin_version:
+          type: string
+          example: 2.0.0
+        wp_version:
+          type: string
+          example: 6.4.2
+        capabilities:
+          type: array
+          description: Client feature flags for protocol negotiation
+          items:
+            type: string
+            enum:
+              - field-diff
+              - batch-500
+              - cursor-pull
+              - conflict-auto-resolve
+          example: [field-diff, batch-500]
+
+    HandshakeResponse:
+      type: object
+      required: [site_id, server_capabilities, quota]
+      properties:
+        site_id:
+          type: string
+          format: uuid
+        server_capabilities:
+          type: array
+          items:
+            type: string
+        quota:
+          $ref: '#/components/schemas/Quota'
+        sync_config:
+          type: object
+          properties:
+            poll_interval_seconds:
+              type: integer
+              example: 300
+            batch_size_limit:
+              type: integer
+              example: 500
+
+    Quota:
+      type: object
+      required: [limit, used, reset_at]
+      properties:
+        limit:
+          type: integer
+          description: Max sync operations per period
+          example: 10000
+        used:
+          type: integer
+          description: Operations used in current period
+          example: 1234
+        reset_at:
+          type: string
+          format: date-time
+
+    MetadataChange:
+      type: object
+      required: [media_id, locale, base_rev, fields]
+      properties:
+        media_id:
+          type: integer
+          format: int64
+          description: WordPress attachment ID
+        locale:
+          type: string
+          example: en_US
+        base_rev:
+          type: integer
+          format: int64
+          description: Revision client is building on (0 for new)
+        fields:
+          type: object
+          properties:
+            title:
+              type: string
+              nullable: true
+            alt:
+              type: string
+              nullable: true
+            caption:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            custom:
+              type: object
+              additionalProperties: true
+              description: Custom metadata fields (JSON)
+            storage:
+              type: object
+              description: |
+                **AVIF-READY PLACEHOLDER** - Reserved for future image storage URLs.
+                Currently unused (metadata-only sync). Will be populated when
+                Phase 10 (AVIF/WebP image processing) is implemented.
+              nullable: true
+              properties:
+                original:
+                  type: string
+                  format: uri
+                  description: Cloud storage URL for original image (gs:// or https://)
+                  nullable: true
+                  example: "gs://dot-images/original/8c5bffbe6f13.jpg"
+                avif:
+                  type: string
+                  format: uri
+                  description: AVIF converted image URL
+                  nullable: true
+                webp:
+                  type: string
+                  format: uri
+                  description: WebP converted image URL
+                  nullable: true
+                jpeg:
+                  type: string
+                  format: uri
+                  description: JPEG optimized image URL
+                  nullable: true
+                status:
+                  type: string
+                  enum: [pending, processing, complete, failed]
+                  description: Conversion processing status
+                  nullable: true
+                cdn_url:
+                  type: string
+                  format: uri
+                  description: CDN delivery URL (cdn.thedot.com)
+                  nullable: true
+
+    PushRequest:
+      type: object
+      required: [site_id, changes]
+      properties:
+        site_id:
+          type: string
+          format: uuid
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataChange'
+          maxItems: 500
+        idempotency_key:
+          type: string
+          description: Client-generated key to prevent duplicate processing
+        timestamp:
+          type: string
+          format: date-time
+
+    PushResult:
+      type: object
+      required: [media_id, locale, status]
+      properties:
+        media_id:
+          type: integer
+          format: int64
+        locale:
+          type: string
+        status:
+          type: string
+          enum: [applied, skipped, conflict]
+        new_rev:
+          type: integer
+          format: int64
+          description: Revision number after applying change
+
+    Conflict:
+      type: object
+      required: [media_id, locale, server_rev, client_fields, server_fields]
+      properties:
+        media_id:
+          type: integer
+          format: int64
+        locale:
+          type: string
+        server_rev:
+          type: integer
+          format: int64
+        client_fields:
+          type: object
+          description: Fields client tried to update
+        server_fields:
+          type: object
+          description: Current server values for conflicting fields
+        resolution:
+          type: string
+          enum: [manual_required, server_wins, client_wins]
+          default: manual_required
+
+    PushResponse:
+      type: object
+      required: [results, conflicts]
+      properties:
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PushResult'
+        conflicts:
+          type: array
+          items:
+            $ref: '#/components/schemas/Conflict'
+        quota:
+          $ref: '#/components/schemas/Quota'
+
+    PullRequest:
+      type: object
+      required: [site_id]
+      properties:
+        site_id:
+          type: string
+          format: uuid
+        since:
+          type: integer
+          format: int64
+          description: Unix timestamp of last successful pull
+        cursor:
+          type: string
+          description: Pagination cursor from previous response
+        limit:
+          type: integer
+          minimum: 1
+          maximum: 500
+          default: 100
+
+    MetadataEntry:
+      type: object
+      required: [media_id, locale, rev, fields, updated_at]
+      properties:
+        media_id:
+          type: integer
+          format: int64
+        locale:
+          type: string
+        rev:
+          type: integer
+          format: int64
+        fields:
+          type: object
+          properties:
+            title:
+              type: string
+              nullable: true
+            alt:
+              type: string
+              nullable: true
+            caption:
+              type: string
+              nullable: true
+            description:
+              type: string
+              nullable: true
+            custom:
+              type: object
+              additionalProperties: true
+        updated_at:
+          type: string
+          format: date-time
+
+    PullResponse:
+      type: object
+      required: [changes, has_more]
+      properties:
+        changes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MetadataEntry'
+        has_more:
+          type: boolean
+          description: Whether more pages exist
+        next_cursor:
+          type: string
+          description: Cursor for next page (if has_more=true)
+        quota:
+          $ref: '#/components/schemas/Quota'
+
+    ResolveRequest:
+      type: object
+      required: [site_id, resolutions]
+      properties:
+        site_id:
+          type: string
+          format: uuid
+        resolutions:
+          type: array
+          items:
+            type: object
+            required: [media_id, locale, choice, fields]
+            properties:
+              media_id:
+                type: integer
+                format: int64
+              locale:
+                type: string
+              choice:
+                type: string
+                enum: [server, client, merged]
+              fields:
+                type: object
+                description: Final resolved field values
+
+    ResolveResponse:
+      type: object
+      required: [resolved]
+      properties:
+        resolved:
+          type: array
+          items:
+            type: object
+            required: [media_id, locale, new_rev]
+            properties:
+              media_id:
+                type: integer
+                format: int64
+              locale:
+                type: string
+              new_rev:
+                type: integer
+                format: int64
+
+paths:
+  /handshake:
+    post:
+      summary: Register or update site information
+      description: |
+        First endpoint to call when initializing sync. Returns site_id
+        (generated on first call), server capabilities, and quota info.
+      operationId: handshake
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Handshake'
+      responses:
+        '200':
+          description: Handshake successful
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HandshakeResponse'
+        '401':
+          description: Invalid or expired JWT
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '403':
+          description: License does not allow sync feature
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sync/push:
+    post:
+      summary: Push local metadata changes to server
+      description: |
+        Upload local metadata changes. Server checks base_rev for conflicts
+        and returns list of applied changes and conflicts requiring resolution.
+      operationId: syncPush
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PushRequest'
+      responses:
+        '200':
+          description: Push processed (may include conflicts)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PushResponse'
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Rate limit exceeded
+          headers:
+            Retry-After:
+              schema:
+                type: integer
+                description: Seconds until quota resets
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sync/pull:
+    post:
+      summary: Pull remote metadata changes from server
+      description: |
+        Download metadata changes from other sites under same license.
+        Supports cursor-based pagination for large datasets.
+      operationId: syncPull
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PullRequest'
+      responses:
+        '200':
+          description: Changes retrieved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PullResponse'
+        '429':
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /sync/resolve:
+    post:
+      summary: Resolve conflicts with manual choices
+      description: |
+        Submit conflict resolutions after reviewing conflicts from push.
+        Client decides server/client/merged for each conflicting field.
+      operationId: syncResolve
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveRequest'
+      responses:
+        '200':
+          description: Conflicts resolved
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ResolveResponse'
+
+  /image/upload:
+    post:
+      summary: Upload image for processing (STUB - Phase 10)
+      description: |
+        **STATUS: NOT IMPLEMENTED** - Returns 501 Not Implemented.
+
+        **Future Behavior:** Upload original image for AVIF/WebP conversion.
+        Server will process asynchronously and update metadata storage field
+        with converted image URLs.
+
+        **Domain:** Will move to images.thedot.com in Phase 10.
+
+        **Migration Note:** This stub endpoint reserves the contract so WordPress
+        plugin can be built to call it. When Phase 10 launches, simply return
+        200 instead of 501 - no client changes needed.
+      operationId: uploadImage
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [image, media_hash]
+              properties:
+                image:
+                  type: string
+                  format: binary
+                  description: Image file to upload
+                media_hash:
+                  type: string
+                  description: Unique hash identifying this image
+                  example: "8c5bffbe6f13a2d4"
+                locale:
+                  type: string
+                  default: en_US
+      responses:
+        '501':
+          description: Image processing not yet implemented
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error:
+                  code: NOT_IMPLEMENTED
+                  message: Image storage not yet enabled. Currently metadata-only sync.
+        '202':
+          description: |
+            **FUTURE RESPONSE** - Image accepted for processing.
+            Will be returned once Phase 10 is implemented.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: accepted
+                  media_hash:
+                    type: string
+                  processing_url:
+                    type: string
+                    format: uri
+                    description: URL to check conversion status
+
+  /quota:
+    get:
+      summary: Check current quota usage
+      description: Returns sync quota limits and current usage
+      operationId: getQuota
+      responses:
+        '200':
+          description: Quota information
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Quota'
+
+  /health:
+    get:
+      summary: Health check endpoint
+      description: Returns 200 if service is healthy
+      operationId: health
+      security: []
+      responses:
+        '200':
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: healthy
+                  version:
+                    type: string
+                    example: 1.0.0
