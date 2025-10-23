@@ -43,19 +43,21 @@ priority_loader             // Phase 10: AI-prioritized lazy loading
 
 **Updated `switch()` Method:**
 ```php
-// Check if Feature Flags system exists
 if ( class_exists( 'MSH_Feature_Flags' ) ) {
-    // Use proper Feature Flags system
-    MSH_Feature_Flags::set( $flag_key, $percentage >= 100 );
+    $percentage = (int) $percentage;
 
-    // Set rollout mode based on percentage
-    if ( $percentage < 100 && $percentage > 0 ) {
-        MSH_Feature_Flags::set_rollout( $flag_key, 'admins' );
-    } else if ( $percentage >= 100 ) {
+    if ( $percentage <= 0 ) {
+        MSH_Feature_Flags::set( $flag_key, false );
         MSH_Feature_Flags::set_rollout( $flag_key, 'everyone' );
+    } elseif ( $percentage >= 100 ) {
+        MSH_Feature_Flags::set( $flag_key, true );
+        MSH_Feature_Flags::set_rollout( $flag_key, 'everyone' );
+    } else {
+        // Partial rollout: enable flag but scope to administrators for validation.
+        MSH_Feature_Flags::set( $flag_key, true );
+        MSH_Feature_Flags::set_rollout( $flag_key, 'admins' );
     }
 } else {
-    // Fallback: Use simple option-based flag
     update_option( "msh_flag_{$flag_key}", $percentage >= 100 ? 'on' : $percentage, false );
 }
 ```
