@@ -543,7 +543,9 @@ MSH_Feature_Flags::is_enabled($key, $context)
    - Create starter templates
    - Integration with AI workflow
 
-5. ⏸️ **Phase 7: Multilingual Admin UX** (3-4 weeks)
+5. ⏸️ **Phase 7: Multilingual Admin UX + Template UI** (3-4 weeks)
+
+   **Multilingual Features:**
    - Locale switcher UI
    - Side-by-side diff view
    - Batch actions by locale
@@ -555,6 +557,23 @@ MSH_Feature_Flags::is_enabled($key, $context)
      - WP-CLI + automatic regeneration
      - See: [RND-002-RESEARCH-IDEAS.md](docs/RND-002-RESEARCH-IDEAS.md) Idea #6
    - Full multilingual workflow testing
+
+   **Template Intelligence Enhancements (Deferred from Phase 6):**
+   - Full CRUD UI for templates (create/edit/delete forms)
+   - Drag-and-drop priority reordering
+   - Template testing/preview tool (test context → see output)
+   - Supervised mode promotion workflow
+     - Review shadow telemetry for 4 inactive templates
+     - One-click promotion when precision > 95%
+     - Batch activate validated templates
+   - Fuzzy scoring with nice_to_have_tokens
+   - Template cloning/duplication
+   - Bulk operations (enable/disable multiple)
+   - Advanced telemetry dashboard for templates
+     - Hit rate per template
+     - Top missed contexts
+     - Performance metrics
+     - Field truncation stats
 
 6. ⏸️ **Phase 8: Analytics Dashboard** (4-5 weeks)
    - Google Search Console integration
