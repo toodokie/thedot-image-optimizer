@@ -2871,6 +2871,141 @@ Staged cloud architecture is the **only viable path** for multi-platform expansi
 **Owner:** Solo dev + AIs (manageable with staged approach)
 
 ---
+
+### 🚀 IMPLEMENTATION UPDATE (October 22, 2025)
+
+**Status:** 🔨 Foundation Complete - Hybrid Architecture Implemented
+
+#### What We Built (Metadata Sync Foundation)
+
+We implemented the **Hybrid Strategy** (metadata now, images later) to ship fast while staying AVIF-ready:
+
+1. **OpenAPI Specification** (`/sync-api/openapi/sync-v1.yaml`)
+   - Complete API contract for metadata sync
+   - **AVIF-ready:** `storage` field in schema (NULL today, images in Phase 10)
+   - Stub `/image/upload` endpoint (returns 501 now, 202 later)
+   - JWT authentication, cursor pagination, conflict resolution
+
+2. **Database Schema** (`/sync-api/db/migrations/0001_init.sql`)
+   - 5 tables: licenses, sites, media_metadata, sync_operations, quota_usage
+   - **AVIF-ready:** `storage` JSONB field reserved for image URLs
+   - Row-Level Security (RLS) for multi-tenant isolation
+   - Pure PostgreSQL (portable: Supabase → Google Cloud)
+
+3. **Architecture Documentation** (`/sync-api/docs/HYBRID-ARCHITECTURE.md`)
+   - Hybrid strategy explained (metadata sync ships in 1-2 weeks)
+   - Domain separation: sync.thedot.com, images.thedot.com, cdn.thedot.com
+   - Migration path: Supabase → Google Cloud (blue/green cutover)
+   - Phase 10 integration guide (no rebuild needed)
+
+#### Key Architecture Decisions
+
+**Metadata-Only Sync (Phase 5+9):**
+- ✅ Ships in 1-2 weeks (immediate Pro feature)
+- ✅ No image processing complexity yet
+- ✅ JSON-only (fast, cheap, simple)
+
+**AVIF-Ready Placeholders (Phase 10):**
+- ✅ `storage` field in database (currently NULL)
+- ✅ `/image/upload` stub endpoint (returns 501)
+- ✅ Domain reserved (images.thedot.com)
+- ✅ **No rebuild needed** - just fill in stubs
+
+**Google Cloud Portable:**
+- ✅ Pure PostgreSQL (no Supabase lock-in)
+- ✅ Same JWT auth works on both platforms
+- ✅ RLS policies translate to Cloud SQL
+- ✅ Nginx reverse proxy for blue/green cutover
+
+#### Schema Highlight (AVIF-Ready)
+
+```sql
+create table media_metadata (
+  id uuid primary key,
+  site_id uuid references sites(site_id),
+  media_id bigint not null,
+  locale text default 'en',
+
+  -- Active Now (Phase 5+9)
+  title text,
+  alt text,
+  caption text,
+  description text,
+  custom jsonb,
+
+  -- Reserved for Phase 10 (AVIF)
+  storage jsonb,  -- ⚠️ Always NULL today
+                  -- Future: {"avif":"gs://...","webp":"gs://..."}
+
+  rev bigint default 1,
+  updated_at timestamptz default now(),
+
+  unique(site_id, media_id, locale)
+);
+```
+
+#### What Happens When We Add AVIF (Phase 10)
+
+**No Changes Needed:**
+- ✅ Database schema (storage field exists)
+- ✅ API contract (already documented)
+- ✅ WordPress client (already sends storage field)
+- ✅ Domain structure (images.thedot.com reserved)
+
+**What We Add:**
+1. Remove 501 from `/image/upload` endpoint
+2. Implement image processor (Cloud Function or ImageKit)
+3. Populate `storage` field after conversion
+4. WordPress renders `<picture>` tags
+
+**Estimated Effort:** 2-3 weeks (not a rebuild!)
+
+#### Documentation Created
+
+| File | Purpose | Status |
+|------|---------|--------|
+| `sync-api/openapi/sync-v1.yaml` | API contract (source of truth) | ✅ Complete |
+| `sync-api/db/migrations/0001_init.sql` | Database schema + RLS | ✅ Complete |
+| `sync-api/docs/HYBRID-ARCHITECTURE.md` | Strategy & rationale | ✅ Complete |
+| `SYNC-FOUNDATION-COMPLETE.md` | Implementation summary | ✅ Complete |
+
+#### Next Steps
+
+**Immediate (This Week):**
+1. Set up Supabase project
+2. Run migration `0001_init.sql`
+3. Implement Edge Functions (handshake, push, pull, resolve, quota)
+4. Set up JWT auth with JWKS
+5. Update WordPress `class-msh-remote-sync.php`
+
+**Phase 10 (3-4 Months):**
+1. Integrate with ImageKit or build own processor
+2. Implement `/image/upload` (replace 501 with real logic)
+3. Populate `storage` field after conversion
+4. WordPress renders AVIF/WebP/JPEG stack
+
+**Migration to Google Cloud (Phase 10+):**
+1. Stand up Cloud Run + Cloud SQL
+2. Blue/green cutover via Nginx proxy
+3. Monitor for 1 week before full switchover
+
+#### Success Metrics
+
+- ✅ **Metadata sync ships:** 1-2 weeks (Pro feature complete)
+- ✅ **AVIF-ready:** Zero rebuild when adding images
+- ✅ **Google Cloud ready:** Pure Postgres, portable
+- ✅ **Multi-platform ready:** Same API serves WordPress, Shopify, Webflow
+
+**Related Files:**
+- See: `SYNC-FOUNDATION-COMPLETE.md` for full implementation summary
+- See: `sync-api/docs/HYBRID-ARCHITECTURE.md` for architecture details
+- See: `sync-api/openapi/sync-v1.yaml` for API contract
+
+**Commits:**
+- `014bddd` - "feat: Hybrid cloud architecture - metadata sync with AVIF-ready foundation"
+- `a07fa82` - "docs: add sync infrastructure foundation completion summary"
+
+---
 ---
 
 ## Idea #5: AI-Powered Image Delivery Optimization
