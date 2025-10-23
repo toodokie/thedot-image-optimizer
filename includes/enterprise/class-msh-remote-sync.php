@@ -1,8 +1,9 @@
 <?php
 /**
- * Remote Sync
+ * Remote Sync - Supabase Backend
  *
  * Cloud synchronization for multi-site metadata sharing (Pro feature).
+ * Connects to Supabase Edge Functions for metadata sync.
  *
  * @package MSH_Image_Optimizer
  * @subpackage Enterprise
@@ -26,11 +27,18 @@ class MSH_Remote_Sync {
 	private static $instance = null;
 
 	/**
-	 * Sync server URL.
+	 * Supabase project URL.
 	 *
 	 * @var string
 	 */
-	private $sync_server = 'https://sync.thedot.com/api/v1';
+	private $supabase_url = 'https://fzynkgtarqbdofegyvbq.supabase.co';
+
+	/**
+	 * Supabase anon key.
+	 *
+	 * @var string
+	 */
+	private $supabase_anon_key = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImZ6eW5rZ3RhcnFiZG9mZWd5dmJxIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjExNjQ2MTEsImV4cCI6MjA3Njc0MDYxMX0.xWg_ELVc-dw4Rd3Hx7fdq_-ToudY40ZW6IIOOoHFHrU';
 
 	/**
 	 * License manager instance.
@@ -47,11 +55,25 @@ class MSH_Remote_Sync {
 	const SYNC_ENABLED_OPTION = 'msh_sync_enabled';
 
 	/**
+	 * Site ID option key (from Supabase handshake).
+	 *
+	 * @var string
+	 */
+	const SITE_ID_OPTION = 'msh_sync_site_id';
+
+	/**
 	 * Last sync time option key.
 	 *
 	 * @var string
 	 */
 	const LAST_SYNC_OPTION = 'msh_last_sync_time';
+
+	/**
+	 * Last sync cursor option key.
+	 *
+	 * @var string
+	 */
+	const LAST_SYNC_CURSOR_OPTION = 'msh_last_sync_cursor';
 
 	/**
 	 * Sync conflict strategy option key.
@@ -78,15 +100,17 @@ class MSH_Remote_Sync {
 	private function __construct() {
 		$this->license_manager = MSH_License_Manager::get_instance();
 
-		// Automatic sync every 6 hours (if enabled)
-		add_action( 'msh_auto_sync', array( $this, 'auto_sync' ) );
+		// Automatic sync based on user preference (hourly, daily, or off)
+		add_action( 'msh_auto_sync_cron', array( $this, 'auto_sync' ) );
 
-		if ( ! wp_next_scheduled( 'msh_auto_sync' ) ) {
-			wp_schedule_event( time(), 'twicedaily', 'msh_auto_sync' );
-		}
+		// Backward compatibility: support old hook name
+		add_action( 'msh_auto_sync', array( $this, 'auto_sync' ) );
 
 		// Sync on metadata changes
 		add_action( 'msh_metadata_updated', array( $this, 'queue_sync' ), 10, 2 );
+
+		// Migrate old cron hook to new hook on load
+		add_action( 'init', array( $this, 'migrate_cron_hook' ), 5 );
 	}
 
 	/**
@@ -108,19 +132,38 @@ class MSH_Remote_Sync {
 			);
 		}
 
-		update_option( self::SYNC_ENABLED_OPTION, '1' );
+		// Perform handshake to register site
+		$handshake_result = $this->handshake();
 
-		// Perform initial sync
-		$result = $this->sync_now();
-
-		if ( $result['success'] ) {
+		if ( is_wp_error( $handshake_result ) ) {
 			return array(
-				'success' => true,
-				'message' => __( 'Remote Sync enabled and initial sync completed.', 'msh-image-optimizer' ),
+				'success' => false,
+				'message' => $handshake_result->get_error_message(),
 			);
 		}
 
-		return $result;
+		// Save site_id from handshake
+		update_option( self::SITE_ID_OPTION, $handshake_result['site_id'] );
+		update_option( self::SYNC_ENABLED_OPTION, '1' );
+
+		// Perform initial pull
+		$pull_result = $this->pull_changes();
+
+		if ( is_wp_error( $pull_result ) ) {
+			return array(
+				'success' => false,
+				'message' => $pull_result->get_error_message(),
+			);
+		}
+
+		return array(
+			'success' => true,
+			'message' => sprintf(
+				__( 'Remote Sync enabled. Site ID: %s. Pulled %d metadata entries.', 'msh-image-optimizer' ),
+				$handshake_result['site_id'],
+				count( $pull_result )
+			),
+		);
 	}
 
 	/**
@@ -147,6 +190,57 @@ class MSH_Remote_Sync {
 	}
 
 	/**
+	 * Perform handshake with Supabase to register/update site.
+	 *
+	 * @return array|WP_Error Handshake response or error.
+	 */
+	private function handshake() {
+		$license_key = get_option( MSH_License_Manager::LICENSE_KEY_OPTION );
+
+		if ( empty( $license_key ) ) {
+			return new WP_Error( 'no_license', __( 'No license key found.', 'msh-image-optimizer' ) );
+		}
+
+		$payload = array(
+			'license_key'    => $license_key,
+			'url'            => home_url(),
+			'platform'       => 'wordpress',
+			'plugin_version' => defined( 'MSH_IO_VERSION' ) ? MSH_IO_VERSION : '2.0.0',
+			'wp_version'     => get_bloginfo( 'version' ),
+			'capabilities'   => array( 'field-diff', 'batch-500' ),
+		);
+
+		$response = wp_remote_post(
+			$this->supabase_url . '/functions/v1/handshake',
+			array(
+				'timeout' => 30,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $this->supabase_anon_key,
+					'Content-Type'  => 'application/json',
+				),
+				'body'    => wp_json_encode( $payload ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body        = wp_remote_retrieve_body( $response );
+		$decoded     = json_decode( $body, true );
+
+		if ( 200 !== $status_code ) {
+			return new WP_Error(
+				'handshake_failed',
+				isset( $decoded['error']['message'] ) ? $decoded['error']['message'] : __( 'Handshake failed.', 'msh-image-optimizer' )
+			);
+		}
+
+		return $decoded;
+	}
+
+	/**
 	 * Sync now (manual trigger).
 	 *
 	 * @return array {
@@ -165,12 +259,21 @@ class MSH_Remote_Sync {
 			);
 		}
 
+		$site_id = get_option( self::SITE_ID_OPTION );
+
+		if ( empty( $site_id ) ) {
+			return array(
+				'success' => false,
+				'message' => __( 'Site not registered. Please re-enable sync.', 'msh-image-optimizer' ),
+			);
+		}
+
 		// Get local changes since last sync
-		$last_sync = get_option( self::LAST_SYNC_OPTION, 0 );
+		$last_sync     = get_option( self::LAST_SYNC_OPTION, 0 );
 		$local_changes = $this->get_local_changes( $last_sync );
 
 		// Push local changes
-		$push_result = $this->push_changes( $local_changes );
+		$push_result = $this->push_changes( $local_changes, $site_id );
 
 		if ( is_wp_error( $push_result ) ) {
 			return array(
@@ -180,7 +283,7 @@ class MSH_Remote_Sync {
 		}
 
 		// Pull remote changes
-		$pull_result = $this->pull_changes( $last_sync );
+		$pull_result = $this->pull_changes();
 
 		if ( is_wp_error( $pull_result ) ) {
 			return array(
@@ -196,14 +299,80 @@ class MSH_Remote_Sync {
 			'success' => true,
 			'message' => __( 'Sync completed successfully.', 'msh-image-optimizer' ),
 			'stats'   => array(
-				'pushed' => count( $local_changes ),
+				'pushed' => isset( $push_result['pushed'] ) ? $push_result['pushed'] : 0,
 				'pulled' => count( $pull_result ),
 			),
 		);
 	}
 
 	/**
-	 * Auto sync (scheduled).
+	 * Migrate old cron hook to new hook.
+	 *
+	 * This ensures existing installations with the old 'msh_auto_sync' hook
+	 * get migrated to the new 'msh_auto_sync_cron' hook without breaking auto-sync.
+	 *
+	 * @return void
+	 */
+	public function migrate_cron_hook() {
+		// Check if migration has already been done
+		if ( get_option( 'msh_cron_hook_migrated', false ) ) {
+			return;
+		}
+
+		// Check if old hook is scheduled
+		$old_hook = 'msh_auto_sync';
+		$old_timestamp = wp_next_scheduled( $old_hook );
+
+		if ( $old_timestamp ) {
+			// Get the recurrence of the old event
+			$cron_array = _get_cron_array();
+			$recurrence = 'off';
+
+			if ( $cron_array && isset( $cron_array[ $old_timestamp ][ $old_hook ] ) ) {
+				foreach ( $cron_array[ $old_timestamp ][ $old_hook ] as $event ) {
+					if ( isset( $event['schedule'] ) ) {
+						// Map old recurrence to new setting
+						if ( 'hourly' === $event['schedule'] ) {
+							$recurrence = 'hourly';
+						} elseif ( 'twicedaily' === $event['schedule'] ) {
+							// Map twicedaily to daily (or keep as daily for backward compat)
+							$recurrence = 'daily';
+						} elseif ( 'daily' === $event['schedule'] ) {
+							$recurrence = 'daily';
+						}
+						break;
+					}
+				}
+			}
+
+			// Clear old hook
+			wp_clear_scheduled_hook( $old_hook );
+
+			// Schedule new hook with the same cadence
+			if ( 'off' !== $recurrence ) {
+				$new_hook = 'msh_auto_sync_cron';
+
+				// Clear any existing new hook first
+				wp_clear_scheduled_hook( $new_hook );
+
+				// Schedule the new hook
+				if ( 'hourly' === $recurrence ) {
+					wp_schedule_event( time(), 'hourly', $new_hook );
+				} elseif ( 'daily' === $recurrence ) {
+					wp_schedule_event( time(), 'daily', $new_hook );
+				}
+
+				// Save the preference to the option so settings page shows correct value
+				update_option( 'msh_auto_sync_schedule', $recurrence, false );
+			}
+		}
+
+		// Mark migration as complete
+		update_option( 'msh_cron_hook_migrated', true, false );
+	}
+
+	/**
+	 * Automatic sync callback for WP-Cron.
 	 *
 	 * @return void
 	 */
@@ -241,82 +410,195 @@ class MSH_Remote_Sync {
 
 	/**
 	 * Get local changes since last sync.
+	 * Returns consolidated metadata (all fields per media_id/locale).
 	 *
 	 * @param int $since Unix timestamp.
 	 * @return array Array of changed metadata entries.
 	 */
 	private function get_local_changes( $since ) {
 		global $wpdb;
-		$metadata_table = $wpdb->prefix . 'msh_optimizer_metadata';
+		$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
 
-		$changes = $wpdb->get_results(
+		// Get all cache entries updated since last sync
+		// Use current_time to match WordPress timezone handling
+		$since_mysql = date( 'Y-m-d H:i:s', $since );
+		$rows = $wpdb->get_results(
 			$wpdb->prepare(
-				"SELECT * FROM {$metadata_table} WHERE UNIX_TIMESTAMP(updated_at) > %d ORDER BY updated_at ASC",
-				$since
+				"SELECT attachment_id, locale, field, ai_value, manual_value, chosen_source, updated_at
+				FROM {$cache_table}
+				WHERE updated_at > %s
+				ORDER BY attachment_id, locale, field",
+				$since_mysql
 			),
 			ARRAY_A
 		);
 
-		return $changes ? $changes : array();
+		if ( empty( $rows ) ) {
+			return array();
+		}
+
+		// Consolidate field-based rows into attachment-based records
+		$consolidated = array();
+		foreach ( $rows as $row ) {
+			$key = $row['attachment_id'] . '_' . $row['locale'];
+
+			if ( ! isset( $consolidated[ $key ] ) ) {
+				$consolidated[ $key ] = array(
+					'media_id'   => (int) $row['attachment_id'],
+					'locale'     => $row['locale'],
+					'title'      => '',
+					'alt'        => '',
+					'caption'    => '',
+					'description' => '',
+					'updated_at' => $row['updated_at'],
+				);
+			}
+
+			// Get the chosen value based on chosen_source
+			$value = ( 'ai' === $row['chosen_source'] ) ? $row['ai_value'] : $row['manual_value'];
+			$value = ! empty( $value ) ? $value : '';
+
+			// Assign to appropriate field
+			$consolidated[ $key ][ $row['field'] ] = $value;
+
+			// Track most recent update time
+			if ( strtotime( $row['updated_at'] ) > strtotime( $consolidated[ $key ]['updated_at'] ) ) {
+				$consolidated[ $key ]['updated_at'] = $row['updated_at'];
+			}
+		}
+
+		// Convert to indexed array
+		return array_values( $consolidated );
 	}
 
 	/**
-	 * Push local changes to remote server.
+	 * Push local changes to Supabase.
 	 *
-	 * @param array $changes Array of metadata changes.
+	 * @param array  $changes Array of metadata changes.
+	 * @param string $site_id Supabase site ID.
 	 * @return array|WP_Error Response or error.
 	 */
-	private function push_changes( $changes ) {
+	private function push_changes( $changes, $site_id ) {
 		if ( empty( $changes ) ) {
-			return array( 'pushed' => 0 );
+			return array( 'pushed' => 0, 'conflicts' => array() );
 		}
 
 		$license_key = get_option( MSH_License_Manager::LICENSE_KEY_OPTION );
 
 		$payload = array(
-			'license_key' => $license_key,
-			'site_url'    => home_url(),
-			'changes'     => $changes,
+			'site_id' => $site_id,
+			'changes' => $changes,
 		);
 
-		return $this->call_sync_server( 'push', $payload );
-	}
-
-	/**
-	 * Pull remote changes from server.
-	 *
-	 * @param int $since Unix timestamp.
-	 * @return array|WP_Error Remote changes or error.
-	 */
-	private function pull_changes( $since ) {
-		$license_key = get_option( MSH_License_Manager::LICENSE_KEY_OPTION );
-
-		$payload = array(
-			'license_key' => $license_key,
-			'site_url'    => home_url(),
-			'since'       => $since,
+		$response = wp_remote_post(
+			$this->supabase_url . '/functions/v1/push',
+			array(
+				'timeout' => 30,
+				'headers' => array(
+					'Authorization'  => 'Bearer ' . $this->supabase_anon_key,
+					'X-License-Key'  => $license_key,
+					'Content-Type'   => 'application/json',
+				),
+				'body'    => wp_json_encode( $payload ),
+			)
 		);
-
-		$response = $this->call_sync_server( 'pull', $payload );
 
 		if ( is_wp_error( $response ) ) {
 			return $response;
 		}
 
-		if ( ! isset( $response['changes'] ) ) {
-			return array();
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body        = wp_remote_retrieve_body( $response );
+		$decoded     = json_decode( $body, true );
+
+		if ( 200 !== $status_code ) {
+			return new WP_Error(
+				'push_failed',
+				isset( $decoded['error']['message'] ) ? $decoded['error']['message'] : __( 'Push failed.', 'msh-image-optimizer' )
+			);
 		}
 
-		// Apply remote changes locally
-		$this->apply_remote_changes( $response['changes'] );
+		// Handle conflicts if any
+		if ( ! empty( $decoded['conflicts'] ) ) {
+			// Log conflicts for manual resolution
+			error_log( 'MSH Sync: ' . count( $decoded['conflicts'] ) . ' conflicts detected during push.' );
+		}
 
-		return $response['changes'];
+		return $decoded;
 	}
 
 	/**
-	 * Apply remote changes to local database.
+	 * Pull remote changes from Supabase.
 	 *
-	 * @param array $changes Remote changes.
+	 * @return array|WP_Error Remote changes or error.
+	 */
+	private function pull_changes() {
+		$site_id     = get_option( self::SITE_ID_OPTION );
+		$license_key = get_option( MSH_License_Manager::LICENSE_KEY_OPTION );
+		$cursor      = get_option( self::LAST_SYNC_CURSOR_OPTION, null );
+
+		$payload = array(
+			'site_id' => $site_id,
+			'limit'   => 100,
+		);
+
+		if ( $cursor ) {
+			$payload['cursor'] = $cursor;
+		}
+
+		$response = wp_remote_post(
+			$this->supabase_url . '/functions/v1/pull',
+			array(
+				'timeout' => 30,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $this->supabase_anon_key,
+					'X-License-Key' => $license_key,
+					'Content-Type'  => 'application/json',
+				),
+				'body'    => wp_json_encode( $payload ),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body        = wp_remote_retrieve_body( $response );
+		$decoded     = json_decode( $body, true );
+
+		if ( 200 !== $status_code ) {
+			return new WP_Error(
+				'pull_failed',
+				isset( $decoded['error']['message'] ) ? $decoded['error']['message'] : __( 'Pull failed.', 'msh-image-optimizer' )
+			);
+		}
+
+		if ( ! isset( $decoded['changes'] ) ) {
+			return array();
+		}
+
+		// Update cursor for next pull
+		if ( ! empty( $decoded['changes'] ) ) {
+			$last_change = end( $decoded['changes'] );
+			if ( isset( $last_change['updated_at'] ) ) {
+				update_option( self::LAST_SYNC_CURSOR_OPTION, $last_change['updated_at'] );
+			}
+		}
+
+		// Apply remote changes locally
+		$this->apply_remote_changes( $decoded['changes'] );
+
+		return $decoded['changes'];
+	}
+
+	/**
+	 * Apply remote changes to local database (field-based structure).
+	 *
+	 * Converts consolidated metadata format (media_id, title, alt, caption, description)
+	 * to field-based storage (attachment_id, field, manual_value).
+	 *
+	 * @param array $changes Remote changes (consolidated format).
 	 * @return void
 	 */
 	private function apply_remote_changes( $changes ) {
@@ -325,110 +607,129 @@ class MSH_Remote_Sync {
 		}
 
 		global $wpdb;
-		$metadata_table = $wpdb->prefix . 'msh_optimizer_metadata';
-		$conflict_strategy = get_option( self::CONFLICT_STRATEGY_OPTION, 'remote_wins' );
+		$cache_table       = $wpdb->prefix . 'optimizer_metadata_cache';
+		$conflict_strategy = get_option( self::CONFLICT_STRATEGY_OPTION, 'local_wins' );
+		$last_sync_time    = get_option( self::LAST_SYNC_OPTION, 0 );
+		$conflicts         = array();
+		$fields            = array( 'title', 'alt', 'caption', 'description' );
 
 		foreach ( $changes as $change ) {
-			// Check if local version exists
-			$local = $wpdb->get_row(
-				$wpdb->prepare(
-					"SELECT * FROM {$metadata_table} WHERE media_id = %d AND locale = %s AND field = %s",
-					$change['media_id'],
-					$change['locale'],
-					$change['field']
-				),
-				ARRAY_A
-			);
+			$attachment_id     = (int) $change['media_id'];
+			$locale            = $change['locale'];
+			$remote_updated_at = isset( $change['updated_at'] ) ? strtotime( $change['updated_at'] ) : time();
 
-			if ( ! $local ) {
-				// Insert new remote entry
-				$wpdb->insert(
-					$metadata_table,
-					array(
-						'media_id'   => $change['media_id'],
-						'locale'     => $change['locale'],
-						'field'      => $change['field'],
-						'value'      => $change['value'],
-						'source'     => $change['source'],
-						'version'    => $change['version'],
-						'checksum'   => $change['checksum'],
-						'created_at' => $change['created_at'],
-						'updated_at' => $change['updated_at'],
+			// Process each field separately (field-based storage)
+			foreach ( $fields as $field ) {
+				$remote_value = isset( $change[ $field ] ) ? $change[ $field ] : '';
+
+				// Get local field data
+				$local = $wpdb->get_row(
+					$wpdb->prepare(
+						"SELECT * FROM {$cache_table} WHERE attachment_id = %d AND locale = %s AND field = %s",
+						$attachment_id,
+						$locale,
+						$field
 					),
-					array( '%d', '%s', '%s', '%s', '%s', '%d', '%s', '%s', '%s' )
+					ARRAY_A
 				);
-			} else {
-				// Conflict resolution
-				$should_update = false;
 
-				if ( 'remote_wins' === $conflict_strategy ) {
-					$should_update = true;
-				} elseif ( 'local_wins' === $conflict_strategy ) {
-					$should_update = false;
-				} elseif ( 'newest_wins' === $conflict_strategy ) {
-					$remote_time = strtotime( $change['updated_at'] );
-					$local_time = strtotime( $local['updated_at'] );
-					$should_update = $remote_time > $local_time;
-				}
-
-				if ( $should_update ) {
-					$wpdb->update(
-						$metadata_table,
+				if ( ! $local ) {
+					// No local version - safe to insert remote data
+					$wpdb->insert(
+						$cache_table,
 						array(
-							'value'      => $change['value'],
-							'source'     => $change['source'],
-							'version'    => $change['version'],
-							'checksum'   => $change['checksum'],
-							'updated_at' => $change['updated_at'],
+							'attachment_id' => $attachment_id,
+							'locale'        => $locale,
+							'field'         => $field,
+							'manual_value'  => $remote_value,
+							'chosen_source' => 'manual', // Remote synced data is treated as manual
+							'created_at'    => current_time( 'mysql' ),
+							'updated_at'    => date( 'Y-m-d H:i:s', $remote_updated_at ),
 						),
-						array(
-							'media_id' => $change['media_id'],
-							'locale'   => $change['locale'],
-							'field'    => $change['field'],
-						),
-						array( '%s', '%s', '%d', '%s', '%s' ),
-						array( '%d', '%s', '%s' )
+						array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
 					);
+				} else {
+					// Local version exists - check for conflicts
+					$local_updated_at = isset( $local['updated_at'] ) ? strtotime( $local['updated_at'] ) : 0;
+
+					// Detect if local data has been modified since last sync
+					$local_modified_since_sync = $last_sync_time > 0 && $local_updated_at > $last_sync_time;
+
+					// Determine if this is a conflict (both local and remote changed)
+					$is_conflict = $local_modified_since_sync && ( $remote_updated_at > $last_sync_time );
+
+					if ( $is_conflict ) {
+						// Log the conflict
+						$conflicts[] = array(
+							'attachment_id' => $attachment_id,
+							'locale'        => $locale,
+							'field'         => $field,
+							'local_value'   => $local['manual_value'],
+							'remote_value'  => $remote_value,
+						);
+					}
+
+					// Apply conflict resolution strategy
+					$should_update = false;
+
+					if ( 'remote_wins' === $conflict_strategy ) {
+						// Cloud version wins - always update
+						$should_update = true;
+					} elseif ( 'local_wins' === $conflict_strategy ) {
+						// Local version wins - NEVER overwrite local changes
+						// Only update if local hasn't been modified since last sync
+						$should_update = ! $local_modified_since_sync;
+					} elseif ( 'manual' === $conflict_strategy ) {
+						// Manual resolution - don't auto-update conflicts, only update if no local changes
+						$should_update = ! $local_modified_since_sync;
+					} else {
+						// Default to local_wins behavior (safest)
+						$should_update = ! $local_modified_since_sync;
+					}
+
+					if ( $should_update ) {
+						$wpdb->update(
+							$cache_table,
+							array(
+								'manual_value'  => $remote_value,
+								'chosen_source' => 'manual', // Remote synced data is treated as manual
+								'updated_at'    => date( 'Y-m-d H:i:s', $remote_updated_at ),
+							),
+							array(
+								'attachment_id' => $attachment_id,
+								'locale'        => $locale,
+								'field'         => $field,
+							),
+							array( '%s', '%s', '%s' ),
+							array( '%d', '%s', '%s' )
+						);
+					} elseif ( $is_conflict ) {
+						// Log that conflict was skipped
+						error_log(
+							sprintf(
+								'MSH Sync: Conflict detected for attachment_id=%d, locale=%s, field=%s. Strategy=%s. Local data protected from overwrite.',
+								$attachment_id,
+								$locale,
+								$field,
+								$conflict_strategy
+							)
+						);
+					}
 				}
 			}
 		}
-	}
 
-	/**
-	 * Call sync server API.
-	 *
-	 * @param string $endpoint API endpoint (push, pull).
-	 * @param array  $data     Request data.
-	 * @return array|WP_Error Response or error.
-	 */
-	private function call_sync_server( $endpoint, $data ) {
-		$url = trailingslashit( $this->sync_server ) . $endpoint;
+		// Store conflicts for manual review
+		if ( ! empty( $conflicts ) ) {
+			$existing_conflicts = get_option( 'msh_sync_conflicts', array() );
+			if ( ! is_array( $existing_conflicts ) ) {
+				$existing_conflicts = array();
+			}
+			$existing_conflicts = array_merge( $existing_conflicts, $conflicts );
+			update_option( 'msh_sync_conflicts', $existing_conflicts );
 
-		$response = wp_remote_post( $url, array(
-			'timeout' => 30,
-			'body'    => wp_json_encode( $data ),
-			'headers' => array(
-				'Content-Type' => 'application/json',
-				'User-Agent'   => 'MSH-Image-Optimizer/' . MSH_IO_VERSION,
-			),
-		) );
-
-		if ( is_wp_error( $response ) ) {
-			return $response;
+			error_log( sprintf( 'MSH Sync: %d conflicts detected and logged for manual review.', count( $conflicts ) ) );
 		}
-
-		$status_code = wp_remote_retrieve_response_code( $response );
-		$body = wp_remote_retrieve_body( $response );
-		$decoded = json_decode( $body, true );
-
-		if ( 200 !== $status_code ) {
-			return new WP_Error(
-				'sync_server_error',
-				$decoded['message'] ?? __( 'Sync server error.', 'msh-image-optimizer' )
-			);
-		}
-
-		return $decoded;
 	}
 
 	/**
@@ -438,6 +739,7 @@ class MSH_Remote_Sync {
 	 *     Sync status.
 	 *
 	 *     @type bool   $enabled       Whether sync is enabled.
+	 *     @type string $site_id       Supabase site ID.
 	 *     @type int    $last_sync     Last sync timestamp.
 	 *     @type string $last_sync_ago Human-readable time since last sync.
 	 *     @type int    $pending       Number of pending changes.
@@ -445,7 +747,8 @@ class MSH_Remote_Sync {
 	 */
 	public function get_status() {
 		$last_sync = get_option( self::LAST_SYNC_OPTION, 0 );
-		$pending = 0;
+		$site_id   = get_option( self::SITE_ID_OPTION, '' );
+		$pending   = 0;
 
 		if ( $last_sync > 0 ) {
 			$changes = $this->get_local_changes( $last_sync );
@@ -454,9 +757,48 @@ class MSH_Remote_Sync {
 
 		return array(
 			'enabled'       => $this->is_enabled(),
+			'site_id'       => $site_id,
 			'last_sync'     => $last_sync,
 			'last_sync_ago' => $last_sync > 0 ? human_time_diff( $last_sync ) . ' ago' : __( 'Never', 'msh-image-optimizer' ),
 			'pending'       => $pending,
 		);
+	}
+
+	/**
+	 * Get quota status from Supabase.
+	 *
+	 * @return array|WP_Error Quota data or error.
+	 */
+	public function get_quota() {
+		$license_key = get_option( MSH_License_Manager::LICENSE_KEY_OPTION );
+
+		$response = wp_remote_get(
+			$this->supabase_url . '/functions/v1/quota',
+			array(
+				'timeout' => 15,
+				'headers' => array(
+					'Authorization' => 'Bearer ' . $this->supabase_anon_key,
+					'X-License-Key' => $license_key,
+					'Content-Type'  => 'application/json',
+				),
+			)
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return $response;
+		}
+
+		$status_code = wp_remote_retrieve_response_code( $response );
+		$body        = wp_remote_retrieve_body( $response );
+		$decoded     = json_decode( $body, true );
+
+		if ( 200 !== $status_code ) {
+			return new WP_Error(
+				'quota_failed',
+				isset( $decoded['error']['message'] ) ? $decoded['error']['message'] : __( 'Quota check failed.', 'msh-image-optimizer' )
+			);
+		}
+
+		return $decoded;
 	}
 }

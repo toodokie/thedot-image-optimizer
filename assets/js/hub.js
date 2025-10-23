@@ -39,6 +39,7 @@
 
 		this.bindQueueActions();
 		this.bindEventsFeed();
+		this.bindSyncActions();
 		},
 
 		/**
@@ -1620,6 +1621,199 @@
 					this.refreshEventsFeed();
 				}
 			}, 5000);
+		},
+
+		/**
+		 * Bind Sync tab actions (enable, disable, sync now).
+		 */
+		bindSyncActions: function() {
+			const self = this;
+
+			// Enable Sync button
+			$(document).on('click', '#msh-enable-sync', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+
+				if ($btn.prop('disabled')) {
+					return;
+				}
+
+				$btn.prop('disabled', true).text('Enabling...');
+
+				$.ajax({
+					url: mshHubData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'msh_enable_sync',
+						nonce: mshHubData.ajaxNonce
+					},
+					success: function(response) {
+						if (response.success) {
+							self.showToast(response.data.message || 'Sync enabled successfully!', 'success');
+							setTimeout(() => location.reload(), 1500);
+						} else {
+							self.showToast(response.data.message || 'Failed to enable sync.', 'error');
+							$btn.prop('disabled', false).text('Enable Cloud Sync');
+						}
+					},
+					error: function() {
+						self.showToast('Network error. Please try again.', 'error');
+						$btn.prop('disabled', false).text('Enable Cloud Sync');
+					}
+				});
+			});
+
+			// Disable Sync button
+			$(document).on('click', '#msh-disable-sync', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+
+				if (!confirm('Are you sure you want to disable cloud sync? Your local data will not be affected.')) {
+					return;
+				}
+
+				if ($btn.prop('disabled')) {
+					return;
+				}
+
+				$btn.prop('disabled', true).text('Disabling...');
+
+				$.ajax({
+					url: mshHubData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'msh_disable_sync',
+						nonce: mshHubData.ajaxNonce
+					},
+					success: function(response) {
+						if (response.success) {
+							self.showToast(response.data.message || 'Sync disabled.', 'success');
+							setTimeout(() => location.reload(), 1500);
+						} else {
+							self.showToast(response.data.message || 'Failed to disable sync.', 'error');
+							$btn.prop('disabled', false).text('Disable Sync');
+						}
+					},
+					error: function() {
+						self.showToast('Network error. Please try again.', 'error');
+						$btn.prop('disabled', false).text('Disable Sync');
+					}
+				});
+			});
+
+			// Sync Now button
+			$(document).on('click', '#msh-trigger-sync', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+
+				if ($btn.prop('disabled')) {
+					return;
+				}
+
+				$btn.prop('disabled', true).text('Syncing...');
+
+				$.ajax({
+					url: mshHubData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'msh_sync_now',
+						nonce: mshHubData.ajaxNonce
+					},
+					success: function(response) {
+						if (response.success) {
+							const stats = response.data.stats || {};
+							const message = `Sync complete! Pushed: ${stats.pushed || 0}, Pulled: ${stats.pulled || 0}`;
+							self.showToast(message, 'success');
+							setTimeout(() => location.reload(), 1500);
+						} else {
+							self.showToast(response.data.message || 'Sync failed.', 'error');
+							$btn.prop('disabled', false).text('Sync Now');
+						}
+					},
+					error: function() {
+						self.showToast('Network error. Please try again.', 'error');
+						$btn.prop('disabled', false).text('Sync Now');
+					}
+				});
+			});
+
+			// Resolve Conflict button
+			$(document).on('click', '.msh-resolve-conflict', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+				const index = $btn.data('index');
+				const choice = $btn.data('choice');
+
+				if ($btn.prop('disabled')) {
+					return;
+				}
+
+				const originalText = $btn.text();
+				$btn.prop('disabled', true).text('Resolving...');
+
+				$.ajax({
+					url: mshHubData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'msh_resolve_conflict',
+						nonce: mshHubData.ajaxNonce,
+						index: index,
+						choice: choice
+					},
+					success: function(response) {
+						if (response.success) {
+							self.showToast(response.data.message || 'Conflict resolved.', 'success');
+							setTimeout(() => location.reload(), 1000);
+						} else {
+							self.showToast(response.data.message || 'Failed to resolve conflict.', 'error');
+							$btn.prop('disabled', false).text(originalText);
+						}
+					},
+					error: function() {
+						self.showToast('Network error. Please try again.', 'error');
+						$btn.prop('disabled', false).text(originalText);
+					}
+				});
+			});
+
+			// Clear All Conflicts button
+			$(document).on('click', '#msh-clear-conflicts', function(e) {
+				e.preventDefault();
+				const $btn = $(this);
+
+				if (!confirm('Are you sure you want to clear all conflicts? This will remove them without resolving them.')) {
+					return;
+				}
+
+				if ($btn.prop('disabled')) {
+					return;
+				}
+
+				const originalText = $btn.text();
+				$btn.prop('disabled', true).text('Clearing...');
+
+				$.ajax({
+					url: mshHubData.ajaxUrl,
+					type: 'POST',
+					data: {
+						action: 'msh_clear_conflicts',
+						nonce: mshHubData.ajaxNonce
+					},
+					success: function(response) {
+						if (response.success) {
+							self.showToast(response.data.message || 'All conflicts cleared.', 'success');
+							setTimeout(() => location.reload(), 1000);
+						} else {
+							self.showToast(response.data.message || 'Failed to clear conflicts.', 'error');
+							$btn.prop('disabled', false).text(originalText);
+						}
+					},
+					error: function() {
+						self.showToast('Network error. Please try again.', 'error');
+						$btn.prop('disabled', false).text(originalText);
+					}
+				});
+			});
 		},
 
 		/* ---------------------------------------------------------------------

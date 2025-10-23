@@ -168,6 +168,7 @@ class MSH_Image_Optimizer_Settings {
 				'general' => __( 'General', 'msh-image-optimizer' ),
 				'context' => __( 'Context', 'msh-image-optimizer' ),
 				'ai'      => __( 'AI', 'msh-image-optimizer' ),
+				'sync'    => __( 'Sync', 'msh-image-optimizer' ),
 				'account' => __( 'Account', 'msh-image-optimizer' ),
 				'advanced' => __( 'Advanced', 'msh-image-optimizer' ),
 			);
@@ -616,6 +617,158 @@ class MSH_Image_Optimizer_Settings {
 
 				<?php endif; // End AI Tab ?>
 
+			<!-- SYNC TAB -->
+			<?php if ( 'sync' === $active_tab ) : ?>
+				<?php
+				$sync_instance = MSH_Remote_Sync::get_instance();
+				$sync_status = $sync_instance->get_status();
+				$conflict_strategy = get_option( MSH_Remote_Sync::CONFLICT_STRATEGY_OPTION, 'local_wins' );
+				$auto_sync_schedule = get_option( 'msh_auto_sync_schedule', 'off' );
+				$quota_data = $sync_instance->get_quota();
+				?>
+
+				<!-- Cloud Sync Status Section -->
+				<section class="msh-settings-card">
+					<header>
+						<h2><?php esc_html_e( 'Cloud Sync Status', 'msh-image-optimizer' ); ?></h2>
+						<p><?php esc_html_e( 'Keep track of your synchronization status, connected site ID, and quota usage.', 'msh-image-optimizer' ); ?></p>
+					</header>
+					<div class="msh-settings-grid">
+						<div class="msh-settings-field">
+							<label><?php esc_html_e( 'Sync Status:', 'msh-image-optimizer' ); ?></label>
+							<div><strong><?php echo $sync_status['enabled'] ? esc_html__( 'Active', 'msh-image-optimizer' ) : esc_html__( 'Inactive', 'msh-image-optimizer' ); ?></strong></div>
+						</div>
+						<?php if ( ! empty( $sync_status['site_id'] ) ) : ?>
+						<div class="msh-settings-field">
+							<label><?php esc_html_e( 'Site ID:', 'msh-image-optimizer' ); ?></label>
+							<div><code><?php echo esc_html( $sync_status['site_id'] ); ?></code></div>
+						</div>
+						<?php endif; ?>
+						<div class="msh-settings-field">
+							<label><?php esc_html_e( 'Last Sync:', 'msh-image-optimizer' ); ?></label>
+							<div><strong><?php echo esc_html( $sync_status['last_sync_ago'] ); ?></strong></div>
+						</div>
+						<div class="msh-settings-field">
+							<label><?php esc_html_e( 'Pending Changes:', 'msh-image-optimizer' ); ?></label>
+							<div><strong><?php echo esc_html( number_format_i18n( $sync_status['pending'] ) ); ?></strong></div>
+						</div>
+						<?php if ( ! empty( $quota_data ) && isset( $quota_data['used'], $quota_data['limit'] ) ) : ?>
+						<div class="msh-settings-field" style="grid-column: 1 / -1;">
+							<label><?php esc_html_e( 'Quota Usage:', 'msh-image-optimizer' ); ?></label>
+							<div style="margin-top: 8px;">
+								<div style="background: #e0e0e0; border-radius: 4px; height: 20px; overflow: hidden; position: relative;">
+									<div style="background: linear-gradient(90deg, #4CAF50, #45a049); height: 100%; width: <?php echo esc_attr( min( 100, ( $quota_data['used'] / max( 1, $quota_data['limit'] ) ) * 100 ) ); ?>%; transition: width 0.3s ease;"></div>
+								</div>
+								<p class="msh-settings-note" style="margin-top: 4px;">
+									<?php
+									printf(
+										/* translators: 1: used syncs, 2: total syncs, 3: period */
+										esc_html__( '%1$s / %2$s syncs this %3$s', 'msh-image-optimizer' ),
+										'<strong>' . esc_html( number_format_i18n( $quota_data['used'] ) ) . '</strong>',
+										'<strong>' . esc_html( number_format_i18n( $quota_data['limit'] ) ) . '</strong>',
+										'<strong>' . esc_html( $quota_data['period'] ?? 'month' ) . '</strong>'
+									);
+									?>
+								</p>
+							</div>
+						</div>
+						<?php endif; ?>
+					</div>
+				</section>
+
+				<!-- Sync Preferences Section -->
+				<section class="msh-settings-card">
+					<header>
+						<h2><?php esc_html_e( 'Sync Preferences', 'msh-image-optimizer' ); ?></h2>
+						<p><?php esc_html_e( 'Choose how the plugin handles conflicting edits between your local site and the cloud.', 'msh-image-optimizer' ); ?></p>
+					</header>
+					<div class="msh-settings-grid">
+						<div class="msh-settings-field">
+							<label for="msh-conflict-strategy"><?php esc_html_e( 'Conflict Resolution:', 'msh-image-optimizer' ); ?></label>
+							<select name="msh_sync_conflict_strategy" id="msh-conflict-strategy" style="max-width: 400px; margin: 8px 0;">
+								<option value="local_wins" <?php selected( $conflict_strategy, 'local_wins' ); ?>>
+									<?php esc_html_e( 'Local version (default) — Your local edits are never silently overwritten.', 'msh-image-optimizer' ); ?>
+								</option>
+								<option value="remote_wins" <?php selected( $conflict_strategy, 'remote_wins' ); ?>>
+									<?php esc_html_e( 'Cloud version — Always keep the version stored in your cloud.', 'msh-image-optimizer' ); ?>
+								</option>
+								<option value="manual" <?php selected( $conflict_strategy, 'manual' ); ?>>
+									<?php esc_html_e( 'Ask each time — Review conflicts manually in the Sync Hub.', 'msh-image-optimizer' ); ?>
+								</option>
+							</select>
+							<p class="msh-settings-note">
+								<?php esc_html_e( 'When both your local site and cloud have different changes to the same image metadata, this setting decides which version wins. Local version (default) protects your work by never overwriting local edits during automatic sync.', 'msh-image-optimizer' ); ?>
+							</p>
+						</div>
+						<div class="msh-settings-field">
+							<label for="msh-auto-sync-schedule"><?php esc_html_e( 'Auto Sync:', 'msh-image-optimizer' ); ?></label>
+							<select name="msh_auto_sync_schedule" id="msh-auto-sync-schedule" style="max-width: 400px; margin: 8px 0;">
+								<option value="off" <?php selected( $auto_sync_schedule, 'off' ); ?>>
+									<?php esc_html_e( 'Off — Manual sync only', 'msh-image-optimizer' ); ?>
+								</option>
+								<option value="hourly" <?php selected( $auto_sync_schedule, 'hourly' ); ?>>
+									<?php esc_html_e( 'Hourly — Sync automatically every hour', 'msh-image-optimizer' ); ?>
+								</option>
+								<option value="daily" <?php selected( $auto_sync_schedule, 'daily' ); ?>>
+									<?php esc_html_e( 'Daily — Sync automatically once per day', 'msh-image-optimizer' ); ?>
+								</option>
+							</select>
+							<p class="msh-settings-note">
+								<?php esc_html_e( 'Choose how often your metadata should automatically sync with the cloud. You can always trigger a manual sync from the Sync Hub.', 'msh-image-optimizer' ); ?>
+							</p>
+						</div>
+					</div>
+				</section>
+
+				<!-- Manage Sync Section -->
+				<section class="msh-settings-card">
+					<header>
+						<h2><?php esc_html_e( 'Manage Sync', 'msh-image-optimizer' ); ?></h2>
+						<p><?php esc_html_e( 'Go to the Sync Hub to trigger manual syncs, check activity logs, and view your quota usage.', 'msh-image-optimizer' ); ?></p>
+					</header>
+					<div class="msh-settings-grid">
+						<div class="msh-settings-field">
+							<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-hub&tab=sync' ) ); ?>" class="button button-dot-primary" style="display: inline-block; margin: 8px 0; min-width: 140px; width: fit-content; padding: 0 12px;">
+								<?php esc_html_e( 'Open Sync Hub', 'msh-image-optimizer' ); ?>
+							</a>
+							<p class="msh-settings-note">
+								<?php esc_html_e( 'The Sync Hub is your central control panel for all sync operations, including viewing recent activity and resolving conflicts.', 'msh-image-optimizer' ); ?>
+							</p>
+						</div>
+						<?php
+						$last_activity_log = get_option( 'msh_last_sync_log', array() );
+						if ( ! empty( $last_activity_log ) && is_array( $last_activity_log ) ) :
+						?>
+						<div class="msh-settings-field">
+							<label><?php esc_html_e( 'Last Activity:', 'msh-image-optimizer' ); ?></label>
+							<div>
+								<?php
+								$log_time = ! empty( $last_activity_log['time'] ) ? $last_activity_log['time'] : 0;
+								$log_action = ! empty( $last_activity_log['action'] ) ? $last_activity_log['action'] : 'sync';
+								$log_status = ! empty( $last_activity_log['status'] ) ? $last_activity_log['status'] : 'unknown';
+
+								if ( $log_time ) {
+									$time_ago = human_time_diff( $log_time, current_time( 'timestamp' ) );
+									printf(
+										/* translators: 1: action, 2: status, 3: time ago */
+										esc_html__( '%1$s - %2$s (%3$s ago)', 'msh-image-optimizer' ),
+										'<strong>' . esc_html( ucfirst( $log_action ) ) . '</strong>',
+										'<span style="color: ' . ( $log_status === 'success' ? '#4CAF50' : '#f44336' ) . ';">' . esc_html( $log_status ) . '</span>',
+										esc_html( $time_ago )
+									);
+								}
+								?>
+							</div>
+							<p class="msh-settings-note">
+								<?php esc_html_e( 'Track your most recent sync activity. View full history and details in the Sync Hub.', 'msh-image-optimizer' ); ?>
+							</p>
+						</div>
+						<?php endif; ?>
+					</div>
+				</section>
+
+			<?php endif; // End Sync Tab ?>
+
 				<!-- ACCOUNT TAB -->
 				<?php if ( 'account' === $active_tab ) : ?>
 
@@ -751,8 +904,51 @@ class MSH_Image_Optimizer_Settings {
 		}
 		update_option( 'msh_active_context_profile', $pending_active_profile, false );
 
+		// Save Sync settings
+		if ( isset( $_POST['msh_sync_conflict_strategy'] ) ) {
+			$conflict_strategy = sanitize_text_field( $_POST['msh_sync_conflict_strategy'] );
+			$allowed_strategies = array( 'local_wins', 'remote_wins', 'manual' );
+			if ( in_array( $conflict_strategy, $allowed_strategies, true ) ) {
+				update_option( MSH_Remote_Sync::CONFLICT_STRATEGY_OPTION, $conflict_strategy, false );
+			}
+		}
+
+		if ( isset( $_POST['msh_auto_sync_schedule'] ) ) {
+			$auto_sync_schedule = sanitize_text_field( $_POST['msh_auto_sync_schedule'] );
+			$allowed_schedules = array( 'off', 'hourly', 'daily' );
+			if ( in_array( $auto_sync_schedule, $allowed_schedules, true ) ) {
+				update_option( 'msh_auto_sync_schedule', $auto_sync_schedule, false );
+
+				// Schedule or unschedule the cron job
+				$this->update_sync_cron_schedule( $auto_sync_schedule );
+			}
+		}
+
 		wp_safe_redirect( add_query_arg( 'msh_saved', '1', $redirect_url ) );
 		exit;
+	}
+
+	/**
+	 * Update WP-Cron schedule for auto-sync.
+	 *
+	 * @param string $schedule 'off', 'hourly', or 'daily'.
+	 * @return void
+	 */
+	private function update_sync_cron_schedule( $schedule ) {
+		$hook = 'msh_auto_sync_cron';
+
+		// Clear existing scheduled event
+		$timestamp = wp_next_scheduled( $hook );
+		if ( $timestamp ) {
+			wp_unschedule_event( $timestamp, $hook );
+		}
+
+		// Schedule new event if not 'off'
+		if ( 'hourly' === $schedule ) {
+			wp_schedule_event( time(), 'hourly', $hook );
+		} elseif ( 'daily' === $schedule ) {
+			wp_schedule_event( time(), 'daily', $hook );
+		}
 	}
 
 	/**

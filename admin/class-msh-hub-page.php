@@ -67,6 +67,13 @@ class MSH_Hub_Page {
 
 		// Events feed
 		add_action( 'wp_ajax_msh_get_recent_events', array( $this, 'ajax_get_recent_events' ) );
+
+		// Sync actions
+		add_action( 'wp_ajax_msh_enable_sync', array( $this, 'ajax_enable_sync' ) );
+		add_action( 'wp_ajax_msh_disable_sync', array( $this, 'ajax_disable_sync' ) );
+		add_action( 'wp_ajax_msh_sync_now', array( $this, 'ajax_sync_now' ) );
+		add_action( 'wp_ajax_msh_resolve_conflict', array( $this, 'ajax_resolve_conflict' ) );
+		add_action( 'wp_ajax_msh_clear_conflicts', array( $this, 'ajax_clear_conflicts' ) );
 	}
 
 	/**
@@ -873,17 +880,18 @@ class MSH_Hub_Page {
 				<div class="msh-pro-upsell">
 					<h2><?php esc_html_e( 'Cloud Sync – Pro Feature', 'msh-image-optimizer' ); ?></h2>
 					<p class="msh-pro-description">
-						<?php esc_html_e( 'Sync optimized metadata across multiple WordPress sites, maintain consistency across staging/production environments, and backup your metadata to the cloud for disaster recovery.', 'msh-image-optimizer' ); ?>
+						<?php esc_html_e( 'Keep your optimized image data safe, consistent, and always recoverable.', 'msh-image-optimizer' ); ?><br>
+						<?php esc_html_e( 'Pro users can back up metadata to the cloud, sync between sites, and restore in seconds after updates or migrations.', 'msh-image-optimizer' ); ?>
 					</p>
 
 					<div class="msh-pro-features">
-						<h3><?php esc_html_e( 'What You Get:', 'msh-image-optimizer' ); ?></h3>
+						<h3><?php esc_html_e( 'What you unlock with Pro:', 'msh-image-optimizer' ); ?></h3>
 						<ul>
-							<li><?php esc_html_e( 'Automatic cloud backup of all metadata', 'msh-image-optimizer' ); ?></li>
-							<li><?php esc_html_e( 'Push/pull sync between multiple sites', 'msh-image-optimizer' ); ?></li>
-							<li><?php esc_html_e( 'Conflict resolution with version control', 'msh-image-optimizer' ); ?></li>
-							<li><?php esc_html_e( 'Scheduled automatic sync (hourly/daily)', 'msh-image-optimizer' ); ?></li>
-							<li><?php esc_html_e( 'Restore to any previous backup point', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Automatic cloud backup of all image metadata', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'One-click sync between staging and live sites', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Smart conflict detection and version history', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Hourly or daily scheduled syncs', 'msh-image-optimizer' ); ?></li>
+							<li><?php esc_html_e( 'Restore any previous version instantly', 'msh-image-optimizer' ); ?></li>
 						</ul>
 					</div>
 
@@ -902,21 +910,25 @@ class MSH_Hub_Page {
 		}
 
 		// Pro users see the actual sync interface
-		$sync_status = function_exists( 'msh_get_sync_status' ) ? msh_get_sync_status() : array(
-			'enabled'        => false,
-			'last_sync'      => null,
-			'next_scheduled' => null,
-			'total_synced'   => 0,
-			'pending'        => 0,
-		);
+		$sync_instance = MSH_Remote_Sync::get_instance();
+		$sync_status = $sync_instance->get_status();
 		?>
 		<div class="msh-sync-tab">
+			<?php if ( $sync_status['enabled'] ) : ?>
+			<div class="msh-cache-intro">
+				<p>
+					<strong><?php esc_html_e( 'Cloud sync active.', 'msh-image-optimizer' ); ?></strong>
+					<?php esc_html_e( 'Your metadata is safe, backed up, and ready to restore anytime.', 'msh-image-optimizer' ); ?>
+				</p>
+			</div>
+			<?php else : ?>
 			<div class="msh-cache-intro">
 				<p>
 					<strong><?php esc_html_e( 'Memo:', 'msh-image-optimizer' ); ?></strong>
 					<?php esc_html_e( 'Manage cloud synchronization of your optimized metadata. Keep multiple sites in sync or maintain reliable backups for disaster recovery.', 'msh-image-optimizer' ); ?>
 				</p>
 			</div>
+			<?php endif; ?>
 
 			<div class="msh-sync-status-card">
 				<h3><?php esc_html_e( 'Sync Status', 'msh-image-optimizer' ); ?></h3>
@@ -927,40 +939,99 @@ class MSH_Hub_Page {
 							<?php echo $sync_status['enabled'] ? esc_html__( 'Active', 'msh-image-optimizer' ) : esc_html__( 'Inactive', 'msh-image-optimizer' ); ?>
 						</span>
 					</div>
+					<?php if ( ! empty( $sync_status['site_id'] ) ) : ?>
+					<div class="msh-sync-stat">
+						<span class="msh-stat-label"><?php esc_html_e( 'Site ID:', 'msh-image-optimizer' ); ?></span>
+						<span class="msh-stat-value"><code><?php echo esc_html( substr( $sync_status['site_id'], 0, 8 ) . '...' ); ?></code></span>
+					</div>
+					<?php endif; ?>
 					<div class="msh-sync-stat">
 						<span class="msh-stat-label"><?php esc_html_e( 'Last Sync:', 'msh-image-optimizer' ); ?></span>
-						<span class="msh-stat-value"><?php echo esc_html( $sync_status['last_sync'] ?? __( 'Never', 'msh-image-optimizer' ) ); ?></span>
+						<span class="msh-stat-value"><?php echo esc_html( $sync_status['last_sync_ago'] ?? __( 'Never', 'msh-image-optimizer' ) ); ?></span>
 					</div>
 					<div class="msh-sync-stat">
-						<span class="msh-stat-label"><?php esc_html_e( 'Next Scheduled:', 'msh-image-optimizer' ); ?></span>
-						<span class="msh-stat-value"><?php echo esc_html( $sync_status['next_scheduled'] ?? __( 'Not scheduled', 'msh-image-optimizer' ) ); ?></span>
-					</div>
-					<div class="msh-sync-stat">
-						<span class="msh-stat-label"><?php esc_html_e( 'Total Synced:', 'msh-image-optimizer' ); ?></span>
-						<span class="msh-stat-value"><?php echo esc_html( number_format_i18n( $sync_status['total_synced'] ) ); ?></span>
-					</div>
-					<div class="msh-sync-stat">
-						<span class="msh-stat-label"><?php esc_html_e( 'Pending:', 'msh-image-optimizer' ); ?></span>
-						<span class="msh-stat-value"><?php echo esc_html( number_format_i18n( $sync_status['pending'] ) ); ?></span>
+						<span class="msh-stat-label"><?php esc_html_e( 'Pending Changes:', 'msh-image-optimizer' ); ?></span>
+						<span class="msh-stat-value"><?php echo esc_html( number_format_i18n( $sync_status['pending'] ?? 0 ) ); ?></span>
 					</div>
 				</div>
 			</div>
 
 			<div class="msh-sync-actions">
+				<?php if ( $sync_status['enabled'] ) : ?>
 				<button type="button" class="button button-dot-primary" id="msh-trigger-sync">
 					<?php esc_html_e( 'Sync Now', 'msh-image-optimizer' ); ?>
 				</button>
-				<button type="button" class="button button-dot-secondary" id="msh-configure-sync">
-					<?php esc_html_e( 'Configure Sync', 'msh-image-optimizer' ); ?>
+				<button type="button" class="button button-dot-secondary" id="msh-disable-sync">
+					<?php esc_html_e( 'Disable Sync', 'msh-image-optimizer' ); ?>
 				</button>
+				<?php else : ?>
+				<button type="button" class="button button-dot-primary" id="msh-enable-sync">
+					<?php esc_html_e( 'Enable Cloud Sync', 'msh-image-optimizer' ); ?>
+				</button>
+				<?php endif; ?>
 				<a href="<?php echo esc_url( admin_url( 'admin.php?page=msh-image-optimizer-settings&tab=sync' ) ); ?>" class="button button-dot-secondary">
 					<?php esc_html_e( 'Sync Settings', 'msh-image-optimizer' ); ?>
 				</a>
 			</div>
 
-			<div class="msh-placeholder-note" style="margin-top: 20px;">
-				<p><em><?php esc_html_e( 'Note: The Sync feature backend is still in development. Full functionality coming soon.', 'msh-image-optimizer' ); ?></em></p>
+			<?php
+			// Show conflicts if any exist
+			$conflicts = get_option( 'msh_sync_conflicts', array() );
+			if ( ! empty( $conflicts ) && is_array( $conflicts ) ) :
+			?>
+			<div class="msh-sync-conflicts" style="margin-top: 24px;">
+				<h3><?php esc_html_e( 'Sync Conflicts', 'msh-image-optimizer' ); ?></h3>
+				<p><?php printf( esc_html__( 'Found %d conflicts that need manual resolution.', 'msh-image-optimizer' ), count( $conflicts ) ); ?></p>
+
+				<table class="msh-conflicts-table" style="width: 100%; border-collapse: collapse; margin-top: 16px;">
+					<thead>
+						<tr style="background: #f5f5f5; border-bottom: 2px solid #ddd;">
+							<th style="padding: 12px; text-align: left;"><?php esc_html_e( 'Attachment ID', 'msh-image-optimizer' ); ?></th>
+							<th style="padding: 12px; text-align: left;"><?php esc_html_e( 'Field', 'msh-image-optimizer' ); ?></th>
+							<th style="padding: 12px; text-align: left;"><?php esc_html_e( 'Local Value', 'msh-image-optimizer' ); ?></th>
+							<th style="padding: 12px; text-align: left;"><?php esc_html_e( 'Remote Value', 'msh-image-optimizer' ); ?></th>
+							<th style="padding: 12px; text-align: left;"><?php esc_html_e( 'Action', 'msh-image-optimizer' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php foreach ( array_slice( $conflicts, 0, 10 ) as $index => $conflict ) : ?>
+						<tr style="border-bottom: 1px solid #eee;">
+							<td style="padding: 12px;"><?php echo esc_html( $conflict['attachment_id'] ?? 'N/A' ); ?></td>
+							<td style="padding: 12px;"><code><?php echo esc_html( $conflict['field'] ?? 'N/A' ); ?></code></td>
+							<td style="padding: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+								<?php echo esc_html( wp_trim_words( $conflict['local_value'] ?? '', 10 ) ); ?>
+							</td>
+							<td style="padding: 12px; max-width: 200px; overflow: hidden; text-overflow: ellipsis;">
+								<?php echo esc_html( wp_trim_words( $conflict['remote_value'] ?? '', 10 ) ); ?>
+							</td>
+							<td style="padding: 12px;">
+								<button type="button" class="button button-small msh-resolve-conflict"
+										data-index="<?php echo esc_attr( $index ); ?>"
+										data-choice="local">
+									<?php esc_html_e( 'Keep Local', 'msh-image-optimizer' ); ?>
+								</button>
+								<button type="button" class="button button-small msh-resolve-conflict"
+										data-index="<?php echo esc_attr( $index ); ?>"
+										data-choice="remote">
+									<?php esc_html_e( 'Use Remote', 'msh-image-optimizer' ); ?>
+								</button>
+							</td>
+						</tr>
+						<?php endforeach; ?>
+					</tbody>
+				</table>
+
+				<?php if ( count( $conflicts ) > 10 ) : ?>
+				<p style="margin-top: 16px;">
+					<em><?php printf( esc_html__( 'Showing 10 of %d conflicts. Resolve these to see more.', 'msh-image-optimizer' ), count( $conflicts ) ); ?></em>
+				</p>
+				<?php endif; ?>
+
+				<button type="button" class="button button-dot-secondary" id="msh-clear-conflicts" style="margin-top: 16px;">
+					<?php esc_html_e( 'Clear All Conflicts', 'msh-image-optimizer' ); ?>
+				</button>
 			</div>
+			<?php endif; ?>
 		</div>
 		<?php
 	}
@@ -1822,6 +1893,152 @@ class MSH_Hub_Page {
 		}
 
 		return mysql2date( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), $timestamp );
+	}
+
+	/**
+	 * AJAX handler: Enable cloud sync.
+	 *
+	 * @return void
+	 */
+	public function ajax_enable_sync() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$sync = MSH_Remote_Sync::get_instance();
+		$result = $sync->enable();
+
+		if ( $result['success'] ) {
+			wp_send_json_success( $result );
+		} else {
+			wp_send_json_error( $result );
+		}
+	}
+
+	/**
+	 * AJAX handler: Disable cloud sync.
+	 *
+	 * @return void
+	 */
+	public function ajax_disable_sync() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$sync = MSH_Remote_Sync::get_instance();
+		$result = $sync->disable();
+
+		if ( $result['success'] ) {
+			wp_send_json_success( $result );
+		} else {
+			wp_send_json_error( $result );
+		}
+	}
+
+	/**
+	 * AJAX handler: Sync now.
+	 *
+	 * @return void
+	 */
+	public function ajax_sync_now() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$sync = MSH_Remote_Sync::get_instance();
+		$result = $sync->sync_now();
+
+		if ( $result['success'] ) {
+			wp_send_json_success( $result );
+		} else {
+			wp_send_json_error( $result );
+		}
+	}
+
+	/**
+	 * AJAX handler for resolving a single conflict.
+	 *
+	 * @return void
+	 */
+	public function ajax_resolve_conflict() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		$index = isset( $_POST['index'] ) ? absint( $_POST['index'] ) : -1;
+		$choice = isset( $_POST['choice'] ) ? sanitize_text_field( $_POST['choice'] ) : '';
+
+		if ( $index < 0 || ! in_array( $choice, array( 'local', 'remote' ), true ) ) {
+			wp_send_json_error( array( 'message' => __( 'Invalid parameters.', 'msh-image-optimizer' ) ) );
+		}
+
+		$conflicts = get_option( 'msh_sync_conflicts', array() );
+
+		if ( ! isset( $conflicts[ $index ] ) ) {
+			wp_send_json_error( array( 'message' => __( 'Conflict not found.', 'msh-image-optimizer' ) ) );
+		}
+
+		$conflict = $conflicts[ $index ];
+
+		// Apply the chosen value to the database
+		global $wpdb;
+		$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+
+		$value_to_apply = ( 'local' === $choice ) ? $conflict['local_value'] : $conflict['remote_value'];
+
+		$updated = $wpdb->update(
+			$cache_table,
+			array(
+				'manual_value' => $value_to_apply,
+				'chosen_source' => 'manual',
+				'updated_at' => current_time( 'mysql' ),
+			),
+			array(
+				'attachment_id' => $conflict['attachment_id'],
+				'locale' => $conflict['locale'],
+				'field' => $conflict['field'],
+			)
+		);
+
+		if ( false === $updated ) {
+			wp_send_json_error( array( 'message' => __( 'Failed to apply resolution.', 'msh-image-optimizer' ) ) );
+		}
+
+		// Remove the conflict from the array
+		array_splice( $conflicts, $index, 1 );
+		update_option( 'msh_sync_conflicts', $conflicts, false );
+
+		wp_send_json_success( array(
+			'message' => __( 'Conflict resolved.', 'msh-image-optimizer' ),
+			'remaining' => count( $conflicts ),
+		) );
+	}
+
+	/**
+	 * AJAX handler for clearing all conflicts.
+	 *
+	 * @return void
+	 */
+	public function ajax_clear_conflicts() {
+		check_ajax_referer( 'msh_hub_nonce', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => __( 'Permission denied.', 'msh-image-optimizer' ) ) );
+		}
+
+		delete_option( 'msh_sync_conflicts' );
+
+		wp_send_json_success( array(
+			'message' => __( 'All conflicts cleared.', 'msh-image-optimizer' ),
+		) );
 	}
 }
 
