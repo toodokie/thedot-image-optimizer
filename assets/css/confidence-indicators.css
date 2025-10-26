@@ -1,0 +1,100 @@
+/**
+ * Confidence Indicators CSS
+ * Visual indicators for metadata/filename suggestion confidence levels
+ *
+ * Levels:
+ * - High (70-100): Green, 3 stars
+ * - Medium (40-69): Yellow/Amber, 2 stars
+ * - Low (0-39): Red, 1 star
+ */
+
+/* Confidence Badge */
+.msh-confidence {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 3px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    vertical-align: middle;
+    margin-left: 6px;
+}
+
+.msh-confidence.high {
+    background: #d4edda;
+    color: #155724;
+    border: 1px solid #c3e6cb;
+}
+
+.msh-confidence.medium {
+    background: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeaa7;
+}
+
+.msh-confidence.low {
+    background: #f8d7da;
+    color: #721c24;
+    border: 1px solid #f5c6cb;
+}
+
+/* Confidence Stars */
+.msh-stars {
+    display: inline-block;
+    color: #ffc107;
+    font-size: 14px;
+    margin-left: 4px;
+    vertical-align: middle;
+    letter-spacing: 1px;
+}
+
+.msh-stars.high::before {
+    content: "★★★";
+}
+
+.msh-stars.medium::before {
+    content: "★★☆";
+}
+
+.msh-stars.low::before {
+    content: "★☆☆";
+}
+
+/* Low confidence warning border in grid view */
+.attachment.msh-low-confidence {
+    border: 2px solid #ffc107 !important;
+    box-shadow: 0 0 5px rgba(255, 193, 7, 0.5);
+}
+
+.attachment.msh-low-confidence .thumbnail {
+    opacity: 0.85;
+}
+
+/* Confidence indicator in filename suggestion card */
+.filename-suggestion-card .msh-confidence {
+    float: right;
+    margin-top: -2px;
+}
+
+/* Confidence tooltip */
+.msh-confidence[title] {
+    cursor: help;
+}
+
+/* Make stars slightly smaller in compact views */
+.compact-view .msh-stars {
+    font-size: 12px;
+}
+
+/* Responsive adjustments */
+@media (max-width: 782px) {
+    .msh-confidence {
+        font-size: 10px;
+        padding: 1px 6px;
+    }
+
+    .msh-stars {
+        font-size: 12px;
+    }
+}

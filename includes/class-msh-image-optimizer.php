@@ -6601,6 +6601,14 @@ class MSH_Image_Optimizer {
 					update_post_meta( $attachment_id, '_msh_suggested_filename', $suggested_filename );
 					update_post_meta( $attachment_id, 'msh_filename_last_suggested', time() );
 					update_post_meta( $attachment_id, '_msh_suggested_filename_context', $current_context_signature );
+
+					// Calculate and store confidence score
+					$filename_slug    = pathinfo( $suggested_filename, PATHINFO_FILENAME );
+					$confidence_score = $this->calculate_confidence_score( $attachment_id, $context_info, $filename_slug );
+					$confidence_level = $this->get_confidence_level( $confidence_score );
+					update_post_meta( $attachment_id, '_msh_confidence_score', $confidence_score );
+					update_post_meta( $attachment_id, '_msh_confidence_level', $confidence_level );
+
 					$filename_context_mismatch = false;
 				}
 			}
@@ -6620,9 +6628,24 @@ class MSH_Image_Optimizer {
 					update_post_meta( $attachment_id, '_msh_suggested_filename', $suggested_filename );
 					update_post_meta( $attachment_id, 'msh_filename_last_suggested', time() );
 					update_post_meta( $attachment_id, '_msh_suggested_filename_context', $current_context_signature );
+
+					// Calculate and store confidence score
+					$filename_slug      = pathinfo( $suggested_filename, PATHINFO_FILENAME );
+					$confidence_score   = $this->calculate_confidence_score( $attachment_id, $context_info, $filename_slug );
+					$confidence_level   = $this->get_confidence_level( $confidence_score );
+					update_post_meta( $attachment_id, '_msh_confidence_score', $confidence_score );
+					update_post_meta( $attachment_id, '_msh_confidence_level', $confidence_level );
+
 					$filename_context_mismatch = false;
 				}
 			}
+		}
+
+		// Retrieve confidence score for existing suggestions
+		$confidence_score = (int) get_post_meta( $attachment_id, '_msh_confidence_score', true );
+		$confidence_level = get_post_meta( $attachment_id, '_msh_confidence_level', true );
+		if ( empty( $confidence_level ) && $confidence_score > 0 ) {
+			$confidence_level = $this->get_confidence_level( $confidence_score );
 		}
 
 		$quality_note = get_post_meta( $attachment_id, '_msh_filename_quality_note', true );
@@ -6691,6 +6714,8 @@ class MSH_Image_Optimizer {
 			'generated_meta'            => $generated_meta,
 			'optimization_potential'    => $optimization_potential,
 			'suggested_filename'        => $suggested_filename,
+			'confidence_score'          => $confidence_score,
+			'confidence_level'          => $confidence_level,
 			'filename_quality_note'     => $quality_note,
 			'optimized_date'            => $optimized_date,
 			'optimization_status'       => $optimization_status,
@@ -6956,6 +6981,126 @@ class MSH_Image_Optimizer {
 		}
 
 		return 'blog_featured'; // Default context
+	}
+
+	/**
+	 * Calculate confidence score for metadata/filename suggestion.
+	 * Score range: 0-100
+	 * - 0-39: Low confidence (unreliable)
+	 * - 40-69: Medium confidence (acceptable)
+	 * - 70-100: High confidence (reliable)
+	 *
+	 * @since 1.2.0
+	 * @param int    $attachment_id Attachment ID.
+	 * @param array  $context       Context array with scene detection data.
+	 * @param string $filename      Optional. Generated filename for quality scoring.
+	 * @return int Confidence score (0-100).
+	 */
+	private function calculate_confidence_score( $attachment_id, $context, $filename = '' ) {
+		$score = 50; // Base score
+
+		// Manual override is always high confidence
+		if ( ! empty( $context['manual'] ) && $context['manual'] === true ) {
+			return 100;
+		}
+
+		// Scene detection quality
+		if ( ! empty( $context['type'] ) && $context['type'] !== 'unknown' ) {
+			$score += 10;
+			// Token-based scene matching adds extra confidence
+			if ( ! empty( $context['scene_source'] ) && $context['scene_source'] === 'token_match' ) {
+				$score += 10;
+			}
+		} else {
+			$score -= 10;
+		}
+
+		// Featured image context adds confidence
+		if ( ! empty( $context['page_heading'] ) ) {
+			$score += 5;
+		}
+		if ( ! empty( $context['page_excerpt'] ) ) {
+			$score += 3;
+		}
+
+		// Image caption adds confidence
+		if ( ! empty( $context['image_caption'] ) ) {
+			$score += 5;
+		}
+
+		// Industry alignment check
+		if ( $this->is_healthcare_industry( $context['industry'] ) ) {
+			$healthcare_scenes = array( 'team', 'testimonial', 'facility', 'equipment', 'clinical', 'service-icon' );
+			if ( in_array( $context['type'], $healthcare_scenes, true ) ) {
+				$score += 5;
+			}
+		}
+
+		// Filename quality
+		if ( ! empty( $filename ) ) {
+			$filename_score = $this->score_filename_quality( $filename );
+			$score         += $filename_score;
+		}
+
+		// Clamp to 0-100 range
+		return max( 0, min( 100, $score ) );
+	}
+
+	/**
+	 * Score filename quality based on structure and word count.
+	 *
+	 * @since 1.2.0
+	 * @param string $filename Generated filename slug.
+	 * @return int Score adjustment (-10 to +10).
+	 */
+	private function score_filename_quality( $filename ) {
+		$score      = 0;
+		$word_count = count( explode( '-', $filename ) );
+
+		// Ideal word count: 3-4 words
+		if ( $word_count >= 3 && $word_count <= 4 ) {
+			$score += 5;
+		} elseif ( $word_count < 3 ) {
+			$score -= 5; // Too short
+		} elseif ( $word_count > 6 ) {
+			$score -= 5; // Too long
+		}
+
+		// Check for generic words (reduce confidence)
+		$generic_words = array( 'image', 'photo', 'picture', 'untitled', 'attachment', 'file' );
+		foreach ( $generic_words as $word ) {
+			if ( strpos( $filename, $word ) !== false ) {
+				$score -= 5;
+				break;
+			}
+		}
+
+		// Check for location/business name (increase confidence)
+		if ( $this->business_name !== '' ) {
+			$business_slug = $this->slugify( $this->business_name );
+			if ( strpos( $filename, $business_slug ) !== false ) {
+				$score += 5;
+			}
+		}
+
+		return $score;
+	}
+
+	/**
+	 * Get confidence level label from score.
+	 *
+	 * @since 1.2.0
+	 * @param int $score Confidence score (0-100).
+	 * @return string Confidence level: 'high', 'medium', or 'low'.
+	 */
+	private function get_confidence_level( $score ) {
+		if ( $score >= 70 ) {
+			return 'high';
+		} elseif ( $score >= 40 ) {
+			return 'medium';
+		} else {
+			return 'low';
+		}
 	}
 
 	/**

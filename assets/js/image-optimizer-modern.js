@@ -2202,9 +2202,19 @@
                 return '';
             }
 
+            // Build confidence indicator
+            const confidenceLevel = image.confidence_level || 'medium';
+            const confidenceScore = image.confidence_score || 50;
+            const confidenceBadge = `<span class="msh-confidence ${confidenceLevel}" title="Confidence: ${confidenceScore}/100">${confidenceLevel}</span>`;
+            const confidenceStars = `<span class="msh-stars ${confidenceLevel}" title="Confidence: ${confidenceScore}/100"></span>`;
+
             return `
                 <div class="filename-suggestion-card">
-                    <div class="filename-suggestion-heading">Suggested filename</div>
+                    <div class="filename-suggestion-heading">
+                        Suggested filename
+                        ${confidenceBadge}
+                        ${confidenceStars}
+                    </div>
                     <div class="filename-suggestion-display suggestion-filename-display" data-id="${image.ID}">${this.escapeHtml(image.suggested_filename)}</div>
                     <input type="text" class="filename-suggestion-edit suggestion-filename-edit" data-id="${image.ID}" value="${this.escapeHtml(image.suggested_filename)}" style="display: none;" />
                     <div class="filename-suggestion-actions">

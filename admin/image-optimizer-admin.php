@@ -332,6 +332,13 @@ class MSH_Image_Optimizer_Admin {
 			array( 'msh-image-optimizer-fonts' ),
 			MSH_Image_Optimizer_Plugin::VERSION
 		);
+
+		wp_enqueue_style(
+			'msh-confidence-indicators',
+			trailingslashit( MSH_IO_ASSETS_URL ) . 'css/confidence-indicators.css',
+			array(),
+			MSH_Image_Optimizer_Plugin::VERSION
+		);
 	}
 
 	/**
