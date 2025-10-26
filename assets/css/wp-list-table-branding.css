@@ -1,0 +1,451 @@
+/**
+ * WordPress List Table - Brand-Compliant Styling
+ * The Dot brand colors and typography
+ *
+ * Brand Guidelines: https://www.figma.com/design/Wo0x0N3aJYTVKhGbcVxGbu/The-Dot-Brand-Guidelines
+ *
+ * Applied to: .wp-list-table.widefat.fixed.striped
+ * Used in:
+ * - Hub → Metadata tab (class-msh-hub-page.php:418)
+ * - Settings → Feature Flags (image-optimizer-settings.php:568, 850)
+ * - Context Analytics (context-analytics-page.php:223, 261, 300)
+ *
+ * Note: Brand colors and variables are defined in brand-guidelines.css
+ */
+
+/* Base Table Structure */
+.msh-hub-page .wp-list-table,
+.msh-settings-card .wp-list-table,
+.msh-analytics-widget .wp-list-table,
+.wrap .wp-list-table.msh-metadata-table,
+.wrap .wp-list-table.msh-cache-table {
+    width: 100%;
+    border-collapse: collapse;
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    background: #fff;
+    font-family: var(--msh-font-body);
+    margin: 0;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+/* Table Header */
+.msh-hub-page .wp-list-table thead th,
+.msh-settings-card .wp-list-table thead th,
+.msh-analytics-widget .wp-list-table thead th,
+.wrap .wp-list-table.msh-metadata-table thead th,
+.wrap .wp-list-table.msh-cache-table thead th {
+    font-family: var(--msh-font-heading);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 11px;
+    font-weight: 600;
+    background: var(--msh-cream);
+    color: var(--msh-charcoal);
+    border-bottom: 2px solid #e5e5e5;
+    padding: 12px 16px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+/* First header cell - left alignment with padding */
+.msh-hub-page .wp-list-table thead th:first-child,
+.msh-settings-card .wp-list-table thead th:first-child,
+.msh-analytics-widget .wp-list-table thead th:first-child,
+.wrap .wp-list-table.msh-metadata-table thead th:first-child,
+.wrap .wp-list-table.msh-cache-table thead th:first-child {
+    padding-left: 20px;
+}
+
+/* Last header cell - right alignment with padding */
+.msh-hub-page .wp-list-table thead th:last-child,
+.msh-settings-card .wp-list-table thead th:last-child,
+.msh-analytics-widget .wp-list-table thead th:last-child,
+.wrap .wp-list-table.msh-metadata-table thead th:last-child,
+.wrap .wp-list-table.msh-cache-table thead th:last-child {
+    padding-right: 20px;
+}
+
+/* Table Body Cells */
+.msh-hub-page .wp-list-table tbody td,
+.msh-hub-page .wp-list-table tbody th,
+.msh-settings-card .wp-list-table tbody td,
+.msh-settings-card .wp-list-table tbody th,
+.msh-analytics-widget .wp-list-table tbody td,
+.msh-analytics-widget .wp-list-table tbody th,
+.wrap .wp-list-table.msh-metadata-table tbody td,
+.wrap .wp-list-table.msh-metadata-table tbody th,
+.wrap .wp-list-table.msh-cache-table tbody td,
+.wrap .wp-list-table.msh-cache-table tbody th {
+    padding: 14px 16px;
+    border-bottom: 1px solid #f0f0f1;
+    vertical-align: middle;
+    font-family: var(--msh-font-body);
+    font-size: 13px;
+    color: var(--msh-charcoal);
+    line-height: 1.5;
+}
+
+/* First body cell - left alignment with padding */
+.msh-hub-page .wp-list-table tbody td:first-child,
+.msh-hub-page .wp-list-table tbody th:first-child,
+.msh-settings-card .wp-list-table tbody td:first-child,
+.msh-settings-card .wp-list-table tbody th:first-child,
+.msh-analytics-widget .wp-list-table tbody td:first-child,
+.msh-analytics-widget .wp-list-table tbody th:first-child,
+.wrap .wp-list-table.msh-metadata-table tbody td:first-child,
+.wrap .wp-list-table.msh-metadata-table tbody th:first-child,
+.wrap .wp-list-table.msh-cache-table tbody td:first-child,
+.wrap .wp-list-table.msh-cache-table tbody th:first-child {
+    padding-left: 20px;
+}
+
+/* Last body cell - right alignment with padding */
+.msh-hub-page .wp-list-table tbody td:last-child,
+.msh-hub-page .wp-list-table tbody th:last-child,
+.msh-settings-card .wp-list-table tbody td:last-child,
+.msh-settings-card .wp-list-table tbody th:last-child,
+.msh-analytics-widget .wp-list-table tbody td:last-child,
+.msh-analytics-widget .wp-list-table tbody th:last-child,
+.wrap .wp-list-table.msh-metadata-table tbody td:last-child,
+.wrap .wp-list-table.msh-metadata-table tbody th:last-child,
+.wrap .wp-list-table.msh-cache-table tbody td:last-child,
+.wrap .wp-list-table.msh-cache-table tbody th:last-child {
+    padding-right: 20px;
+}
+
+/* Row Header (th scope="row") - typically first column */
+.msh-hub-page .wp-list-table tbody th[scope="row"],
+.msh-settings-card .wp-list-table tbody th[scope="row"],
+.msh-analytics-widget .wp-list-table tbody th[scope="row"],
+.wrap .wp-list-table.msh-metadata-table tbody th[scope="row"],
+.wrap .wp-list-table.msh-cache-table tbody th[scope="row"] {
+    font-weight: 600;
+    color: var(--msh-charcoal);
+}
+
+.msh-hub-page .wp-list-table tbody th[scope="row"] strong,
+.msh-settings-card .wp-list-table tbody th[scope="row"] strong,
+.msh-analytics-widget .wp-list-table tbody th[scope="row"] strong,
+.wrap .wp-list-table.msh-metadata-table tbody th[scope="row"] strong,
+.wrap .wp-list-table.msh-cache-table tbody th[scope="row"] strong {
+    font-family: var(--msh-font-heading);
+    letter-spacing: 0.04em;
+    font-weight: 600;
+}
+
+/* Striped Rows - Brand Cream */
+.msh-hub-page .wp-list-table.striped > tbody > tr:nth-child(odd),
+.msh-settings-card .wp-list-table.striped > tbody > tr:nth-child(odd),
+.msh-analytics-widget .wp-list-table.striped > tbody > tr:nth-child(odd),
+.wrap .wp-list-table.msh-metadata-table.striped > tbody > tr:nth-child(odd),
+.wrap .wp-list-table.msh-cache-table.striped > tbody > tr:nth-child(odd) {
+    background: var(--msh-cream);
+}
+
+.msh-hub-page .wp-list-table.striped > tbody > tr:nth-child(even),
+.msh-settings-card .wp-list-table.striped > tbody > tr:nth-child(even),
+.msh-analytics-widget .wp-list-table.striped > tbody > tr:nth-child(even),
+.wrap .wp-list-table.msh-metadata-table.striped > tbody > tr:nth-child(even),
+.wrap .wp-list-table.msh-cache-table.striped > tbody > tr:nth-child(even) {
+    background: #fff;
+}
+
+/* Hover State */
+.msh-hub-page .wp-list-table tbody tr:hover,
+.msh-settings-card .wp-list-table tbody tr:hover,
+.msh-analytics-widget .wp-list-table tbody tr:hover,
+.wrap .wp-list-table.msh-metadata-table tbody tr:hover,
+.wrap .wp-list-table.msh-cache-table tbody tr:hover {
+    background: rgba(250, 249, 246, 0.7) !important;
+    transition: background 0.15s ease;
+}
+
+/* Code Elements in Tables (e.g., feature flag keys) */
+.msh-hub-page .wp-list-table code,
+.msh-settings-card .wp-list-table code,
+.msh-analytics-widget .wp-list-table code,
+.wrap .wp-list-table.msh-metadata-table code,
+.wrap .wp-list-table.msh-cache-table code {
+    font-family: 'Monaco', 'Menlo', 'Consolas', monospace;
+    font-size: 11px;
+    background: rgba(53, 51, 47, 0.06);
+    color: var(--msh-charcoal);
+    padding: 2px 6px;
+    border-radius: 3px;
+    border: 1px solid rgba(53, 51, 47, 0.1);
+    letter-spacing: 0.02em;
+}
+
+/* Description Text (smaller secondary text) */
+.msh-hub-page .wp-list-table .description,
+.msh-settings-card .wp-list-table .description,
+.msh-analytics-widget .wp-list-table .description,
+.wrap .wp-list-table.msh-metadata-table .description,
+.wrap .wp-list-table.msh-cache-table .description {
+    font-size: 12px;
+    color: var(--msh-warm-gray);
+    margin-top: 4px;
+    line-height: 1.4;
+}
+
+/* Select Elements in Tables */
+.msh-hub-page .wp-list-table select,
+.msh-settings-card .wp-list-table select,
+.msh-analytics-widget .wp-list-table select,
+.wrap .wp-list-table.msh-metadata-table select,
+.wrap .wp-list-table.msh-cache-table select {
+    font-family: var(--msh-font-body);
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    padding: 6px 28px 6px 10px;
+    font-size: 13px;
+    color: var(--msh-charcoal);
+    background: #fff;
+    background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" width="12" height="8" viewBox="0 0 12 8"%3e%3cpath fill="%2335332f" d="M1.41 0L6 4.58 10.59 0 12 1.41l-6 6-6-6z"/%3e%3c/svg%3e');
+    background-repeat: no-repeat;
+    background-position: right 8px center;
+    background-size: 12px 8px;
+    appearance: none;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    width: 100%;
+    max-width: 100%;
+    cursor: pointer;
+    transition: border-color 0.2s ease;
+}
+
+.msh-hub-page .wp-list-table select:focus,
+.msh-settings-card .wp-list-table select:focus,
+.msh-analytics-widget .wp-list-table select:focus,
+.wrap .wp-list-table.msh-metadata-table select:focus,
+.wrap .wp-list-table.msh-cache-table select:focus {
+    border-color: var(--msh-charcoal);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--msh-charcoal);
+}
+
+.msh-hub-page .wp-list-table select:hover,
+.msh-settings-card .wp-list-table select:hover,
+.msh-analytics-widget .wp-list-table select:hover,
+.wrap .wp-list-table.msh-metadata-table select:hover,
+.wrap .wp-list-table.msh-cache-table select:hover {
+    border-color: var(--msh-charcoal);
+}
+
+/* Input Elements in Tables */
+.msh-hub-page .wp-list-table input[type="text"],
+.msh-hub-page .wp-list-table input[type="number"],
+.msh-settings-card .wp-list-table input[type="text"],
+.msh-settings-card .wp-list-table input[type="number"],
+.msh-analytics-widget .wp-list-table input[type="text"],
+.msh-analytics-widget .wp-list-table input[type="number"],
+.wrap .wp-list-table.msh-metadata-table input[type="text"],
+.wrap .wp-list-table.msh-metadata-table input[type="number"],
+.wrap .wp-list-table.msh-cache-table input[type="text"],
+.wrap .wp-list-table.msh-cache-table input[type="number"] {
+    font-family: var(--msh-font-body);
+    border: 1px solid #e5e5e5;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 13px;
+    color: var(--msh-charcoal);
+    transition: border-color 0.2s ease;
+}
+
+.msh-hub-page .wp-list-table input[type="text"]:focus,
+.msh-hub-page .wp-list-table input[type="number"]:focus,
+.msh-settings-card .wp-list-table input[type="text"]:focus,
+.msh-settings-card .wp-list-table input[type="number"]:focus,
+.msh-analytics-widget .wp-list-table input[type="text"]:focus,
+.msh-analytics-widget .wp-list-table input[type="number"]:focus,
+.wrap .wp-list-table.msh-metadata-table input[type="text"]:focus,
+.wrap .wp-list-table.msh-metadata-table input[type="number"]:focus,
+.wrap .wp-list-table.msh-cache-table input[type="text"]:focus,
+.wrap .wp-list-table.msh-cache-table input[type="number"]:focus {
+    border-color: var(--msh-charcoal);
+    outline: none;
+    box-shadow: 0 0 0 1px var(--msh-charcoal);
+}
+
+/* Empty State */
+.msh-hub-page .wp-list-table tbody tr.no-items td,
+.msh-settings-card .wp-list-table tbody tr.no-items td,
+.msh-analytics-widget .wp-list-table tbody tr.no-items td,
+.wrap .wp-list-table.msh-metadata-table tbody tr.no-items td,
+.wrap .wp-list-table.msh-cache-table tbody tr.no-items td {
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--msh-warm-gray);
+    font-style: italic;
+    font-size: 14px;
+}
+
+/* Remove Last Row Border */
+.msh-hub-page .wp-list-table tbody tr:last-child td,
+.msh-hub-page .wp-list-table tbody tr:last-child th,
+.msh-settings-card .wp-list-table tbody tr:last-child td,
+.msh-settings-card .wp-list-table tbody tr:last-child th,
+.msh-analytics-widget .wp-list-table tbody tr:last-child td,
+.msh-analytics-widget .wp-list-table tbody tr:last-child th,
+.wrap .wp-list-table.msh-metadata-table tbody tr:last-child td,
+.wrap .wp-list-table.msh-metadata-table tbody tr:last-child th,
+.wrap .wp-list-table.msh-cache-table tbody tr:last-child td,
+.wrap .wp-list-table.msh-cache-table tbody tr:last-child th {
+    border-bottom: none;
+}
+
+/* Thumbnail Images in Tables */
+.msh-hub-page .wp-list-table img.attachment-thumbnail,
+.msh-settings-card .wp-list-table img.attachment-thumbnail,
+.msh-analytics-widget .wp-list-table img.attachment-thumbnail,
+.wrap .wp-list-table.msh-metadata-table img.attachment-thumbnail,
+.wrap .wp-list-table.msh-cache-table img.attachment-thumbnail {
+    border-radius: 4px;
+    border: 1px solid #e5e5e5;
+    max-width: 60px;
+    height: auto;
+}
+
+/* Badges in Analytics Tables */
+.msh-analytics-widget .wp-list-table .msh-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 4px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-family: var(--msh-font-heading);
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    border: 1px solid transparent;
+    font-weight: 600;
+}
+
+.msh-analytics-widget .wp-list-table .msh-badge-good {
+    background: rgba(53, 51, 47, 0.08);
+    color: var(--msh-charcoal);
+}
+
+.msh-analytics-widget .wp-list-table .msh-badge-fair {
+    background: rgba(218, 255, 0, 0.15);
+    color: var(--msh-charcoal);
+    border-color: rgba(218, 255, 0, 0.45);
+}
+
+.msh-analytics-widget .wp-list-table .msh-badge-poor {
+    background: rgba(214, 54, 56, 0.08);
+    color: #d63638;
+    border-color: rgba(214, 54, 56, 0.2);
+}
+
+/* Feature Flags Table - Specific Column Widths */
+.msh-settings-card .wp-list-table thead th:nth-child(1),
+.msh-settings-card .wp-list-table tbody th:nth-child(1) {
+    width: 24%;
+    min-width: 180px;
+}
+
+.msh-settings-card .wp-list-table thead th:nth-child(2),
+.msh-settings-card .wp-list-table tbody td:nth-child(2) {
+    width: 8%;
+    min-width: 80px;
+}
+
+.msh-settings-card .wp-list-table thead th:nth-child(3),
+.msh-settings-card .wp-list-table tbody td:nth-child(3) {
+    width: 16%;
+    min-width: 160px;
+}
+
+.msh-settings-card .wp-list-table thead th:nth-child(4),
+.msh-settings-card .wp-list-table tbody td:nth-child(4) {
+    width: 12%;
+    min-width: 110px;
+}
+
+.msh-settings-card .wp-list-table thead th:nth-child(5),
+.msh-settings-card .wp-list-table tbody td:nth-child(5) {
+    width: 10%;
+    min-width: 90px;
+}
+
+.msh-settings-card .wp-list-table thead th:nth-child(6),
+.msh-settings-card .wp-list-table tbody td:nth-child(6) {
+    width: 30%;
+}
+
+/* Prevent text wrapping in narrow columns */
+.msh-settings-card .wp-list-table tbody td:nth-child(2) select,
+.msh-settings-card .wp-list-table tbody td:nth-child(3) select,
+.msh-settings-card .wp-list-table tbody td:nth-child(4),
+.msh-settings-card .wp-list-table tbody td:nth-child(5) {
+    white-space: nowrap;
+}
+
+/* Responsive Adjustments */
+@media screen and (max-width: 782px) {
+    .msh-hub-page .wp-list-table thead th,
+    .msh-settings-card .wp-list-table thead th,
+    .msh-analytics-widget .wp-list-table thead th,
+    .wrap .wp-list-table.msh-metadata-table thead th,
+    .wrap .wp-list-table.msh-cache-table thead th {
+        padding: 10px 12px;
+        font-size: 10px;
+    }
+
+    .msh-hub-page .wp-list-table thead th:first-child,
+    .msh-settings-card .wp-list-table thead th:first-child,
+    .msh-analytics-widget .wp-list-table thead th:first-child,
+    .wrap .wp-list-table.msh-metadata-table thead th:first-child,
+    .wrap .wp-list-table.msh-cache-table thead th:first-child {
+        padding-left: 16px;
+    }
+
+    .msh-hub-page .wp-list-table thead th:last-child,
+    .msh-settings-card .wp-list-table thead th:last-child,
+    .msh-analytics-widget .wp-list-table thead th:last-child,
+    .wrap .wp-list-table.msh-metadata-table thead th:last-child,
+    .wrap .wp-list-table.msh-cache-table thead th:last-child {
+        padding-right: 16px;
+    }
+
+    .msh-hub-page .wp-list-table tbody td,
+    .msh-hub-page .wp-list-table tbody th,
+    .msh-settings-card .wp-list-table tbody td,
+    .msh-settings-card .wp-list-table tbody th,
+    .msh-analytics-widget .wp-list-table tbody td,
+    .msh-analytics-widget .wp-list-table tbody th,
+    .wrap .wp-list-table.msh-metadata-table tbody td,
+    .wrap .wp-list-table.msh-metadata-table tbody th,
+    .wrap .wp-list-table.msh-cache-table tbody td,
+    .wrap .wp-list-table.msh-cache-table tbody th {
+        padding: 12px 12px;
+        font-size: 12px;
+    }
+
+    .msh-hub-page .wp-list-table tbody td:first-child,
+    .msh-hub-page .wp-list-table tbody th:first-child,
+    .msh-settings-card .wp-list-table tbody td:first-child,
+    .msh-settings-card .wp-list-table tbody th:first-child,
+    .msh-analytics-widget .wp-list-table tbody td:first-child,
+    .msh-analytics-widget .wp-list-table tbody th:first-child,
+    .wrap .wp-list-table.msh-metadata-table tbody td:first-child,
+    .wrap .wp-list-table.msh-metadata-table tbody th:first-child,
+    .wrap .wp-list-table.msh-cache-table tbody td:first-child,
+    .wrap .wp-list-table.msh-cache-table tbody th:first-child {
+        padding-left: 16px;
+    }
+
+    .msh-hub-page .wp-list-table tbody td:last-child,
+    .msh-hub-page .wp-list-table tbody th:last-child,
+    .msh-settings-card .wp-list-table tbody td:last-child,
+    .msh-settings-card .wp-list-table tbody th:last-child,
+    .msh-analytics-widget .wp-list-table tbody td:last-child,
+    .msh-analytics-widget .wp-list-table tbody th:last-child,
+    .wrap .wp-list-table.msh-metadata-table tbody td:last-child,
+    .wrap .wp-list-table.msh-metadata-table tbody th:last-child,
+    .wrap .wp-list-table.msh-cache-table tbody td:last-child,
+    .wrap .wp-list-table.msh-cache-table tbody th:last-child {
+        padding-right: 16px;
+    }
+}

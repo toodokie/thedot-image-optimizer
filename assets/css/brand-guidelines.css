@@ -1,0 +1,148 @@
+/**
+ * The Dot Brand Guidelines - Centralized Variables
+ *
+ * All brand colors, typography, and design tokens in one place.
+ * Import this file first before any component-specific CSS.
+ *
+ * Brand Guidelines: https://www.figma.com/design/Wo0x0N3aJYTVKhGbcVxGbu/The-Dot-Brand-Guidelines
+ *
+ * @package MSH_Image_Optimizer
+ * @since 1.0.0
+ */
+
+:root {
+    /* ============================================
+       BRAND COLORS
+       The Dot's core color palette
+       ============================================ */
+
+    /* Primary Colors */
+    --msh-charcoal: #35332f;      /* Primary text, headings, dark elements */
+    --msh-warm-gray: #8b8883;     /* Secondary text, muted elements */
+    --msh-cream: #FAF9F6;         /* Backgrounds, subtle highlights */
+
+    /* Semantic Colors */
+    --msh-success: #46b450;       /* Success states, completed actions */
+    --msh-warning: #ffb900;       /* Warning states, attention needed */
+    --msh-error: #d63638;         /* Error states, destructive actions */
+    --msh-info: #00a0d2;          /* Info states, helpful tips */
+
+    /* Neutral Colors */
+    --msh-white: #ffffff;
+    --msh-black: #000000;
+    --msh-border: #e5e5e5;        /* Default border color */
+    --msh-border-light: #f0f0f1;  /* Lighter borders, subtle dividers */
+
+    /* Opacity Variants (for overlays, shadows) */
+    --msh-charcoal-opacity-10: rgba(53, 51, 47, 0.1);
+    --msh-charcoal-opacity-20: rgba(53, 51, 47, 0.2);
+    --msh-charcoal-opacity-40: rgba(53, 51, 47, 0.4);
+    --msh-charcoal-opacity-60: rgba(53, 51, 47, 0.6);
+    --msh-charcoal-opacity-80: rgba(53, 51, 47, 0.8);
+
+    --msh-cream-opacity-70: rgba(250, 249, 246, 0.7);
+    --msh-cream-opacity-90: rgba(250, 249, 246, 0.9);
+
+    /* ============================================
+       TYPOGRAPHY
+       Font families and weights
+       ============================================ */
+
+    /* Font Families */
+    --msh-font-heading: 'futura-pt', sans-serif;      /* Headings, labels, buttons, UI */
+    --msh-font-body: 'ff-real-text-pro', sans-serif;  /* Body text, descriptions, long-form */
+    --msh-font-mono: 'Monaco', 'Menlo', 'Consolas', monospace; /* Code, technical text */
+
+    /* Font Weights */
+    --msh-weight-light: 300;      /* Body, inputs, most UI elements */
+    --msh-weight-normal: 400;     /* Headings, buttons, labels, emphasis */
+    --msh-weight-medium: 500;     /* Strong emphasis only (rare use) */
+    --msh-weight-bold: 600;       /* Very strong emphasis, critical alerts */
+
+    /* ============================================
+       SPACING SYSTEM
+       Consistent spacing scale (4px base unit)
+       ============================================ */
+    --msh-space-xs: 4px;
+    --msh-space-sm: 8px;
+    --msh-space-md: 12px;
+    --msh-space-lg: 16px;
+    --msh-space-xl: 20px;
+    --msh-space-2xl: 24px;
+    --msh-space-3xl: 32px;
+    --msh-space-4xl: 40px;
+    --msh-space-5xl: 48px;
+
+    /* ============================================
+       BORDER RADIUS
+       Consistent rounding for UI elements
+       ============================================ */
+    --msh-radius-sm: 3px;         /* Badges, small pills */
+    --msh-radius-md: 4px;         /* Inputs, tables, cards */
+    --msh-radius-lg: 6px;         /* Buttons, larger cards */
+    --msh-radius-xl: 8px;         /* Modals, large containers */
+    --msh-radius-full: 999px;     /* Fully rounded (badges, avatars) */
+
+    /* ============================================
+       SHADOWS
+       Elevation system for depth
+       ============================================ */
+    --msh-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.04);
+    --msh-shadow-md: 0 1px 3px rgba(0, 0, 0, 0.08);
+    --msh-shadow-lg: 0 4px 8px rgba(0, 0, 0, 0.12);
+    --msh-shadow-xl: 0 8px 16px rgba(0, 0, 0, 0.16);
+
+    /* ============================================
+       TRANSITIONS
+       Consistent animation timing
+       ============================================ */
+    --msh-transition-fast: 0.15s ease;
+    --msh-transition-base: 0.2s ease;
+    --msh-transition-slow: 0.3s ease;
+
+    /* ============================================
+       Z-INDEX SCALE
+       Layering system to prevent conflicts
+       ============================================ */
+    --msh-z-base: 1;              /* Default content layer */
+    --msh-z-dropdown: 100;        /* Dropdowns, tooltips */
+    --msh-z-sticky: 200;          /* Sticky headers, sidebars */
+    --msh-z-modal-backdrop: 900;  /* Modal backdrops */
+    --msh-z-modal: 1000;          /* Modals, overlays */
+    --msh-z-toast: 1100;          /* Toast notifications */
+    --msh-z-tooltip: 1200;        /* Tooltips (highest) */
+}
+
+/**
+ * ============================================
+ * BRAND GUIDELINES QUICK REFERENCE
+ * ============================================
+ *
+ * COLORS:
+ * - Primary text: var(--msh-charcoal)
+ * - Secondary text: var(--msh-warm-gray)
+ * - Backgrounds: var(--msh-cream)
+ * - Borders: var(--msh-border)
+ * - Success: var(--msh-success)
+ * - Error: var(--msh-error)
+ *
+ * TYPOGRAPHY:
+ * - Headings: var(--msh-font-heading)
+ * - Body: var(--msh-font-body)
+ * - Code: var(--msh-font-mono)
+ *
+ * SPACING:
+ * - Tight: var(--msh-space-sm) [8px]
+ * - Normal: var(--msh-space-lg) [16px]
+ * - Loose: var(--msh-space-2xl) [24px]
+ *
+ * BORDERS:
+ * - Inputs/Tables: var(--msh-radius-md) [4px]
+ * - Buttons: var(--msh-radius-lg) [6px]
+ * - Badges: var(--msh-radius-full) [999px]
+ *
+ * SHADOWS:
+ * - Subtle: var(--msh-shadow-sm)
+ * - Default: var(--msh-shadow-md)
+ * - Elevated: var(--msh-shadow-lg)
+ */

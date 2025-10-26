@@ -30,6 +30,13 @@ class MSH_I18n_Metadata {
 	private static $instance = null;
 
 	/**
+	 * Request-level cache for metadata queries
+	 *
+	 * @var array
+	 */
+	private $metadata_cache = array();
+
+	/**
 	 * Get singleton instance
 	 *
 	 * @return MSH_I18n_Metadata
@@ -98,12 +105,19 @@ class MSH_I18n_Metadata {
 			$locale = get_locale();
 		}
 
+		// Check request-level cache first
+		$cache_key = $media_id . '_' . $locale;
+		if ( isset( $this->metadata_cache[ $cache_key ] ) ) {
+			return $this->metadata_cache[ $cache_key ];
+		}
+
 		$site_locale = get_locale();
 
 		// Try requested locale
 		$metadata = $this->get_metadata( $media_id, $locale );
 		if ( $metadata ) {
 			$metadata['_source'] = 'locale:' . $locale;
+			$this->metadata_cache[ $cache_key ] = $metadata;
 			return $metadata;
 		}
 
@@ -112,6 +126,7 @@ class MSH_I18n_Metadata {
 			$metadata = $this->get_metadata( $media_id, $site_locale );
 			if ( $metadata ) {
 				$metadata['_source'] = 'locale:' . $site_locale . ' (site default)';
+				$this->metadata_cache[ $cache_key ] = $metadata;
 				return $metadata;
 			}
 		}
@@ -120,6 +135,7 @@ class MSH_I18n_Metadata {
 		$metadata = $this->get_metadata( $media_id, 'default' );
 		if ( $metadata ) {
 			$metadata['_source'] = 'locale:default';
+			$this->metadata_cache[ $cache_key ] = $metadata;
 			return $metadata;
 		}
 
@@ -137,9 +153,12 @@ class MSH_I18n_Metadata {
 				'approved'     => 0,
 				'_source'      => 'wordpress',
 			);
+			$this->metadata_cache[ $cache_key ] = $metadata;
 			return $metadata;
 		}
 
+		// Cache null result to prevent repeated queries
+		$this->metadata_cache[ $cache_key ] = null;
 		return null;
 	}
 

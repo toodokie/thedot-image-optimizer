@@ -3,7 +3,7 @@
  * Plugin Name: MSH Image Optimizer
  * Plugin URI: https://github.com/toodokie/thedot-image-optimizer
  * Description: Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking.
- * Version: 1.2.0
+ * Version: 1.2.1
  * Author: Main Street Health
  * Author URI: https://github.com/toodokie
  * Text Domain: msh-image-optimizer
@@ -19,7 +19,7 @@ if (!defined('ABSPATH')) {
 }
 
 final class MSH_Image_Optimizer_Plugin {
-    const VERSION = '1.2.0';
+    const VERSION = '1.2.1';
 
     private static $instance = null;
 
@@ -60,6 +60,7 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-url-variation-detector.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-targeted-replacement-engine.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-backup-verification-system.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-feature-flags.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-hash-cache-manager.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-usage-index.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-usage-index-background.php';
@@ -79,6 +80,10 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-manual-edit-protection.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-tinydot-loader.php';
+
+        // Media format helpers (Phase 6 - AVIF compatibility)
+        require_once MSH_IO_PLUGIN_DIR . 'includes/functions-media-format.php';
 
         // Phase 4 - Advanced metadata governance.
         require_once MSH_IO_PLUGIN_DIR . 'includes/phase4/class-msh-version-manager.php';
@@ -139,9 +144,22 @@ final class MSH_Image_Optimizer_Plugin {
         MSH_Telemetry::get_instance();
         MSH_Remote_Sync::get_instance();
 
+        // Migration Framework
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-migration-helper.php';
+
+        // Phase 6: Template Intelligence
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-template-manager.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-template-matcher.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-template-monitor.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-template-admin-notices.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-shadow-engine.php';
+
         if ( defined( 'WP_CLI' ) && WP_CLI ) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-database-cli.php';
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-jobs-cli.php';
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-feature-flags-cli.php';
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-migrate-cli.php';
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-template-cli.php';
         }
 
         // Phase 5+9: Helper functions (Public API for frontend)
@@ -195,6 +213,7 @@ final class MSH_Image_Optimizer_Plugin {
         if (class_exists('MSH_Context_AI_Integration')) {
             MSH_Context_AI_Integration::get_instance();
         }
+        // Phase 5: i18n metadata support with request-level caching
         if (class_exists('MSH_I18n_Metadata')) {
             MSH_I18n_Metadata::get_instance();
         }
@@ -202,6 +221,7 @@ final class MSH_Image_Optimizer_Plugin {
         if (class_exists('MSH_Queue_Manager')) {
             MSH_Queue_Manager::get_instance();
         }
+        // Phase 5: i18n integration with recursion protection
         if (class_exists('MSH_I18n_Integration')) {
             MSH_I18n_Integration::get_instance();
         }
@@ -284,5 +304,8 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
     }
     if ( class_exists( 'MSH_Jobs_CLI' ) ) {
         WP_CLI::add_command( 'msh jobs', 'MSH_Jobs_CLI' );
+    }
+    if ( class_exists( 'MSH_Migrate_CLI' ) ) {
+        WP_CLI::add_command( 'msh migrate', 'MSH_Migrate_CLI' );
     }
 }

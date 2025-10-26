@@ -181,6 +181,26 @@ class MSH_Usage_Index_Background {
 			return;
 		}
 
+		// For single uploads, index synchronously for instant feedback
+		// Check if this is likely a single upload (no batch in progress)
+		$state = $this->get_state();
+		$queue_size = isset( $state['queue'] ) ? count( $state['queue'] ) : 0;
+
+		// If queue is small (≤ 5 items) or not running, process immediately
+		if ( $queue_size <= 5 && ( ! isset( $state['status'] ) || $state['status'] !== 'running' ) ) {
+			$usage_index = MSH_Image_Usage_Index::get_instance();
+			if ( method_exists( $usage_index, 'index_attachment_usage' ) ) {
+				try {
+					$usage_index->index_attachment_usage( $attachment_id, true );
+					return; // Successfully indexed, no need to queue
+				} catch ( Exception $e ) {
+					// Failed, fall back to queueing
+					error_log( '[MSH Usage Index] Synchronous indexing failed for ' . $attachment_id . ': ' . $e->getMessage() );
+				}
+			}
+		}
+
+		// Fall back to async queue
 		$this->queue_attachments( array( $attachment_id ), 'attachment_change' );
 	}
 
@@ -241,7 +261,16 @@ class MSH_Usage_Index_Background {
 						$usage_index->index_attachment_usage( $attachment_id, ! empty( $state['force'] ) );
 						++$processed_this_run;
 					} catch ( Exception $e ) {
-						$errors[] = $e->getMessage();
+						$errors[] = sprintf(
+							__( 'Attachment %d: %s', 'msh-image-optimizer' ),
+							$attachment_id,
+							$e->getMessage()
+						);
+						// Store failed attachment ID for debugging
+						if ( ! isset( $state['failed_ids'] ) ) {
+							$state['failed_ids'] = array();
+						}
+						$state['failed_ids'][] = $attachment_id;
 					}
 				}
 				$state['queue'] = $queue;
@@ -270,7 +299,16 @@ class MSH_Usage_Index_Background {
 							$usage_index->index_attachment_usage( $attachment_id, ! empty( $state['force'] ) );
 							++$processed_this_run;
 						} catch ( Exception $e ) {
-							$errors[] = $e->getMessage();
+							$errors[] = sprintf(
+								__( 'Attachment %d: %s', 'msh-image-optimizer' ),
+								$attachment_id,
+								$e->getMessage()
+							);
+							// Store failed attachment ID for debugging
+							if ( ! isset( $state['failed_ids'] ) ) {
+								$state['failed_ids'] = array();
+							}
+							$state['failed_ids'][] = $attachment_id;
 						}
 					}
 					$state['last_id'] = (int) end( $batch_ids );
@@ -398,7 +436,8 @@ class MSH_Usage_Index_Background {
 			$total = $processed;
 		}
 
-		$pending_jobs = max( 0, $total - $processed ) + $queue_count;
+		// Pending jobs = simply what's left in queue (total already accounts for queue in queue_attachments)
+		$pending_jobs = $queue_count;
 
 		$status = array(
 			'status'             => $state['status'] ?? 'idle',
@@ -502,7 +541,22 @@ class MSH_Usage_Index_Background {
 	 */
 	private function schedule_runner( $delay = 0 ) {
 		$timestamp = time() + max( 0, (int) $delay );
-		if ( ! wp_next_scheduled( self::CRON_HOOK ) ) {
+		$next_scheduled = wp_next_scheduled( self::CRON_HOOK );
+
+		// Check if there's a stale cron event (scheduled but not run for > 5 minutes)
+		if ( $next_scheduled ) {
+			$state = $this->get_state();
+			$last_activity = isset( $state['last_activity'] ) ? (int) $state['last_activity'] : 0;
+
+			// If last activity was > 5 minutes ago and status is not complete, cron is stale
+			if ( $last_activity > 0 && ( time() - $last_activity ) > 300 && isset( $state['status'] ) && $state['status'] !== 'complete' ) {
+				// Clear stale cron event
+				wp_unschedule_event( $next_scheduled, self::CRON_HOOK );
+				$next_scheduled = false;
+			}
+		}
+
+		if ( ! $next_scheduled ) {
 			wp_schedule_single_event( $timestamp, self::CRON_HOOK );
 		}
 	}

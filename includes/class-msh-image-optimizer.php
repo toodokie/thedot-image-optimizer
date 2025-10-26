@@ -61,12 +61,12 @@ class MSH_Contextual_Meta_Generator {
 
 	private $service_keyword_map = array(
 		'physiotherapy'          => array(
-			'default'    => 'WSIB approved. MVA recovery. First responder programs.',
+			'default'    => 'Professional physiotherapy services. Comprehensive recovery programs.',
 			'assessment' => 'Functional assessments. Return-to-work evaluation.',
 			'acute'      => 'Immediate injury care. Same-day appointments available.',
 		),
 		'chiropractic'           => array(
-			'default'    => 'Spinal care. Workplace injury treatment. WSIB claims supported.',
+			'default'    => 'Spinal care. Workplace injury treatment. Insurance claims supported.',
 			'assessment' => 'Spinal assessment and posture evaluation services.',
 			'acute'      => 'Acute back and neck pain management with direct billing.',
 		),
@@ -76,24 +76,24 @@ class MSH_Contextual_Meta_Generator {
 			'acute'      => 'Pain relief for muscle strain and injury recovery.',
 		),
 		'acupuncture'            => array(
-			'default'    => 'Evidence-based acupuncture care. WSIB approved provider.',
+			'default'    => 'Evidence-based acupuncture care. Professional treatment services.',
 			'assessment' => 'Assessment-driven acupuncture plans for recovery.',
 			'acute'      => 'Immediate relief protocols for pain and inflammation.',
 		),
 		'rehabilitation'         => array(
-			'default'    => 'Return-to-work programs. WSIB approved. Direct billing.',
+			'default'    => 'Return-to-work programs. Professional rehabilitation. Direct billing.',
 			'assessment' => 'Functional capacity assessments and workplace evaluations.',
 			'acute'      => 'Comprehensive rehabilitation for acute injuries.',
 		),
 		'motor-vehicle-accident' => array(
-			'default'    => 'MVA rehabilitation with insurance coordination and direct billing.',
+			'default'    => 'Accident rehabilitation with insurance coordination and direct billing.',
 			'assessment' => 'Comprehensive post-collision assessments and recovery plans.',
 			'acute'      => 'Immediate collision injury support with medical-legal documentation.',
 		),
 		'workplace-injury'       => array(
-			'default'    => 'WSIB workplace injury rehabilitation with return-to-work planning.',
+			'default'    => 'Workplace injury rehabilitation with return-to-work planning.',
 			'assessment' => 'Workplace functional assessments and ergonomic planning.',
-			'acute'      => 'Rapid workplace injury care with WSIB reporting support.',
+			'acute'      => 'Rapid workplace injury care with documentation support.',
 		),
 		'first-responder'        => array(
 			'default'    => 'Dedicated first responder rehabilitation programs with duty-ready focus.',
@@ -1066,6 +1066,10 @@ class MSH_Contextual_Meta_Generator {
 			return '';
 		}
 
+		$text = preg_replace( '/^picsum\s*id[:#\-\s]*\d+\s*[–—\-:|]*\s*/i', '', $text );
+		$text = preg_replace( '/^placeholder[-\s_:]*/i', '', $text );
+		$text = preg_replace( '/^stock\s+(image|photo)/i', '', $text );
+		$text = preg_replace( '/^sample[-\s_:]*/i', '', $text );
 		$text = preg_replace( '/\b(image|photo|picture|graphic)\b/i', '', $text );
 		$text = preg_replace( '/[-_]?\d+x\d+[-_]?/i', '', $text );
 		$text = preg_replace( '/\balignment\b/i', '', $text );
@@ -1120,6 +1124,14 @@ class MSH_Contextual_Meta_Generator {
 			'classic gallery',
 			'markup',
 			'markup:',
+			'picsum',
+			'picsum id',
+			'placeholder',
+			'placeholder graphic',
+			'stock photo',
+			'stock image',
+			'default image',
+			'lorem ipsum',
 		);
 
 		if ( in_array( $value, $generic_terms, true ) || in_array( $normalized, $generic_terms, true ) ) {
@@ -1276,6 +1288,18 @@ class MSH_Contextual_Meta_Generator {
 				$context['page_type']  = get_post_type( $parent_post );
 				$context['page_title'] = $parent_post->post_title;
 				$this->apply_parent_context( $context, $parent_post, $attachment_id, $file_basename );
+
+				// Micro-upgrade: Extract lightweight page context (caption, H1, first paragraph)
+				$page_context = $this->extract_lightweight_page_context( $attachment_id, $parent_post );
+				if ( ! empty( $page_context['caption'] ) ) {
+					$context['image_caption'] = $page_context['caption'];
+				}
+				if ( ! empty( $page_context['heading'] ) ) {
+					$context['page_heading'] = $page_context['heading'];
+				}
+				if ( ! empty( $page_context['excerpt'] ) ) {
+					$context['page_excerpt'] = $page_context['excerpt'];
+				}
 			}
 		}
 
@@ -1288,23 +1312,40 @@ class MSH_Contextual_Meta_Generator {
 				$context['page_type']  = $first['post_type'];
 			}
 			$this->apply_usage_context( $context, $featured_usage, $file_basename );
+
+			// Micro-upgrade: For featured images, extract H1/first paragraph from first usage
+			if ( empty( $context['page_heading'] ) && ! empty( $first['ID'] ) ) {
+				$featured_post = get_post( $first['ID'] );
+				if ( $featured_post ) {
+					$page_context = $this->extract_lightweight_page_context( $attachment_id, $featured_post );
+					if ( ! empty( $page_context['heading'] ) ) {
+						$context['page_heading'] = $page_context['heading'];
+					}
+					if ( ! empty( $page_context['excerpt'] ) ) {
+						$context['page_excerpt'] = $page_context['excerpt'];
+					}
+				}
+			}
 		}
 
 		// Media categories / taxonomies
+		// Only override type if NOT manually set
 		$media_terms = wp_get_object_terms( $attachment_id, array( 'media_category' ), array( 'fields' => 'slugs' ) );
 		if ( ! is_wp_error( $media_terms ) && ! empty( $media_terms ) ) {
 			$context['tags'] = array_merge( $context['tags'], $media_terms );
-			if ( in_array( 'team', $media_terms, true ) ) {
-				$context['type'] = 'team';
-			} elseif ( in_array( 'testimonials', $media_terms, true ) ) {
-				$context['type'] = 'testimonial';
-			} elseif ( in_array( 'facility', $media_terms, true ) ) {
-				$context['type'] = 'facility';
-			} elseif ( in_array( 'equipment', $media_terms, true ) ) {
-				$context['type'] = 'equipment';
-			} elseif ( in_array( 'products', $media_terms, true ) || in_array( 'product', $media_terms, true ) ) {
-				$context['type']  = 'business';
-				$context['asset'] = 'product';
+			if ( ! $context['manual'] ) {
+				if ( in_array( 'team', $media_terms, true ) ) {
+					$context['type'] = 'team';
+				} elseif ( in_array( 'testimonials', $media_terms, true ) ) {
+					$context['type'] = 'testimonial';
+				} elseif ( in_array( 'facility', $media_terms, true ) ) {
+					$context['type'] = 'facility';
+				} elseif ( in_array( 'equipment', $media_terms, true ) ) {
+					$context['type'] = 'equipment';
+				} elseif ( in_array( 'products', $media_terms, true ) || in_array( 'product', $media_terms, true ) ) {
+					$context['type']  = 'business';
+					$context['asset'] = 'product';
+				}
 			}
 		}
 
@@ -1432,6 +1473,109 @@ class MSH_Contextual_Meta_Generator {
 		}
 	}
 
+	/**
+	 * Detect if post uses a page builder.
+	 * Returns true if common builder patterns or meta flags are detected.
+	 *
+	 * @since 1.2.0
+	 * @param WP_Post $post Post object to check.
+	 * @return bool True if builder content detected.
+	 */
+	private function is_builder_content( $post ) {
+		if ( ! $post || ! isset( $post->post_content ) ) {
+			return false;
+		}
+
+		$content = $post->post_content;
+
+		// Check for common builder shortcodes and data attributes
+		$builder_patterns = array(
+			'/\[elementor-template/',
+			'/\[vc_row/',
+			'/\[et_pb_/',
+			'/\[fusion_builder_/',
+			'/\[bricks/',
+			'/data-elementor-type=/',
+		);
+
+		foreach ( $builder_patterns as $pattern ) {
+			if ( preg_match( $pattern, $content ) ) {
+				return true;
+			}
+		}
+
+		// Check for builder meta flags
+		$builder_meta_keys = array(
+			'_elementor_edit_mode',
+			'_wpb_vc_js_status',
+			'_et_pb_use_builder',
+			'_fusion',
+			'_bricks_page_content_2',
+		);
+
+		foreach ( $builder_meta_keys as $meta_key ) {
+			$meta_value = get_post_meta( $post->ID, $meta_key, true );
+			if ( $meta_value === 'builder' || $meta_value === 'yes' || $meta_value === 'active' ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	/**
+	 * Extract lightweight page context (caption, H1, first paragraph) for metadata enhancement.
+	 * Micro-upgrade for launch: low-risk, avoids full content parsing.
+	 *
+	 * @since 1.2.0
+	 * @param int     $attachment_id Attachment ID.
+	 * @param WP_Post $parent_post   Parent post object.
+	 * @return array Array with 'caption', 'heading', 'excerpt' keys.
+	 */
+	private function extract_lightweight_page_context( $attachment_id, $parent_post ) {
+		$context = array(
+			'caption' => '',
+			'heading' => '',
+			'excerpt' => '',
+		);
+
+		// 1. Try to get image caption from WordPress
+		$attachment = get_post( $attachment_id );
+		if ( $attachment && ! empty( $attachment->post_excerpt ) ) {
+			$context['caption'] = wp_strip_all_tags( $attachment->post_excerpt );
+		}
+
+		// 2. For featured images, extract H1 and first paragraph from parent post
+		// CRITICAL: Skip if page builder detected - do not parse builder shortcodes
+		if ( $parent_post && ! empty( $parent_post->post_content ) ) {
+			// Detect builder content - skip parsing if builder detected
+			if ( $this->is_builder_content( $parent_post ) ) {
+				error_log( '[MSH] Skipping builder content for post ' . $parent_post->ID );
+				return $context;
+			}
+
+			$content = $parent_post->post_content;
+
+			// Extract H1 (works for both Gutenberg and Classic)
+			if ( preg_match( '/<h1[^>]*>(.*?)<\/h1>/is', $content, $h1_match ) ) {
+				$context['heading'] = wp_strip_all_tags( $h1_match[1] );
+			} elseif ( preg_match( '/<!-- wp:heading \{"level":1\} -->.*?<h1[^>]*>(.*?)<\/h1>/is', $content, $gb_h1_match ) ) {
+				$context['heading'] = wp_strip_all_tags( $gb_h1_match[1] );
+			}
+
+			// Extract first paragraph (limit to 200 chars)
+			if ( preg_match( '/<p[^>]*>(.*?)<\/p>/is', $content, $p_match ) ) {
+				$paragraph = wp_strip_all_tags( $p_match[1] );
+				$context['excerpt'] = mb_substr( $paragraph, 0, 200 );
+			} elseif ( preg_match( '/<!-- wp:paragraph -->.*?<p>(.*?)<\/p>/is', $content, $gb_p_match ) ) {
+				$paragraph = wp_strip_all_tags( $gb_p_match[1] );
+				$context['excerpt'] = mb_substr( $paragraph, 0, 200 );
+			}
+		}
+
+		return $context;
+	}
+
 	private function extract_service_type( $title, array $tags = array(), array $extra_sources = array() ) {
 		$sources = array();
 		if ( ! empty( $title ) ) {
@@ -1520,8 +1664,18 @@ class MSH_Contextual_Meta_Generator {
 		$combined           = trim( $sanitized_title . ' ' . $sanitized_basename );
 
 		if ( $context['type'] !== 'team' && $this->text_contains_any( $combined, array( 'team', 'staff', 'doctor', 'dr-', 'physiotherapist', 'therapist', 'rmt', 'chiropractor' ) ) ) {
-			$context['type']       = 'team';
-			$context['staff_name'] = $attachment->post_title;
+			$context['type'] = 'team';
+
+			// Clean staff name: strip dimensions, check if generic
+			$clean_name = preg_replace( '/[-_]?\d+x\d+[-_]?/i', '', $attachment->post_title );
+			$clean_name = trim( $clean_name );
+
+			// If name is still generic/numeric after cleaning, don't use it
+			if ( $this->is_generic_descriptor( $clean_name ) || preg_match( '/^(team|staff)[-_]?\d*$/i', $clean_name ) ) {
+				$clean_name = '';
+			}
+
+			$context['staff_name'] = $clean_name;
 			return;
 		}
 
@@ -1931,6 +2085,16 @@ class MSH_Contextual_Meta_Generator {
 			return $ai_meta;
 		}
 
+		// Industry lock: Prevent industry-incompatible scene types
+		// Healthcare industries should not use non-healthcare scene types
+		if ( $this->is_healthcare_industry( $context['industry'] ) ) {
+			$healthcare_scenes = array( 'team', 'testimonial', 'facility', 'equipment', 'clinical', 'service-icon', 'icon', 'business' );
+			if ( ! in_array( $context['type'], $healthcare_scenes, true ) ) {
+				error_log( '[MSH] Industry lock: Resetting incompatible scene type "' . $context['type'] . '" to default for healthcare industry' );
+				$context['type'] = $this->get_default_context_type();
+			}
+		}
+
 		switch ( $context['type'] ) {
 			case 'team':
 				return $this->generate_team_meta( $context );
@@ -1999,12 +2163,14 @@ class MSH_Contextual_Meta_Generator {
 		switch ( $context['type'] ) {
 			case 'team':
 				$name = ! empty( $context['staff_name'] ) ? $context['staff_name'] : 'team-member';
-				return $this->slugify( "{$this->business_name}-team-{$name}" );
+				$slug = $this->slugify( "{$this->business_name}-team-{$name}" );
+				return $this->truncate_slug( $slug, 4 );
 			case 'testimonial':
 				$prefix             = $this->is_healthcare_industry( $this->industry ) ? 'patient' : 'client';
 				$subject_slug       = ! empty( $context['attachment_slug'] ) ? $this->truncate_slug( $context['attachment_slug'], 3 ) : $prefix;
 				$location_component = $this->location_slug !== '' ? '-' . $this->location_slug : '';
-				return $this->slugify( $prefix . '-testimonial-' . $subject_slug . $location_component );
+				$slug = $this->slugify( $prefix . '-testimonial-' . $subject_slug . $location_component );
+				return $this->truncate_slug( $slug, 4 );
 			case 'icon':
 				// Legacy fallback - reuse service-icon generator with proper arguments
 				$normalized_context         = $context;
@@ -2059,7 +2225,8 @@ class MSH_Contextual_Meta_Generator {
 					$product_type = $context['product_type'] ?? 'support';
 					$product_slug = $this->truncate_slug( $product_map[ $product_type ] ?? $product_type, 2 );
 					$components   = array_filter( array( $product_slug, $this->location_slug ) );
-					return $this->slugify( implode( '-', $components ) );
+					$slug = $this->slugify( implode( '-', $components ) );
+					return $this->truncate_slug( $slug, 4 );
 				}
 
 				// Try to extract descriptor from metadata (title, alt, caption)
@@ -2068,12 +2235,14 @@ class MSH_Contextual_Meta_Generator {
 
 				if ( ! empty( $descriptor_slug ) && $descriptor_slug !== 'brand' ) {
 					$location_suffix = $this->location_slug !== '' ? '-' . $this->location_slug : '';
-					return $this->slugify( $descriptor_slug . '-equipment' . $location_suffix );
+					$slug            = $this->slugify( $descriptor_slug . '-equipment' . $location_suffix );
+					return $this->truncate_slug( $slug, 4 );
 				}
 
 				// Final fallback
 				$location_suffix = $this->location_slug !== '' ? '-' . $this->location_slug : '';
-				return $this->slugify( 'equipment-showcase' . $location_suffix );
+				$slug            = $this->slugify( 'equipment-showcase' . $location_suffix );
+				return $this->truncate_slug( $slug, 4 );
 			case 'business':
 				$original_filename = strtolower( $context['original_filename'] ?? '' );
 				$original_basename = $original_filename !== ''
@@ -2097,7 +2266,8 @@ class MSH_Contextual_Meta_Generator {
 						$components[] = $attachment_id_component;
 					}
 
-					return $this->slugify( implode( '-', array_filter( $components ) ) );
+					$slug = $this->slugify( implode( '-', array_filter( $components ) ) );
+					return $this->truncate_slug( $slug, 4 );
 				}
 
 				$brand_keywords = $this->extract_brand_keywords( $original_filename );
@@ -2163,7 +2333,8 @@ class MSH_Contextual_Meta_Generator {
 					$components[] = $location_to_append;
 				}
 
-				return $this->assemble_slug( $components );
+				$slug = $this->assemble_slug( $components );
+				return $this->truncate_slug( $slug, 4 );
 			case 'clinical':
 			default:
 				// SEO-optimized treatment keywords (more specific first, word-boundary safe)
@@ -2190,7 +2361,8 @@ class MSH_Contextual_Meta_Generator {
 
 				if ( ! empty( $extracted_keywords ) && $this->is_high_quality_extracted_name( $extracted_keywords, $original_filename ) ) {
 					$this->log_debug( "MSH Clinical Debug: Using high-quality extracted keywords '$extracted_keywords' from '$original_filename'" );
-					return $this->slugify( $extracted_keywords . '-' . $this->location_slug );
+					$slug = $this->slugify( $extracted_keywords . '-' . $this->location_slug );
+					return $this->truncate_slug( $slug, 4 );
 				}
 
 				// FALLBACK: Extract keywords from context AND original filename for treatment matching
@@ -2246,7 +2418,8 @@ class MSH_Contextual_Meta_Generator {
 				$parts[] = $treatment_type;
 
 				$base_slug = implode( '-', array_filter( $parts ) );
-				return $this->slugify( $base_slug );
+				$slug      = $this->slugify( $base_slug );
+				return $this->truncate_slug( $slug, 4 );
 		}
 	}
 
@@ -2395,7 +2568,7 @@ class MSH_Contextual_Meta_Generator {
 				'title'       => $this->clean_text( "{$name} - {$this->business_name} {$this->location}" ),
 				'alt_text'    => $this->clean_text( "{$name}, healthcare professional at {$this->business_name} {$this->location}" ),
 				'caption'     => $this->clean_text( "{$name} - Registered rehabilitation provider" ),
-				'description' => $this->clean_text( "{$name} provides expert rehabilitation services at {$this->business_name} in {$this->location}. Specialized in WSIB and MVA recovery programs." ),
+				'description' => $this->clean_text( "{$name} provides expert healthcare services at {$this->business_name} in {$this->location}. Specialized recovery programs and comprehensive patient care." ),
 			);
 		}
 
@@ -2755,7 +2928,7 @@ class MSH_Contextual_Meta_Generator {
 				'title'       => $this->clean_text( "{$this->business_name} Clinic - {$this->location} Rehabilitation Facility" ),
 				'alt_text'    => $this->clean_text( "Interior view of {$this->business_name} rehabilitation clinic in {$this->location}" ),
 				'caption'     => $this->clean_text( "Modern rehabilitation facility at {$this->business_name} {$this->location}" ),
-				'description' => $this->clean_text( "Modern rehabilitation facility at {$this->business_name} {$this->location}. Professional physiotherapy and chiropractic clinic with specialized treatment rooms and WSIB approved programs." ),
+				'description' => $this->clean_text( "Modern healthcare facility at {$this->business_name} {$this->location}. Professional clinic with specialized treatment rooms and comprehensive care programs." ),
 			);
 		}
 
@@ -3859,6 +4032,18 @@ class MSH_Contextual_Meta_Generator {
 		$cta_sentence = $this->get_cta_sentence();
 		if ( $cta_sentence !== '' ) {
 			$description_parts[] = $cta_sentence;
+		}
+
+		// Micro-upgrade: Add page-specific context if available
+		if ( ! empty( $context['page_heading'] ) ) {
+			$description_parts[] = sprintf( __( 'Featured on: %s.', 'msh-image-optimizer' ), $context['page_heading'] );
+		} elseif ( ! empty( $context['page_excerpt'] ) ) {
+			// Use first 100 chars of page excerpt
+			$excerpt = mb_substr( $context['page_excerpt'], 0, 100 );
+			if ( mb_strlen( $context['page_excerpt'] ) > 100 ) {
+				$excerpt .= '...';
+			}
+			$description_parts[] = $excerpt;
 		}
 
 		$description = implode( ' ', $description_parts );
@@ -5309,6 +5494,33 @@ class MSH_Image_Optimizer {
 		error_log( '[MSH Image Optimizer] ' . $message );
 	}
 
+	/**
+	 * Check if file rename feature is enabled.
+	 * Normalizes truthy values: '1', 'true', 'yes', 'on', 1, true all treated as enabled.
+	 *
+	 * @since 1.2.0
+	 * @return bool True if file rename is enabled, false otherwise.
+	 */
+	private function is_file_rename_enabled() {
+		$value = get_option( 'msh_enable_file_rename', '0' );
+
+		// Normalize truthy values
+		if ( is_bool( $value ) ) {
+			return $value;
+		}
+
+		if ( is_numeric( $value ) ) {
+			return (int) $value === 1;
+		}
+
+		if ( is_string( $value ) ) {
+			$value = strtolower( trim( $value ) );
+			return in_array( $value, array( '1', 'true', 'yes', 'on' ), true );
+		}
+
+		return false;
+	}
+
 	private function clear_analysis_cache() {
 		$cache_key = 'msh_analysis_cache_v' . self::ANALYSIS_CACHE_VERSION . '_' . md5( 'latest_analysis' );
 		delete_transient( $cache_key );
@@ -5536,6 +5748,10 @@ class MSH_Image_Optimizer {
 		// Auto-generate suggestions for new uploads
 		add_action( 'add_attachment', array( $this, 'generate_suggestion_for_new_upload' ), 10, 1 );
 
+		// Regenerate filename suggestions when toggle flipped on
+		add_action( 'msh_regenerate_filename_suggestions', array( $this, 'regenerate_all_filename_suggestions' ) );
+
+		// Context field in Media Library (list mode only, not grid mode)
 		add_filter( 'attachment_fields_to_edit', array( $this, 'add_context_attachment_field' ), 10, 2 );
 		add_filter( 'attachment_fields_to_save', array( $this, 'save_context_attachment_field' ), 10, 2 );
 	}
@@ -5553,6 +5769,44 @@ class MSH_Image_Optimizer {
 		}
 
 		$this->contextual_meta_generator->get_current_season();
+	}
+
+	/**
+	 * Regenerate filename suggestions for all attachments lacking suggestions.
+	 * Triggered when file rename toggle flips from off → on.
+	 *
+	 * @since 1.2.0
+	 * @return void
+	 */
+	public function regenerate_all_filename_suggestions() {
+		// Only run if rename feature is enabled
+		if ( ! $this->is_file_rename_enabled() ) {
+			return;
+		}
+
+		global $wpdb;
+
+		// Find all image attachments without filename suggestions
+		$attachments = $wpdb->get_col(
+			"SELECT ID FROM {$wpdb->posts}
+			WHERE post_type = 'attachment'
+			AND post_mime_type LIKE 'image/%'
+			AND ID NOT IN (
+				SELECT post_id FROM {$wpdb->postmeta}
+				WHERE meta_key = '_msh_suggested_filename'
+				AND meta_value != ''
+			)
+			LIMIT 100"
+		);
+
+		if ( empty( $attachments ) ) {
+			return;
+		}
+
+		// Generate suggestions for each attachment
+		foreach ( $attachments as $attachment_id ) {
+			$this->generate_suggestion_for_new_upload( (int) $attachment_id );
+		}
 	}
 
 	/**
@@ -6075,6 +6329,17 @@ class MSH_Image_Optimizer {
 			$file_path = get_post_meta( $id, '_wp_attached_file', true );
 			$alt_text  = get_post_meta( $id, '_wp_attachment_image_alt', true );
 
+			// Skip if file_path is empty or file doesn't exist on disk
+			if ( empty( $file_path ) ) {
+				continue;
+			}
+
+			$uploads_dir = wp_upload_dir();
+			$full_path   = $uploads_dir['basedir'] . '/' . ltrim( $file_path, '/' );
+			if ( ! file_exists( $full_path ) ) {
+				continue;
+			}
+
 			$images[] = array(
 				'ID'              => $id,
 				'post_title'      => $attachment->post_title,
@@ -6260,6 +6525,9 @@ class MSH_Image_Optimizer {
 			}
 		}
 
+		// Check if file renaming feature is enabled
+		$rename_enabled = $this->is_file_rename_enabled();
+
 		// Check if file already has SEO-optimized name FIRST
 		$current_file     = $file_path; // Use the correct variable name
 		$path_info        = pathinfo( $current_file );
@@ -6267,10 +6535,13 @@ class MSH_Image_Optimizer {
 		$current_basename = strtolower( $path_info['basename'] );
 		$current_slug     = strtolower( isset( $path_info['filename'] ) ? $path_info['filename'] : '' );
 
-		// Generate target slug for comparison (context-aware)
+		// Generate target slug for comparison (context-aware) - only if renaming is enabled
 		$expected_slug = '';
-		if ( ! empty( $extension ) ) {
+		if ( $rename_enabled && ! empty( $extension ) ) {
 			$expected_slug = $this->contextual_meta_generator->generate_filename_slug( $attachment_id, $context_info, $extension );
+			if ( ! empty( $expected_slug ) ) {
+				$expected_slug = $this->limit_slug_words( $expected_slug );
+			}
 		}
 
 		// If file already has good name, clear any existing suggestion and don't generate new one
@@ -6297,7 +6568,10 @@ class MSH_Image_Optimizer {
 
 		$filename_context_mismatch = false;
 
-		if ( $has_good_name ) {
+		// If renaming is disabled, skip all filename suggestion logic
+		if ( ! $rename_enabled ) {
+			$suggested_filename = '';
+		} elseif ( $has_good_name ) {
 			// Remove any existing suggestion for this already-optimized file
 			delete_post_meta( $attachment_id, '_msh_suggested_filename' );
 			delete_post_meta( $attachment_id, '_msh_suggested_filename_context' );
@@ -6688,6 +6962,7 @@ class MSH_Image_Optimizer {
 	 * Generate business-focused filename
 	 */
 	private function ensure_unique_filename( $base_name, $extension, $attachment_id ) {
+		$base_name = $this->limit_slug_words( $base_name );
 		$filename = $base_name . '.' . $extension;
 
 		// Check if this exact filename already exists in WordPress
@@ -6727,6 +7002,34 @@ class MSH_Image_Optimizer {
 
 		$this->log_debug( "MSH Uniqueness: AttachmentID=$attachment_id, BaseName='$base_name', FinalFilename='$filename'" );
 		return $filename;
+	}
+
+	private function limit_slug_words( $slug, $max_words = 4 ) {
+		$slug = sanitize_title_with_dashes( $slug );
+		if ( $slug === '' ) {
+			return $slug;
+		}
+
+		$parts     = preg_split( '/-+/', strtolower( $slug ) );
+		$stopwords = array( 'and', 'with', 'the', 'for', 'of', 'a', 'an', 'to', 'in', 'at', 'on', 'by', 'from', 'about' );
+		$result    = array();
+
+		foreach ( $parts as $part ) {
+			$part = trim( $part );
+			if ( $part === '' || in_array( $part, $stopwords, true ) || is_numeric( $part ) ) {
+				continue;
+			}
+			$result[] = $part;
+			if ( count( $result ) >= max( 1, (int) $max_words ) ) {
+				break;
+			}
+		}
+
+		if ( empty( $result ) ) {
+			$result = array_slice( array_filter( $parts ), 0, 1 );
+		}
+
+		return implode( '-', $result );
 	}
 
 	/**
@@ -7253,8 +7556,8 @@ class MSH_Image_Optimizer {
 			$truncated = substr( $truncated, 0, $last_space );
 		}
 
-		// Preserve essential terms
-		$essential_terms = array( 'WSIB', 'Hamilton', 'physiotherapy', 'rehabilitation' );
+		// Preserve essential terms (industry-agnostic)
+		$essential_terms = array( 'professional', 'clinic', 'services', 'center' );
 		foreach ( $essential_terms as $term ) {
 			if ( strpos( $text, $term ) !== false && strpos( $truncated, $term ) === false ) {
 				$term_pos = strpos( $text, $term );
@@ -7280,7 +7583,7 @@ class MSH_Image_Optimizer {
 			}
 		}
 
-		$priority_terms = array( 'physiotherapy', 'rehabilitation', 'WSIB', 'Hamilton', 'chiropractic', 'clinic' );
+		$priority_terms = array( 'professional', 'services', 'clinic', 'center', 'practice', 'team' );
 		foreach ( $priority_terms as $term ) {
 			if ( stripos( $content, $term ) !== false ) {
 				$score += 8;
@@ -8989,6 +9292,11 @@ class MSH_Image_Optimizer {
 	 * @return void
 	 */
 	public function generate_suggestion_for_new_upload( $attachment_id ) {
+		// Check if file rename feature is enabled
+		if ( ! $this->is_file_rename_enabled() ) {
+			return;
+		}
+
 		// Only process images
 		if ( ! wp_attachment_is_image( $attachment_id ) ) {
 			return;
@@ -9384,12 +9692,22 @@ class MSH_Image_Optimizer {
 			wp_send_json_error( array( 'message' => __( 'Unauthorized.', 'msh-image-optimizer' ) ), 403 );
 		}
 
-		$enabled = isset( $_POST['enabled'] ) && (string) $_POST['enabled'] === '1' ? '1' : '0';
-		update_option( 'msh_enable_file_rename', $enabled );
+		$old_value = get_option( 'msh_enable_file_rename', '0' );
+		$new_value = isset( $_POST['enabled'] ) && (string) $_POST['enabled'] === '1' ? '1' : '0';
+
+		update_option( 'msh_enable_file_rename', $new_value );
+
+		// If toggled from off → on, schedule background job to regenerate suggestions
+		if ( $old_value === '0' && $new_value === '1' ) {
+			// Schedule a one-time action to regenerate filename suggestions
+			if ( ! wp_next_scheduled( 'msh_regenerate_filename_suggestions' ) ) {
+				wp_schedule_single_event( time(), 'msh_regenerate_filename_suggestions' );
+			}
+		}
 
 		wp_send_json_success(
 			array(
-				'enabled' => $enabled,
+				'enabled' => $new_value,
 			)
 		);
 	}

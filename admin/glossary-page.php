@@ -58,7 +58,7 @@ class MSH_Glossary_Page {
 	 * @param string $hook Current page hook.
 	 */
 	public function enqueue_assets( $hook ) {
-		if ( 'the-dot_page_' . self::PAGE_SLUG !== $hook ) {
+		if ( 'msh-optimizer_page_' . self::PAGE_SLUG !== $hook ) {
 			return;
 		}
 

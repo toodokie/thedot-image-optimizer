@@ -17,6 +17,23 @@ class MSH_Image_Optimizer_Settings {
 	const NONCE_ACTION      = 'msh_save_context_settings';
 	const ADMIN_POST_ACTION = 'msh_save_context_settings';
 
+	/**
+	 * The WordPress-generated page hook suffix.
+	 * Set dynamically by MSH_Optimizer_Menu during menu registration.
+	 *
+	 * @var string|null
+	 */
+	private static $page_hook = null;
+
+	/**
+	 * Set the page hook suffix (called by menu registration).
+	 *
+	 * @param string $hook The hook suffix returned by add_submenu_page().
+	 */
+	public static function set_page_hook( $hook ) {
+		self::$page_hook = $hook;
+	}
+
 	public function __construct() {
 		// Menu registration now handled by class-msh-optimizer-menu.php
 		// add_action( 'admin_menu', array( $this, 'register_settings_page' ), 55 );
@@ -45,9 +62,19 @@ class MSH_Image_Optimizer_Settings {
 	 * @param string $hook Current admin hook.
 	 */
 	public function enqueue_assets( $hook ) {
-		$screen = 'the-dot_page_' . self::PAGE_SLUG;
-		if ( $hook !== $screen ) {
+		// Use the dynamically captured hook instead of hardcoding menu title
+		// This prevents breaking when menu title changes (e.g., "The Dot" → "TinyDot")
+		if ( null !== self::$page_hook && $hook !== self::$page_hook ) {
 			return;
+		}
+
+		// Fallback: If hook not set yet, use the WordPress-generated format
+		// Hook format is {menu_slug}_page_{page_slug} where menu_slug is from menu title
+		if ( null === self::$page_hook ) {
+			$screen = 'tinydot_page_' . self::PAGE_SLUG;
+			if ( $hook !== $screen ) {
+				return;
+			}
 		}
 
 		wp_enqueue_style(
@@ -57,10 +84,35 @@ class MSH_Image_Optimizer_Settings {
 			null
 		);
 
+		// Enqueue brand guidelines (base variables)
+		$brand_guidelines_file = dirname( __FILE__ ) . '/../assets/css/brand-guidelines.css';
+		wp_enqueue_style(
+			'msh-brand-guidelines',
+			trailingslashit( MSH_IO_ASSETS_URL ) . 'css/brand-guidelines.css',
+			array(),
+			file_exists( $brand_guidelines_file ) ? filemtime( $brand_guidelines_file ) : MSH_Image_Optimizer_Plugin::VERSION
+		);
+
+		// Enqueue list table branding
+		$list_table_file = dirname( __FILE__ ) . '/../assets/css/wp-list-table-branding.css';
+		wp_enqueue_style(
+			'msh-list-table-branding',
+			trailingslashit( MSH_IO_ASSETS_URL ) . 'css/wp-list-table-branding.css',
+			array( 'msh-brand-guidelines' ),
+			file_exists( $list_table_file ) ? filemtime( $list_table_file ) : MSH_Image_Optimizer_Plugin::VERSION
+		);
+
 		wp_enqueue_style(
 			'msh-image-optimizer-settings',
 			trailingslashit( MSH_IO_ASSETS_URL ) . 'css/image-optimizer-settings.css',
-			array( 'msh-image-optimizer-fonts' ),
+			array( 'msh-image-optimizer-fonts', 'msh-brand-guidelines', 'msh-list-table-branding' ),
+			MSH_Image_Optimizer_Plugin::VERSION
+		);
+
+		wp_enqueue_style(
+			'msh-template-admin',
+			trailingslashit( MSH_IO_ASSETS_URL ) . 'css/template-admin.css',
+			array( 'msh-image-optimizer-settings' ),
 			MSH_Image_Optimizer_Plugin::VERSION
 		);
 
@@ -168,10 +220,14 @@ class MSH_Image_Optimizer_Settings {
 				'general' => __( 'General', 'msh-image-optimizer' ),
 				'context' => __( 'Context', 'msh-image-optimizer' ),
 				'ai'      => __( 'AI', 'msh-image-optimizer' ),
+				'templates' => __( 'Templates', 'msh-image-optimizer' ),
 				'sync'    => __( 'Sync', 'msh-image-optimizer' ),
 				'account' => __( 'Account', 'msh-image-optimizer' ),
 				'advanced' => __( 'Advanced', 'msh-image-optimizer' ),
 			);
+			if ( current_user_can( 'manage_options' ) ) {
+				$tabs['feature_flags'] = __( 'Feature Flags', 'msh-image-optimizer' );
+			}
 			?>
 			<nav class="nav-tab-wrapper">
 				<?php foreach ( $tabs as $tab_key => $tab_label ) : ?>
@@ -511,6 +567,103 @@ class MSH_Image_Optimizer_Settings {
 
 				<?php endif; // End Advanced Tab ?>
 
+				<!-- FEATURE FLAGS TAB -->
+				<?php if ( 'feature_flags' === $active_tab ) : ?>
+					<?php
+					$flag_registry    = class_exists( 'MSH_Feature_Flags' ) ? MSH_Feature_Flags::get_registry() : array();
+					$current_flags    = class_exists( 'MSH_Feature_Flags' ) ? MSH_Feature_Flags::get_all() : array();
+					$current_rollouts = class_exists( 'MSH_Feature_Flags' ) ? MSH_Feature_Flags::get_all_rollouts() : array();
+					?>
+					<section class="msh-settings-card">
+						<header>
+							<h2><?php esc_html_e( 'Feature Flags', 'msh-image-optimizer' ); ?></h2>
+							<p><?php esc_html_e( 'Toggle experimental capabilities on a staging site first, then promote to production using a deliberate rollout strategy.', 'msh-image-optimizer' ); ?></p>
+						</header>
+
+						<?php if ( empty( $flag_registry ) ) : ?>
+							<p><?php esc_html_e( 'No feature flags are currently registered.', 'msh-image-optimizer' ); ?></p>
+						<?php else : ?>
+							<table class="wp-list-table widefat fixed striped">
+								<thead>
+									<tr>
+										<th scope="col"><?php esc_html_e( 'Feature', 'msh-image-optimizer' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Status', 'msh-image-optimizer' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Rollout', 'msh-image-optimizer' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Category', 'msh-image-optimizer' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Risk', 'msh-image-optimizer' ); ?></th>
+										<th scope="col"><?php esc_html_e( 'Description', 'msh-image-optimizer' ); ?></th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ( $flag_registry as $flag_key => $flag_config ) : ?>
+										<?php
+										$enabled = isset( $current_flags[ $flag_key ] ) ? (bool) $current_flags[ $flag_key ] : ( ! empty( $flag_config['default'] ) );
+										$rollout = isset( $current_rollouts[ $flag_key ] ) ? $current_rollouts[ $flag_key ] : 'everyone';
+										$risk    = isset( $flag_config['risk'] ) ? $flag_config['risk'] : 'unknown';
+										$category = isset( $flag_config['category'] ) ? $flag_config['category'] : '';
+										?>
+										<tr>
+											<th scope="row">
+												<strong><?php echo esc_html( $flag_config['label'] ); ?></strong>
+												<div class="description">
+													<code><?php echo esc_html( $flag_key ); ?></code>
+												</div>
+											</th>
+											<td>
+												<label class="screen-reader-text" for="msh-flag-<?php echo esc_attr( $flag_key ); ?>-enabled">
+													<?php printf( esc_html__( 'Enable %s', 'msh-image-optimizer' ), esc_html( $flag_config['label'] ) ); ?>
+												</label>
+												<select id="msh-flag-<?php echo esc_attr( $flag_key ); ?>-enabled"
+													name="feature_flags[<?php echo esc_attr( $flag_key ); ?>][enabled]"
+													class="msh-select">
+													<option value="0" <?php selected( false, $enabled ); ?>>
+														<?php esc_html_e( 'Off', 'msh-image-optimizer' ); ?>
+													</option>
+													<option value="1" <?php selected( true, $enabled ); ?>>
+														<?php esc_html_e( 'On', 'msh-image-optimizer' ); ?>
+													</option>
+												</select>
+											</td>
+											<td>
+												<label class="screen-reader-text" for="msh-flag-<?php echo esc_attr( $flag_key ); ?>-rollout">
+													<?php printf( esc_html__( 'Rollout mode for %s', 'msh-image-optimizer' ), esc_html( $flag_config['label'] ) ); ?>
+												</label>
+												<select id="msh-flag-<?php echo esc_attr( $flag_key ); ?>-rollout"
+													name="feature_flags[<?php echo esc_attr( $flag_key ); ?>][rollout]"
+													class="msh-select">
+													<option value="everyone" <?php selected( 'everyone', $rollout ); ?>>
+														<?php esc_html_e( 'Everyone', 'msh-image-optimizer' ); ?>
+													</option>
+													<option value="admins" <?php selected( 'admins', $rollout ); ?>>
+														<?php esc_html_e( 'Administrators only', 'msh-image-optimizer' ); ?>
+													</option>
+													<option value="custom" <?php selected( 'custom', $rollout ); ?>>
+														<?php esc_html_e( 'Custom cohort (capability / user override)', 'msh-image-optimizer' ); ?>
+													</option>
+												</select>
+											</td>
+											<td>
+												<?php echo esc_html( $category ); ?>
+											</td>
+											<td>
+												<span class="msh-risk-badge msh-risk-<?php echo esc_attr( $risk ); ?>">
+													<?php echo esc_html( ucfirst( $risk ) ); ?>
+												</span>
+											</td>
+											<td style="max-width: 320px;">
+												<?php echo esc_html( $flag_config['description'] ); ?>
+											</td>
+										</tr>
+									<?php endforeach; ?>
+								</tbody>
+							</table>
+							<p class="msh-settings-note">
+								<?php esc_html_e( 'Use WP-CLI for granular rollouts (per-user overrides, staged cohorts) with commands like `wp msh flag set <flag> on --user=<id>`.', 'msh-image-optimizer' ); ?>
+							</p>
+						<?php endif; ?>
+					</section>
+				<?php endif; // End Feature Flags Tab ?>
+
 				<!-- AI TAB -->
 				<?php if ( 'ai' === $active_tab ) : ?>
 
@@ -616,6 +769,234 @@ class MSH_Image_Optimizer_Settings {
 				</section>
 
 				<?php endif; // End AI Tab ?>
+
+			<!-- TEMPLATES TAB -->
+			<?php if ( 'templates' === $active_tab ) : ?>
+			<?php
+			// Get template data
+			$manager = class_exists( 'MSH_Template_Manager' ) ? MSH_Template_Manager::get_instance() : null;
+			$monitor = class_exists( 'MSH_Template_Monitor' ) ? MSH_Template_Monitor::get_instance() : null;
+			$templates = $manager ? $manager->get_templates() : array();
+			$stats = $monitor ? $monitor->get_stats() : array();
+			$health = $monitor ? $monitor->health_check() : array( 'status' => 'unknown' );
+			?>
+
+			<!-- Performance Overview -->
+			<section class="msh-settings-card">
+				<header>
+					<h2><?php esc_html_e( 'Template Intelligence Performance', 'msh-image-optimizer' ); ?></h2>
+					<p class="msh-settings-note"><?php esc_html_e( 'Pre-built templates reduce AI API costs by 30-50% for common image patterns.', 'msh-image-optimizer' ); ?></p>
+				</header>
+
+				<?php if ( ! empty( $stats ) ) : ?>
+					<div class="msh-template-stats">
+								<div class="msh-stat-box msh-stat-<?php echo esc_attr( $health['status'] ); ?>">
+									<div class="msh-stat-label"><?php esc_html_e( 'Health Status', 'msh-image-optimizer' ); ?></div>
+									<div class="msh-stat-value">
+										<?php
+										$status_labels = array(
+											'healthy' => __( 'Healthy', 'msh-image-optimizer' ),
+											'warming_up' => __( 'Warming Up', 'msh-image-optimizer' ),
+											'warning' => __( 'Warning', 'msh-image-optimizer' ),
+											'disabled' => __( 'Disabled', 'msh-image-optimizer' ),
+										);
+										echo esc_html( $status_labels[ $health['status'] ] ?? __( 'Unknown', 'msh-image-optimizer' ) );
+										?>
+									</div>
+									<div class="msh-stat-note"><?php echo esc_html( $health['message'] ); ?></div>
+								</div>
+
+								<div class="msh-stat-box">
+									<div class="msh-stat-label"><?php esc_html_e( 'Hit Rate', 'msh-image-optimizer' ); ?></div>
+									<div class="msh-stat-value"><?php echo esc_html( $stats['hit_rate_percent'] ); ?>%</div>
+									<div class="msh-stat-note">
+										<?php
+										echo esc_html( sprintf(
+											/* translators: %1$d hits, %2$d total evaluations */
+											__( '%1$d hits / %2$d evaluations', 'msh-image-optimizer' ),
+											$stats['total_hits'],
+											$stats['total_evaluations']
+										) );
+										?>
+									</div>
+								</div>
+
+								<div class="msh-stat-box">
+									<div class="msh-stat-label"><?php esc_html_e( 'p50 / p95 Duration', 'msh-image-optimizer' ); ?></div>
+									<div class="msh-stat-value">
+										<?php
+										echo esc_html( $stats['p50_duration_ms'] ?? 0 );
+										?>ms / <?php
+										echo esc_html( $stats['p95_duration_ms'] ?? 0 );
+										?>ms
+									</div>
+									<div class="msh-stat-note"><?php esc_html_e( 'Target: p50 <2ms, p95 <8ms', 'msh-image-optimizer' ); ?></div>
+								</div>
+
+								<div class="msh-stat-box">
+									<div class="msh-stat-label"><?php esc_html_e( 'Total Templates', 'msh-image-optimizer' ); ?></div>
+									<div class="msh-stat-value"><?php echo count( $templates ); ?></div>
+									<div class="msh-stat-note">
+										<?php
+										$active_count = count( array_filter( $templates, function( $t ) { return $t['mode'] === 'active' && $t['is_active']; } ) );
+										$shadow_count = count( array_filter( $templates, function( $t ) { return $t['mode'] === 'shadow'; } ) );
+										echo esc_html( sprintf(
+											/* translators: %1$d active, %2$d shadow */
+											__( '%1$d active, %2$d shadow', 'msh-image-optimizer' ),
+											$active_count,
+											$shadow_count
+										) );
+										?>
+									</div>
+								</div>
+				</div>
+			<?php else : ?>
+				<p><?php esc_html_e( 'No performance data yet. Templates will be tracked as they are used.', 'msh-image-optimizer' ); ?></p>
+			<?php endif; ?>
+			</section>
+
+			<!-- Templates List -->
+			<section class="msh-settings-card">
+				<header>
+					<h2><?php esc_html_e( 'Installed Templates', 'msh-image-optimizer' ); ?></h2>
+					<p class="msh-settings-note"><?php esc_html_e( 'Templates are managed via WP-CLI for security. Use the commands below to add, edit, or remove templates.', 'msh-image-optimizer' ); ?></p>
+				</header>
+
+				<?php if ( empty( $templates ) ) : ?>
+					<p><?php esc_html_e( 'No templates installed. Run `wp tinydot tpl install` to install starter templates.', 'msh-image-optimizer' ); ?></p>
+				<?php else : ?>
+					<table class="wp-list-table widefat fixed striped">
+							<thead>
+								<tr>
+									<th scope="col" style="width: 5%;"><?php esc_html_e( 'ID', 'msh-image-optimizer' ); ?></th>
+									<th scope="col" style="width: 25%;"><?php esc_html_e( 'Name', 'msh-image-optimizer' ); ?></th>
+									<th scope="col" style="width: 10%;"><?php esc_html_e( 'Locale', 'msh-image-optimizer' ); ?></th>
+									<th scope="col" style="width: 15%;"><?php esc_html_e( 'Usage', 'msh-image-optimizer' ); ?></th>
+									<th scope="col" style="width: 10%;"><?php esc_html_e( 'Intent', 'msh-image-optimizer' ); ?></th>
+									<th scope="col" style="width: 10%;"><?php esc_html_e( 'Mode', 'msh-image-optimizer' ); ?></th>
+									<th scope="col" style="width: 10%;"><?php esc_html_e( 'Priority', 'msh-image-optimizer' ); ?></th>
+									<th scope="col" style="width: 10%;"><?php esc_html_e( 'Status', 'msh-image-optimizer' ); ?></th>
+								</tr>
+							</thead>
+							<tbody>
+								<?php foreach ( $templates as $template ) : ?>
+									<tr>
+										<td><?php echo esc_html( $template['id'] ); ?></td>
+										<td>
+											<strong><?php echo esc_html( $template['name'] ); ?></strong>
+											<?php if ( ! empty( $template['notes'] ) ) : ?>
+												<br><small style="color: #666;"><?php echo esc_html( wp_trim_words( $template['notes'], 15 ) ); ?></small>
+											<?php endif; ?>
+										</td>
+										<td><?php echo esc_html( $template['locale'] ); ?></td>
+										<td><?php echo esc_html( $template['usage_type'] ); ?></td>
+										<td><?php echo esc_html( str_replace( '_', ' ', $template['intent'] ) ); ?></td>
+										<td>
+											<span class="msh-template-mode msh-template-mode--<?php echo esc_attr( $template['mode'] ); ?>">
+												<?php echo esc_html( ucfirst( $template['mode'] ) ); ?>
+											</span>
+										</td>
+										<td><?php echo esc_html( $template['priority'] ); ?></td>
+										<td>
+											<?php if ( $template['is_active'] ) : ?>
+												<span style="color: #46b450;">●</span> <?php esc_html_e( 'Active', 'msh-image-optimizer' ); ?>
+											<?php else : ?>
+												<span style="color: #dc3232;">●</span> <?php esc_html_e( 'Inactive', 'msh-image-optimizer' ); ?>
+											<?php endif; ?>
+										</td>
+									</tr>
+								<?php endforeach; ?>
+							</tbody>
+						</table>
+					<?php endif; ?>
+				</section>
+
+				<!-- CLI Commands -->
+				<section class="msh-settings-card">
+					<header>
+						<h2><?php esc_html_e( 'WP-CLI Commands', 'msh-image-optimizer' ); ?></h2>
+						<p class="msh-settings-note"><?php esc_html_e( 'Use these commands to manage templates via SSH or Local by Flywheel.', 'msh-image-optimizer' ); ?></p>
+					</header>
+
+					<div class="msh-cli-commands">
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl list</code>
+							<span><?php esc_html_e( 'List all templates', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl install</code>
+							<span><?php esc_html_e( 'Install starter templates (8 templates)', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl show &lt;id&gt;</code>
+							<span><?php esc_html_e( 'Show template details', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl test --keywords="team,people"</code>
+							<span><?php esc_html_e( 'Test template matching', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl export templates.json</code>
+							<span><?php esc_html_e( 'Export templates to JSON', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl import templates.json</code>
+							<span><?php esc_html_e( 'Import templates from JSON', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl activate &lt;id&gt;</code>
+							<span><?php esc_html_e( 'Activate a template', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl deactivate &lt;id&gt;</code>
+							<span><?php esc_html_e( 'Deactivate a template', 'msh-image-optimizer' ); ?></span>
+						</div>
+						<div class="msh-cli-command">
+							<code>wp tinydot tpl promote &lt;id&gt;</code>
+							<span><?php esc_html_e( 'Promote shadow template to active', 'msh-image-optimizer' ); ?></span>
+						</div>
+					</div>
+				</section>
+
+				<!-- Documentation -->
+				<section class="msh-settings-card">
+					<header>
+						<h2><?php esc_html_e( 'How Templates Work', 'msh-image-optimizer' ); ?></h2>
+					</header>
+
+					<div class="msh-settings-grid">
+						<div class="msh-doc-section">
+							<h3><?php esc_html_e( 'Token Matching', 'msh-image-optimizer' ); ?></h3>
+							<p><?php esc_html_e( 'Templates match images based on keywords extracted from page content. Each template defines:', 'msh-image-optimizer' ); ?></p>
+							<ul>
+								<li><strong><?php esc_html_e( 'Required tokens:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'ALL must be present (e.g., "team" AND "people")', 'msh-image-optimizer' ); ?></li>
+								<li><strong><?php esc_html_e( 'Negative tokens:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'NONE can be present (e.g., NOT "logo")', 'msh-image-optimizer' ); ?></li>
+								<li><strong><?php esc_html_e( 'Nice-to-have tokens:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'Boost confidence (future use)', 'msh-image-optimizer' ); ?></li>
+							</ul>
+						</div>
+
+						<div class="msh-doc-section">
+							<h3><?php esc_html_e( 'Template Modes', 'msh-image-optimizer' ); ?></h3>
+							<ul>
+								<li><strong><?php esc_html_e( 'Active:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'Production templates that generate metadata', 'msh-image-optimizer' ); ?></li>
+								<li><strong><?php esc_html_e( 'Shadow:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'Evaluation only (logged but not applied)', 'msh-image-optimizer' ); ?></li>
+								<li><strong><?php esc_html_e( 'Inactive:', 'msh-image-optimizer' ); ?></strong> <?php esc_html_e( 'Disabled templates', 'msh-image-optimizer' ); ?></li>
+							</ul>
+						</div>
+
+						<div class="msh-doc-section">
+							<h3><?php esc_html_e( 'Safety Guards', 'msh-image-optimizer' ); ?></h3>
+							<p><?php esc_html_e( 'The system automatically disables if:', 'msh-image-optimizer' ); ?></p>
+							<ul>
+								<li><?php esc_html_e( 'Hit rate drops below 10% (templates not matching enough images)', 'msh-image-optimizer' ); ?></li>
+								<li><?php esc_html_e( 'Average duration exceeds 25ms (performance too slow)', 'msh-image-optimizer' ); ?></li>
+							</ul>
+							<p><?php esc_html_e( 'The system automatically re-enables when performance improves.', 'msh-image-optimizer' ); ?></p>
+						</div>
+					</div>
+				</section>
+
+			<?php endif; // End Templates Tab ?>
 
 			<!-- SYNC TAB -->
 			<?php if ( 'sync' === $active_tab ) : ?>
@@ -903,6 +1284,65 @@ class MSH_Image_Optimizer_Settings {
 			$pending_active_profile = 'primary';
 		}
 		update_option( 'msh_active_context_profile', $pending_active_profile, false );
+
+		// Save Feature Flags (only when on feature flag tab).
+		if ( 'feature_flags' === $active_tab && class_exists( 'MSH_Feature_Flags' ) ) {
+			$submitted_flags = isset( $_POST['feature_flags'] ) ? wp_unslash( $_POST['feature_flags'] ) : array();
+			$submitted_flags = is_array( $submitted_flags ) ? $submitted_flags : array();
+
+			$registry          = MSH_Feature_Flags::get_registry();
+			$current_values    = MSH_Feature_Flags::get_all();
+			$current_rollouts  = MSH_Feature_Flags::get_all_rollouts();
+			$current_user_id   = get_current_user_id();
+
+			foreach ( $registry as $flag_key => $flag_config ) {
+				$row        = isset( $submitted_flags[ $flag_key ] ) && is_array( $submitted_flags[ $flag_key ] ) ? $submitted_flags[ $flag_key ] : array();
+				$enabled_raw = isset( $row['enabled'] ) ? $row['enabled'] : '0';
+				$enabled     = in_array( strtolower( (string) $enabled_raw ), array( '1', 'on', 'true', 'yes' ), true );
+				$previous    = isset( $current_values[ $flag_key ] ) ? (bool) $current_values[ $flag_key ] : ( ! empty( $flag_config['default'] ) );
+
+				if ( $enabled !== $previous ) {
+					MSH_Feature_Flags::set( $flag_key, $enabled );
+
+					if ( function_exists( 'msh_telemetry' ) ) {
+						msh_telemetry(
+							'feature_flag_changed',
+							array(
+								'flag'       => $flag_key,
+								'value'      => $enabled,
+								'scope'      => 'global',
+								'changed_by' => $current_user_id,
+							)
+						);
+					}
+				} else {
+					// Ensure the value is stored even if unchanged (guarantees array key exists).
+					MSH_Feature_Flags::set( $flag_key, $enabled );
+				}
+
+				if ( isset( $row['rollout'] ) ) {
+					$rollout_value  = sanitize_text_field( $row['rollout'] );
+					$previous_rollout = isset( $current_rollouts[ $flag_key ] ) ? $current_rollouts[ $flag_key ] : 'everyone';
+
+					if ( $rollout_value !== $previous_rollout ) {
+						MSH_Feature_Flags::set_rollout( $flag_key, $rollout_value );
+
+						if ( function_exists( 'msh_telemetry' ) ) {
+							msh_telemetry(
+								'feature_flag_rollout_changed',
+								array(
+									'flag'       => $flag_key,
+									'rollout'    => MSH_Feature_Flags::get_rollout( $flag_key ),
+									'changed_by' => $current_user_id,
+								)
+							);
+						}
+					} else {
+						MSH_Feature_Flags::set_rollout( $flag_key, $rollout_value );
+					}
+				}
+			}
+		}
 
 		// Save Sync settings
 		if ( isset( $_POST['msh_sync_conflict_strategy'] ) ) {

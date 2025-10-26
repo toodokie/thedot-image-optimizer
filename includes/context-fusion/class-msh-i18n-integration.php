@@ -36,6 +36,13 @@ class MSH_I18n_Integration {
 	private $i18n_metadata;
 
 	/**
+	 * Recursion guard for metadata filter
+	 *
+	 * @var array
+	 */
+	private $in_metadata_filter = array();
+
+	/**
 	 * Get singleton instance
 	 *
 	 * @return MSH_I18n_Integration
@@ -80,7 +87,19 @@ class MSH_I18n_Integration {
 			return $value;
 		}
 
-		if ( 'attachment' !== get_post_type( $object_id ) ) {
+		// Prevent infinite recursion - use per-object guard
+		if ( isset( $this->in_metadata_filter[ $object_id ] ) ) {
+			return $value;
+		}
+
+		// Set recursion guard for this specific object
+		$this->in_metadata_filter[ $object_id ] = true;
+
+		// Check post type
+		$post_type = get_post_type( $object_id );
+
+		if ( 'attachment' !== $post_type ) {
+			unset( $this->in_metadata_filter[ $object_id ] );
 			return $value;
 		}
 
@@ -89,6 +108,9 @@ class MSH_I18n_Integration {
 
 		// Try to get i18n metadata
 		$metadata = $this->i18n_metadata->get_with_fallback( $object_id, $locale );
+
+		// Clear recursion guard
+		unset( $this->in_metadata_filter[ $object_id ] );
 
 		if ( $metadata && ! empty( $metadata['alt_text'] ) ) {
 			// Return locale-specific alt text
@@ -141,6 +163,11 @@ class MSH_I18n_Integration {
 	 * @return array Filtered response.
 	 */
 	public function filter_attachment_for_js( $response, $attachment, $meta ) {
+		// Safety check: ensure i18n_metadata is initialized
+		if ( ! $this->i18n_metadata ) {
+			return $response;
+		}
+
 		$locale = get_locale();
 
 		// Get i18n metadata

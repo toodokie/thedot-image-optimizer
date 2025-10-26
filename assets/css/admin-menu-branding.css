@@ -1,0 +1,74 @@
+/**
+ * TinyDot Admin Menu Branding
+ *
+ * Replaces the default WordPress menu item with the complete TinyDot logo
+ * (icon + text combined as one image)
+ */
+
+/* Replace menu item with TinyDot logo - align like other WP menus */
+#adminmenu #toplevel_page_msh-optimizer > a {
+    position: relative !important;
+    background-image: url('../icons/TinyDot logo_dark.svg') !important;
+    background-repeat: no-repeat !important;
+    background-position: 8px 50% !important; /* 8px from left (WP icon position), 50% vertical center */
+    background-size: 80px 80px !important;
+    min-height: 34px !important;
+}
+
+/* Hide the default icon and text */
+#adminmenu #toplevel_page_msh-optimizer .wp-menu-image,
+#adminmenu #toplevel_page_msh-optimizer .wp-menu-name {
+    display: none !important;
+}
+
+/* Hover state - keep logo visible */
+#adminmenu #toplevel_page_msh-optimizer:hover .wp-menu-name,
+#adminmenu #toplevel_page_msh-optimizer.wp-has-current-submenu .wp-menu-name,
+#adminmenu #toplevel_page_msh-optimizer.current .wp-menu-name {
+    background-image: url('../icons/TinyDot logo_dark.svg');
+}
+
+/* Active/selected state - keep logo visible */
+#adminmenu #toplevel_page_msh-optimizer.wp-has-current-submenu > a,
+#adminmenu #toplevel_page_msh-optimizer.current > a {
+    background-color: #135e96; /* WordPress active blue */
+}
+
+/* Submenu items - remove icons */
+#adminmenu #toplevel_page_msh-optimizer .wp-submenu a .dashicons {
+    display: none !important;
+}
+
+/* Add 1px divider after Image Optimizer submenu item with padding */
+#adminmenu #toplevel_page_msh-optimizer .wp-submenu a[href*="msh-image-optimizer"]:not([href*="settings"]) {
+    position: relative;
+    padding-bottom: 12px !important;
+    margin-bottom: 12px !important;
+}
+
+#adminmenu #toplevel_page_msh-optimizer .wp-submenu a[href*="msh-image-optimizer"]:not([href*="settings"])::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 12px;
+    right: 12px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+}
+
+/* Add 1px divider before Settings submenu item with padding */
+#adminmenu #toplevel_page_msh-optimizer .wp-submenu a[href*="msh-image-optimizer-settings"] {
+    position: relative;
+    padding-top: 12px !important;
+    margin-top: 12px !important;
+}
+
+#adminmenu #toplevel_page_msh-optimizer .wp-submenu a[href*="msh-image-optimizer-settings"]::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 12px;
+    right: 12px;
+    height: 1px;
+    background: rgba(255, 255, 255, 0.1);
+}

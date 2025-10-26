@@ -143,10 +143,17 @@ class MSH_Regeneration_Worker {
 			return $context;
 		}
 
-		// Step 2: Get locale profile for prompt customization
+		// Step 2: Try template matching first (Phase 6: Template Intelligence)
+		$template_result = $this->try_template_match( $attachment_id, $field, $locale, $context );
+		if ( ! is_wp_error( $template_result ) && ! empty( $template_result ) ) {
+			// Template match succeeded, return template-generated metadata
+			return $template_result;
+		}
+
+		// Step 3: Get locale profile for prompt customization
 		$locale_profile = $this->get_locale_profile( $locale );
 
-		// Step 3: Generate metadata via AI
+		// Step 4: Generate metadata via AI (fallback if no template match)
 		$ai_result = $this->call_ai_service( $attachment_id, $field, $locale, $context, $locale_profile );
 		if ( is_wp_error( $ai_result ) ) {
 			return $ai_result;
@@ -513,5 +520,102 @@ class MSH_Regeneration_Worker {
 		}
 
 		return $results;
+	}
+
+	/**
+	 * Try template matching for metadata generation.
+	 *
+	 * Phase 6: Template Intelligence integration.
+	 * Attempts to generate metadata using pre-built templates before calling AI.
+	 *
+	 * @param int    $attachment_id Attachment ID.
+	 * @param string $field         Field name ('title', 'alt', 'caption', 'description').
+	 * @param string $locale        Locale code.
+	 * @param array  $context       Context data from gather_context().
+	 * @return string|WP_Error Generated metadata or WP_Error if no match/feature disabled.
+	 */
+	private function try_template_match( $attachment_id, $field, $locale, $context ) {
+		// Check if Template Intelligence classes are loaded
+		if ( ! class_exists( 'MSH_Template_Matcher' ) || ! class_exists( 'MSH_Feature_Flags' ) ) {
+			return new WP_Error( 'template_system_unavailable', __( 'Template system not loaded.', 'msh-image-optimizer' ) );
+		}
+
+		// Check feature flag
+		if ( ! MSH_Feature_Flags::evaluate( 'template_intelligence' ) ) {
+			// Feature flag disabled, skip template matching
+			if ( function_exists( 'msh_telemetry' ) ) {
+				msh_telemetry( 'template_skipped_flag_disabled', array(
+					'attachment_id' => $attachment_id,
+					'locale'        => $locale,
+					'field'         => $field,
+				) );
+			}
+			return new WP_Error( 'template_flag_disabled', __( 'Template intelligence feature is disabled.', 'msh-image-optimizer' ) );
+		}
+
+		// Get matcher instance
+		$matcher = MSH_Template_Matcher::get_instance();
+
+		// Prepare context for template matching
+		// The matcher expects: locale, usage_type, intent, keywords, entities, subject, post_title
+		$template_context = array(
+			'locale'     => $locale,
+			'usage_type' => isset( $context['usage_type'] ) ? $context['usage_type'] : 'featured',
+			'intent'     => isset( $context['intent'] ) ? $context['intent'] : 'on_topic',
+			'keywords'   => isset( $context['keywords'] ) ? $context['keywords'] : array(),
+			'entities'   => isset( $context['entities'] ) ? $context['entities'] : array(),
+			'subject'    => isset( $context['subject'] ) ? $context['subject'] : '',
+			'post_title' => isset( $context['post_title'] ) ? $context['post_title'] : get_the_title( $attachment_id ),
+		);
+
+		// Find matching template
+		$match = $matcher->find_match( $template_context );
+
+		if ( ! $match ) {
+			// No template match, will fall back to AI
+			return new WP_Error( 'no_template_match', __( 'No matching template found.', 'msh-image-optimizer' ) );
+		}
+
+		// Apply template to generate all fields
+		$fields = $matcher->apply_template( $match, $template_context );
+
+		if ( is_wp_error( $fields ) ) {
+			return $fields;
+		}
+
+		// Extract the requested field
+		$field_value = '';
+		switch ( $field ) {
+			case 'title':
+				$field_value = isset( $fields['title'] ) ? $fields['title'] : '';
+				break;
+			case 'alt':
+				$field_value = isset( $fields['alt'] ) ? $fields['alt'] : '';
+				break;
+			case 'caption':
+				$field_value = isset( $fields['caption'] ) ? $fields['caption'] : '';
+				break;
+			case 'description':
+				$field_value = isset( $fields['description'] ) ? $fields['description'] : '';
+				break;
+		}
+
+		if ( empty( $field_value ) ) {
+			return new WP_Error( 'template_empty_field', __( 'Template generated empty field.', 'msh-image-optimizer' ) );
+		}
+
+		// Telemetry: Template success
+		if ( function_exists( 'msh_telemetry' ) ) {
+			msh_telemetry( 'template_metadata_generated', array(
+				'attachment_id' => $attachment_id,
+				'template_id'   => $match['id'],
+				'template_name' => $match['name'],
+				'field'         => $field,
+				'locale'        => $locale,
+				'mode'          => $match['mode'],
+			) );
+		}
+
+		return $field_value;
 	}
 }

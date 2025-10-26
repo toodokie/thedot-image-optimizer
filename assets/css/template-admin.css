@@ -1,0 +1,188 @@
+/**
+ * Template Intelligence Admin UI Styles
+ *
+ * @package MSH_Image_Optimizer
+ * @since Phase 6
+ */
+
+/* Template Stats Grid */
+.msh-template-stats {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 20px;
+	padding: 20px;
+}
+
+.msh-stat-box {
+	background: #f9f9f9;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	padding: 16px;
+	text-align: center;
+}
+
+.msh-stat-label {
+	font-size: 12px;
+	color: #646970;
+	text-transform: uppercase;
+	letter-spacing: 0.5px;
+	margin-bottom: 8px;
+	font-weight: 600;
+}
+
+.msh-stat-value {
+	font-size: 32px;
+	font-weight: 700;
+	color: #1d2327;
+	margin: 8px 0;
+}
+
+.msh-stat-note {
+	font-size: 13px;
+	color: #787c82;
+	margin-top: 8px;
+}
+
+/* Health Status Colors */
+.msh-stat-healthy {
+	border-left: 4px solid #46b450;
+}
+
+.msh-stat-healthy .msh-stat-value {
+	color: #46b450;
+}
+
+.msh-stat-warming_up {
+	border-left: 4px solid #f0b849;
+}
+
+.msh-stat-warming_up .msh-stat-value {
+	color: #f0b849;
+}
+
+.msh-stat-warning {
+	border-left: 4px solid #ffb900;
+}
+
+.msh-stat-warning .msh-stat-value {
+	color: #d63638;
+}
+
+.msh-stat-disabled {
+	border-left: 4px solid #d63638;
+}
+
+.msh-stat-disabled .msh-stat-value {
+	color: #d63638;
+}
+
+/* Templates Table */
+.msh-settings-card .wp-list-table {
+	margin: 20px;
+}
+
+/* Template Mode Badges */
+.msh-template-mode {
+	display: inline-block;
+	padding: 3px 8px;
+	border-radius: 3px;
+	font-size: 12px;
+	font-weight: 600;
+	text-transform: uppercase;
+}
+
+.msh-template-mode--active {
+	background: #d7f8db;
+	color: #1e7e34;
+}
+
+.msh-template-mode--shadow {
+	background: #fef5e0;
+	color: #946800;
+}
+
+.msh-template-mode--inactive {
+	background: #f0f0f1;
+	color: #646970;
+}
+
+/* CLI Commands Section */
+.msh-cli-commands {
+	background: #1d2327;
+	border-radius: 4px;
+	padding: 24px;
+	margin: 20px;
+}
+
+.msh-cli-command {
+	display: flex;
+	align-items: baseline;
+	margin-bottom: 12px;
+	padding: 8px 0;
+	border-bottom: 1px solid #2c3338;
+}
+
+.msh-cli-command:last-child {
+	border-bottom: none;
+	margin-bottom: 0;
+}
+
+.msh-cli-command code {
+	background: #2c3338;
+	color: #50fa7b;
+	padding: 6px 12px;
+	border-radius: 3px;
+	font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+	font-size: 13px;
+	flex-shrink: 0;
+	margin-right: 16px;
+	min-width: 300px;
+}
+
+.msh-cli-command span {
+	color: #a7aaad;
+	font-size: 13px;
+}
+
+/* Documentation Sections */
+.msh-doc-section {
+	background: #f9f9f9;
+	padding: 20px;
+	border: 1px solid #dcdcde;
+	border-radius: 4px;
+	margin-bottom: 0;
+}
+
+.msh-doc-section h3 {
+	margin-top: 0;
+	color: #1d2327;
+	font-size: 16px;
+}
+
+.msh-doc-section ul {
+	margin: 12px 0 0 20px;
+}
+
+.msh-doc-section li {
+	margin-bottom: 8px;
+	line-height: 1.6;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 782px) {
+	.msh-template-stats {
+		grid-template-columns: 1fr;
+	}
+
+	.msh-cli-command {
+		flex-direction: column;
+		align-items: flex-start;
+	}
+
+	.msh-cli-command code {
+		margin-right: 0;
+		margin-bottom: 8px;
+		min-width: unset;
+		width: 100%;
+	}
+}

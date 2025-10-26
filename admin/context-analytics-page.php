@@ -43,14 +43,33 @@ class MSH_Context_Analytics_Page {
 	 * @param string $hook Current admin page hook.
 	 */
 	public function enqueue_scripts( $hook ) {
-		if ( 'the-dot_page_msh-context-analytics' !== $hook ) {
+		// WordPress uses 'admin_page_{page_slug}' for callback-based submenu pages
+		if ( 'msh-optimizer_page_msh-context-analytics' !== $hook ) {
 			return;
 		}
+
+		// Enqueue brand guidelines (base variables)
+		$brand_guidelines_file = dirname( __FILE__ ) . '/../assets/css/brand-guidelines.css';
+		wp_enqueue_style(
+			'msh-brand-guidelines',
+			trailingslashit( MSH_IO_ASSETS_URL ) . 'css/brand-guidelines.css',
+			array(),
+			file_exists( $brand_guidelines_file ) ? filemtime( $brand_guidelines_file ) : MSH_Image_Optimizer_Plugin::VERSION
+		);
+
+		// Enqueue list table branding
+		$list_table_file = dirname( __FILE__ ) . '/../assets/css/wp-list-table-branding.css';
+		wp_enqueue_style(
+			'msh-list-table-branding',
+			trailingslashit( MSH_IO_ASSETS_URL ) . 'css/wp-list-table-branding.css',
+			array( 'msh-brand-guidelines' ),
+			file_exists( $list_table_file ) ? filemtime( $list_table_file ) : MSH_Image_Optimizer_Plugin::VERSION
+		);
 
 		wp_enqueue_style(
 			'msh-analytics',
 			MSH_IO_PLUGIN_URL . 'admin/css/analytics.css',
-			array(),
+			array( 'msh-brand-guidelines', 'msh-list-table-branding' ),
 			MSH_Image_Optimizer_Plugin::VERSION
 		);
 	}

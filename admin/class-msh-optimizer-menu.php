@@ -42,6 +42,26 @@ class MSH_Optimizer_Menu {
 	 */
 	public function __construct() {
 		add_action( 'admin_menu', array( $this, 'register_menu' ), 5 );
+		add_action( 'admin_enqueue_scripts', array( $this, 'enqueue_menu_branding' ) );
+	}
+
+	/**
+	 * Enqueue TinyDot logo branding CSS for admin menu
+	 */
+	public function enqueue_menu_branding() {
+		$assets_base = defined( 'MSH_IO_ASSETS_URL' )
+			? trailingslashit( MSH_IO_ASSETS_URL )
+			: trailingslashit( plugin_dir_url( __FILE__ ) . '../assets' );
+
+		$style_file    = dirname( __FILE__ ) . '/../assets/css/admin-menu-branding.css';
+		$style_version = file_exists( $style_file ) ? filemtime( $style_file ) : '1.0.0';
+
+		wp_enqueue_style(
+			'msh-admin-menu-branding',
+			$assets_base . 'css/admin-menu-branding.css',
+			array(),
+			$style_version
+		);
 	}
 
 	/**
@@ -78,8 +98,8 @@ class MSH_Optimizer_Menu {
 
 		// Top-level menu
 		add_menu_page(
-			__( 'The Dot Optimizer', 'msh-image-optimizer' ),
-			__( 'The Dot', 'msh-image-optimizer' ),
+			__( 'TinyDot Optimizer', 'msh-image-optimizer' ),
+			__( 'TinyDot', 'msh-image-optimizer' ),
 			'manage_options',
 			'msh-optimizer',
 			array( 'MSH_Dashboard_Page', 'render' ),
@@ -156,7 +176,7 @@ class MSH_Optimizer_Menu {
 		}
 
 		// 7. Settings (always visible)
-		add_submenu_page(
+		$settings_hook = add_submenu_page(
 			'msh-optimizer',
 			__( 'Settings', 'msh-image-optimizer' ),
 			'<span class="dashicons dashicons-admin-generic"></span> ' . __( 'Settings', 'msh-image-optimizer' ),
@@ -164,6 +184,11 @@ class MSH_Optimizer_Menu {
 			'msh-image-optimizer-settings',
 			array( $this, 'render_settings_page' )
 		);
+
+		// Pass the hook suffix to Settings class so CSS enqueue works regardless of menu title
+		if ( class_exists( 'MSH_Image_Optimizer_Settings' ) ) {
+			MSH_Image_Optimizer_Settings::set_page_hook( $settings_hook );
+		}
 
 		// 8. Help & Docs (always visible)
 		add_submenu_page(

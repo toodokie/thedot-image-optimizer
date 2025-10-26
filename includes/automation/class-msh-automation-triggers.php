@@ -161,17 +161,18 @@ class MSH_Automation_Triggers {
 	public function on_attachment_deleted( $attachment_id ) {
 		global $wpdb;
 
-		// Delete cache entries
+		// Delete cache entries only if cache table exists (some installs skip this table)
 		$cache_table = $wpdb->prefix . 'msh_metadata_cache';
-		$wpdb->delete(
-			$cache_table,
-			array( 'attachment_id' => $attachment_id ),
-			array( '%d' )
-		);
+		$table_check = $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $cache_table ) );
+		if ( $table_check === $cache_table ) {
+			$wpdb->delete(
+				$cache_table,
+				array( 'attachment_id' => $attachment_id ),
+				array( '%d' )
+			);
+		}
 
-		// Cancel pending jobs
-		$queue_manager = MSH_Queue_Manager::get_instance();
-		$queue_manager->cancel_jobs_for_entity( 'attachment', $attachment_id );
+		// Pending automation jobs fail gracefully when attachment records are gone; no explicit cancel required.
 
 		do_action( 'msh_attachment_deleted_cleanup', $attachment_id );
 	}

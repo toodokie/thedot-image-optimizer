@@ -111,13 +111,15 @@
 }
 
 /* Override ALL WordPress core blue colors */
-.msh-settings-wrap input[type="radio"]:checked::before {
+.msh-settings-wrap input[type="radio"]:checked::before,
+.msh-onboarding-wizard input[type="radio"]:checked::before,
+.wrap.msh-settings-wrap input[type="radio"]:checked::before {
     content: "";
     border-radius: 50%;
     width: 0.5rem;
     height: 0.5rem;
     margin: 0.1875rem;
-    background-color: #35332F !important;
+    background-color: var(--msh-charcoal, #35332F) !important;
     line-height: 1.14285714;
 }
 

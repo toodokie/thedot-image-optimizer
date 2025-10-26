@@ -34,7 +34,7 @@ class MSH_Image_Optimizer_Admin {
 	 */
 	public function add_admin_favicon() {
 		$screen = get_current_screen();
-		if ( $screen && $screen->id === 'the-dot_page_msh-image-optimizer' ) {
+		if ( $screen && $screen->id === 'msh-optimizer_page_msh-image-optimizer' ) {
 			$icons_url = trailingslashit( MSH_IO_ASSETS_URL ) . 'icons/';
 
 			// Standard favicon formats - match actual filenames
@@ -127,7 +127,8 @@ class MSH_Image_Optimizer_Admin {
 	 * @return void
 	 */
 	public function enqueue_admin_scripts( $hook ) {
-		if ( 'the-dot_page_msh-image-optimizer' !== $hook ) {
+		// Hook is based on menu title "TinyDot" -> tinydot_page_{page_slug}
+		if ( 'tinydot_page_msh-image-optimizer' !== $hook ) {
 			return;
 		}
 
@@ -536,7 +537,7 @@ class MSH_Image_Optimizer_Admin {
 								<h3><?php esc_html_e( 'AI Configuration (Optional)', 'msh-image-optimizer' ); ?></h3>
 								<p class="step-description"><?php esc_html_e( 'Bring Your Own Key (BYOK): Provide your own AI provider API key for automated metadata generation. Leave blank to use bundled credits.', 'msh-image-optimizer' ); ?></p>
 
-								<label for="msh_api_provider"><?php esc_html_e( 'AI Provider', 'msh-image-optimizer' ); ?></label>
+								<label for="msh_api_provider"><?php esc_html_e( 'AI Provider (Optional)', 'msh-image-optimizer' ); ?></label>
 								<select id="msh_api_provider" name="api_provider" class="msh-select">
 									<option value=""><?php esc_html_e( 'Use bundled credits (default)', 'msh-image-optimizer' ); ?></option>
 									<option value="openai"><?php esc_html_e( 'OpenAI (GPT-4 Vision)', 'msh-image-optimizer' ); ?></option>

@@ -1,0 +1,249 @@
+/**
+ * TinyDot Animated Loader - Global Component
+ *
+ * Branded loading animations using The Dot's tinydot-icon.png
+ * Can be used across all admin pages, modals, buttons, and AJAX operations
+ *
+ * Brand Guidelines: https://www.figma.com/design/Wo0x0N3aJYTVKhGbcVxGbu/The-Dot-Brand-Guidelines?node-id=0-1&t=rU35uHEYCbMRjMqf-1
+ * Documentation: /TINYDOT-LOADER-IMPLEMENTATION.md
+ */
+
+/* ========================================
+   Base Loader Component
+   ======================================== */
+
+.msh-tinydot-loader {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+/* Icon wrapper */
+.msh-tinydot-loader__icon {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+/* Icon image */
+.msh-tinydot-loader__icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+}
+
+/* Loading text */
+.msh-tinydot-loader__text {
+    color: #8b8883; /* --msh-warm-gray */
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* ========================================
+   Size Variants
+   ======================================== */
+
+.msh-tinydot-loader--small .msh-tinydot-loader__icon {
+    width: 20px;
+    height: 20px;
+}
+
+.msh-tinydot-loader--small .msh-tinydot-loader__text {
+    font-size: 12px;
+}
+
+.msh-tinydot-loader--medium .msh-tinydot-loader__icon {
+    width: 32px;
+    height: 32px;
+}
+
+.msh-tinydot-loader--medium .msh-tinydot-loader__text {
+    font-size: 14px;
+}
+
+.msh-tinydot-loader--large .msh-tinydot-loader__icon {
+    width: 48px;
+    height: 48px;
+}
+
+.msh-tinydot-loader--large .msh-tinydot-loader__text {
+    font-size: 16px;
+}
+
+/* ========================================
+   Animation Variants
+   ======================================== */
+
+/* 1. Spin - Classic rotation (1s, linear) */
+.msh-tinydot-loader--spin .msh-tinydot-loader__icon img {
+    animation: msh-tinydot-spin 1s linear infinite;
+}
+
+@keyframes msh-tinydot-spin {
+    from {
+        transform: rotate(0deg);
+    }
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* 2. Pulse - Breathing effect (1.5s, ease-in-out) */
+.msh-tinydot-loader--pulse .msh-tinydot-loader__icon img {
+    animation: msh-tinydot-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes msh-tinydot-pulse {
+    0%, 100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.15);
+        opacity: 0.7;
+    }
+}
+
+/* 3. Bounce - Playful up/down (1s, ease-in-out) */
+.msh-tinydot-loader--bounce .msh-tinydot-loader__icon img {
+    animation: msh-tinydot-bounce 1s ease-in-out infinite;
+}
+
+@keyframes msh-tinydot-bounce {
+    0%, 100% {
+        transform: translateY(0);
+    }
+    50% {
+        transform: translateY(-8px);
+    }
+}
+
+/* 4. Pulse-Spin - Combined rotation + breathing (1.8s, ease-in-out) - DEFAULT */
+.msh-tinydot-loader--pulse-spin .msh-tinydot-loader__icon img {
+    animation: msh-tinydot-pulse-spin 1.8s ease-in-out infinite;
+}
+
+@keyframes msh-tinydot-pulse-spin {
+    0% {
+        transform: scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(1.08) rotate(180deg);
+        opacity: 0.88;
+    }
+    100% {
+        transform: scale(1) rotate(360deg);
+        opacity: 1;
+    }
+}
+
+/* ========================================
+   Full-Page Loader Overlay
+   ======================================== */
+
+.msh-loader-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(250, 249, 246, 0.95); /* --msh-cream with transparency */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    z-index: 999999;
+    backdrop-filter: blur(2px);
+}
+
+.msh-loader-overlay .msh-tinydot-loader {
+    flex-direction: column;
+    gap: 16px;
+}
+
+.msh-loader-overlay .msh-tinydot-loader__text {
+    font-size: 16px;
+    color: #35332f; /* --msh-charcoal */
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+/* ========================================
+   Button Loading States
+   ======================================== */
+
+.button.is-loading {
+    position: relative;
+    color: transparent !important;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+.button.is-loading::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    background-image: url('../icons/tinydot-icon.png');
+    background-size: contain;
+    background-repeat: no-repeat;
+    background-position: center;
+    animation: msh-button-pulse-spin 1.8s ease-in-out infinite;
+}
+
+.button.button-large.is-loading::after {
+    width: 20px;
+    height: 20px;
+}
+
+.button.button-small.is-loading::after {
+    width: 14px;
+    height: 14px;
+}
+
+/* Button-specific animation (handles translate + scale + rotate) */
+@keyframes msh-button-pulse-spin {
+    0% {
+        transform: translate(-50%, -50%) scale(1) rotate(0deg);
+        opacity: 1;
+    }
+    50% {
+        transform: translate(-50%, -50%) scale(1.08) rotate(180deg);
+        opacity: 0.88;
+    }
+    100% {
+        transform: translate(-50%, -50%) scale(1) rotate(360deg);
+        opacity: 1;
+    }
+}
+
+/* ========================================
+   Helper Classes for Common Use Cases
+   ======================================== */
+
+/* Center loader in container */
+.msh-loader-centered {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+.msh-loader-centered .msh-tinydot-loader {
+    justify-content: center;
+}
+
+/* Inline loader (for text flows) */
+.msh-loader-inline {
+    display: inline-flex;
+    vertical-align: middle;
+    margin: 0 8px;
+}
+
+/* Block loader (for containers) */
+.msh-loader-block {
+    display: flex;
+    justify-content: center;
+    padding: 20px;
+}

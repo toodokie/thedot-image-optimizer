@@ -1,6 +1,8 @@
 /**
  * Optimizer Hub - Brand-compliant CSS
  * The Dot brand colors and typography
+ *
+ * Brand Guidelines: https://www.figma.com/design/Wo0x0N3aJYTVKhGbcVxGbu/The-Dot-Brand-Guidelines?node-id=0-1&t=rU35uHEYCbMRjMqf-1
  */
 
 :root {
@@ -1563,4 +1565,20 @@ body.msh-modal-open {
         transform: rotate(90deg);
         align-self: center;
     }
+}
+
+/* ========================================
+   TinyDot Loader - Hub-Specific Overrides
+   ======================================== */
+
+/* Note: Base TinyDot loader styles are in ../css/tinydot-loader.css (loaded globally) */
+
+/* Hub-specific: Metadata tab loader centered in table */
+#msh-loading-spinner {
+    text-align: center;
+    padding: 40px 20px;
+}
+
+#msh-loading-spinner .msh-tinydot-loader {
+    justify-content: center;
 }

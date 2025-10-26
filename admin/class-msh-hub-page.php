@@ -102,21 +102,40 @@ class MSH_Hub_Page {
 	 * @return void
 	 */
 	public function enqueue_assets( $hook ) {
-		if ( 'the-dot_page_msh-hub' !== $hook ) {
+		// Hook is based on menu title "TinyDot" -> tinydot_page_{page_slug}
+		if ( 'tinydot_page_msh-hub' !== $hook ) {
 			return;
 		}
-
 		$assets_base = defined( 'MSH_IO_ASSETS_URL' )
 			? trailingslashit( MSH_IO_ASSETS_URL )
 			: trailingslashit( plugin_dir_url( __FILE__ ) . '../assets' );
 
+		// Enqueue brand guidelines first (base variables)
+		$brand_guidelines_file = dirname( __FILE__ ) . '/../assets/css/brand-guidelines.css';
+		wp_enqueue_style(
+			'msh-brand-guidelines',
+			$assets_base . 'css/brand-guidelines.css',
+			array(),
+			file_exists( $brand_guidelines_file ) ? filemtime( $brand_guidelines_file ) : '2.0.0'
+		);
+
+		// Enqueue list table branding
+		$list_table_file = dirname( __FILE__ ) . '/../assets/css/wp-list-table-branding.css';
+		wp_enqueue_style(
+			'msh-list-table-branding',
+			$assets_base . 'css/wp-list-table-branding.css',
+			array( 'msh-brand-guidelines' ),
+			file_exists( $list_table_file ) ? filemtime( $list_table_file ) : '2.0.0'
+		);
+
+		// Enqueue Hub-specific styles
 		$style_file    = dirname( __FILE__ ) . '/../assets/css/hub.css';
 		$style_version = file_exists( $style_file ) ? filemtime( $style_file ) : '2.0.0';
 
 		wp_enqueue_style(
 			'msh-hub-css',
 			$assets_base . 'css/hub.css',
-			array(),
+			array( 'msh-brand-guidelines', 'msh-list-table-branding' ),
 			$style_version
 		);
 
@@ -393,9 +412,15 @@ class MSH_Hub_Page {
 				</form>
 			</div>
 
-			<div id="msh-loading-spinner" style="display: none; text-align: center; padding: 20px;">
-				<span class="spinner is-active" style="float: none; margin: 0;"></span>
-				<p><?php esc_html_e( 'Loading metadata entries…', 'msh-image-optimizer' ); ?></p>
+			<div id="msh-loading-spinner" style="display: none;">
+				<div class="msh-tinydot-loader msh-tinydot-loader--medium msh-tinydot-loader--pulse-spin">
+					<div class="msh-tinydot-loader__icon">
+						<img src="<?php echo esc_url( plugins_url( 'assets/icons/tinydot-icon.png', dirname( __FILE__ ) ) ); ?>" alt="">
+					</div>
+					<div class="msh-tinydot-loader__text">
+						<?php esc_html_e( 'Loading metadata entries…', 'msh-image-optimizer' ); ?>
+					</div>
+				</div>
 			</div>
 
 			<p class="msh-results-count">

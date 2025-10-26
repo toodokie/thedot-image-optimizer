@@ -1626,6 +1626,16 @@
                             nonce: mshImageOptimizer.renameToggleNonce,
                             enabled
                         }
+                    }).done(() => {
+                        if (enabled === '0') {
+                            AppState.images.forEach((img) => {
+                                img.suggested_filename = '';
+                            });
+                            UI.updateFilenameSuggestionsButton();
+                            UI.updateLog('File rename disabled. Cleared cached suggestions. Run Analyze to refresh.');
+                        } else {
+                            UI.updateLog('File rename enabled. Run Analyze to regenerate suggestions.');
+                        }
                     }).fail(() => {
                         alert('Unable to update rename setting. Please try again.');
                         AppState.renameEnabled = !AppState.renameEnabled;
@@ -2173,6 +2183,11 @@
         }
 
         static renderFilenameSuggestion(image) {
+            // Don't show suggestion if feature is disabled
+            if (!AppState.renameEnabled) {
+                return '';
+            }
+
             // Don't show suggestion if there isn't one
             if (!image.suggested_filename) {
                 return '';

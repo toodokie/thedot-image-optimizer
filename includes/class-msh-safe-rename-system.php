@@ -141,7 +141,7 @@ class MSH_Safe_Rename_System {
 		$old_metadata = wp_get_attachment_metadata( $attachment_id );
 
 		if ( $this->test_mode ) {
-			$map      = $this->build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir );
+			$map      = $this->build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir, $attachment_id );
 			$replaced = $this->replace_references( $map, $attachment_id, $current_basename, $new_filename );
 
 			if ( is_wp_error( $replaced ) ) {
@@ -169,7 +169,7 @@ class MSH_Safe_Rename_System {
 
 		$this->update_wordpress_metadata( $attachment_id, $rename['new_path'], $old_metadata, $new_relative );
 
-		$map      = $this->build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir );
+		$map      = $this->build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir, $attachment_id );
 		$replaced = $this->replace_references( $map, $attachment_id, $current_basename, $new_filename );
 
 		if ( is_wp_error( $replaced ) ) {
@@ -622,7 +622,7 @@ class MSH_Safe_Rename_System {
 		);
 	}
 
-	private function build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir ) {
+	private function build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir, $attachment_id = null ) {
 		$map             = array();
 		$map[ $old_url ] = $new_url;
 
@@ -631,6 +631,55 @@ class MSH_Safe_Rename_System {
 		$map[ $old_relative ] = $new_relative;
 
 		$map[ basename( $old_url ) ] = basename( $new_url );
+
+		// Include ALL historical URLs for this attachment to clean up references from previous renames
+		// This fixes the issue where post content contains references to intermediate filenames
+		global $wpdb;
+
+		if ( $attachment_id ) {
+			$historical_urls = $wpdb->get_col(
+				$wpdb->prepare(
+					"SELECT DISTINCT old_url FROM {$wpdb->prefix}msh_rename_log WHERE attachment_id = %d AND status = 'complete'",
+					$attachment_id
+				)
+			);
+
+			if ( ! empty( $historical_urls ) ) {
+				foreach ( $historical_urls as $historical_url ) {
+					// Map each historical URL to the NEW URL
+					$map[ $historical_url ] = $new_url;
+
+					// Also map historical basename to new basename
+					$historical_basename = basename( $historical_url );
+					$map[ $historical_basename ] = basename( $new_url );
+
+					// Map historical relative path to new relative path
+					$historical_relative = str_replace( trailingslashit( $upload_dir['baseurl'] ), '', $historical_url );
+					$map[ $historical_relative ] = $new_relative;
+
+					// Include size variants from historical URLs
+					// Parse historical filename pattern: base-{width}x{height}.ext
+					if ( preg_match( '/^(.+)-(\d+)x(\d+)\.(\w+)$/', $historical_basename, $matches ) ) {
+						$historical_base = $matches[1];
+						$width           = $matches[2];
+						$height          = $matches[3];
+						$ext             = $matches[4];
+
+						// Generate corresponding new size variant
+						$new_base             = pathinfo( basename( $new_url ), PATHINFO_FILENAME );
+						$new_size_variant     = $new_base . '-' . $width . 'x' . $height . '.' . $ext;
+						$map[ $historical_basename ] = $new_size_variant;
+
+						// Full URL variants
+						$historical_dir         = trailingslashit( dirname( $historical_url ) );
+						$new_dir                = trailingslashit( dirname( $new_url ) );
+						$historical_size_url    = $historical_dir . $historical_basename;
+						$new_size_url           = $new_dir . $new_size_variant;
+						$map[ $historical_size_url ] = $new_size_url;
+					}
+				}
+			}
+		}
 
 		if ( is_array( $old_metadata ) && ! empty( $old_metadata['sizes'] ) ) {
 			$old_dir = trailingslashit( dirname( $old_url ) );
