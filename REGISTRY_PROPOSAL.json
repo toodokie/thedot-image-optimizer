@@ -1,0 +1,551 @@
+{
+  "_comment": "TinyDot Template Registry Proposal - Industry-Agnostic Architecture",
+  "_version": "1.0.0",
+  "_generated": "2025-10-26",
+  "_purpose": "Migrate hardcoded PHP templates to JSON-based registry with inheritance",
+
+  "meta": {
+    "schema_version": "1.0",
+    "default_locale": "en",
+    "supported_locales": ["en", "fr", "es", "de"],
+    "default_industry": "generic",
+    "variable_prefix": "{",
+    "variable_suffix": "}"
+  },
+
+  "variables": {
+    "_comment": "Global variables available to all templates",
+    "business": {
+      "business_name": {
+        "type": "string",
+        "source": "msh_onboarding_context.business_name",
+        "fallback": "business",
+        "example": "Main Street Health"
+      },
+      "location": {
+        "type": "string",
+        "source": "computed",
+        "format": "{city}, {region}",
+        "fallback": "",
+        "example": "Toronto, Ontario"
+      },
+      "location_slug": {
+        "type": "string",
+        "source": "computed",
+        "format": "slugified({city}-{region})",
+        "example": "toronto-ontario"
+      },
+      "city": {
+        "type": "string",
+        "source": "msh_onboarding_context.city",
+        "example": "Toronto"
+      },
+      "service_area": {
+        "type": "string",
+        "source": "msh_onboarding_context.service_area",
+        "fallback": "{location}",
+        "example": "Greater Toronto Area"
+      },
+      "industry": {
+        "type": "string",
+        "source": "msh_onboarding_context.industry",
+        "example": "medical"
+      },
+      "industry_label": {
+        "type": "string",
+        "source": "computed",
+        "lookup": "industry_labels",
+        "example": "Medical Practice"
+      }
+    },
+    "context": {
+      "descriptor": {
+        "type": "string",
+        "source": "context.visual_descriptor",
+        "fallback": "",
+        "example": "modern reception area"
+      },
+      "subject_name": {
+        "type": "string",
+        "source": "context.subject_name",
+        "fallback": "",
+        "example": "Sarah Johnson"
+      },
+      "service": {
+        "type": "string",
+        "source": "context.service",
+        "fallback": "",
+        "example": "physiotherapy"
+      }
+    },
+    "onboarding": {
+      "uvp": {
+        "type": "string",
+        "source": "msh_onboarding_context.uvp",
+        "fallback": "",
+        "example": "Evidence-based care with personalized treatment plans"
+      },
+      "target_audience": {
+        "type": "string",
+        "source": "msh_onboarding_context.target_audience",
+        "fallback": "",
+        "example": "Patients seeking rehabilitation"
+      }
+    }
+  },
+
+  "scenes": {
+    "_comment": "Scene-based templates with inheritance: generic -> industry -> site",
+
+    "facility": {
+      "generic": {
+        "_comment": "Base template for ALL industries",
+        "title": "{business_name} Workspace",
+        "alt_text": "Interior view of {business_name}",
+        "caption": "Collaborative space for {industry_label} team members",
+        "description": "The {business_name} workspace{location_phrase} designed for {industry_label} collaboration. {uvp}",
+        "filename_pattern": "{business_name_slug}-facility-{location_slug}",
+        "max_words": 4,
+        "variables_required": ["business_name"],
+        "variables_optional": ["location", "industry_label", "uvp"]
+      },
+
+      "medical": {
+        "_inherits": "generic",
+        "_comment": "Medical industry override - replaces generic strings",
+        "title": "{business_name} Medical Facility",
+        "alt_text": "Interior view of {business_name} medical facility in {location}",
+        "caption": "Modern medical facility at {business_name}",
+        "description": "Modern medical facility at {business_name}{location_phrase}. Professional medical practice with state-of-the-art equipment.",
+        "_overrides": ["title", "alt_text", "caption", "description"]
+      },
+
+      "legal": {
+        "_inherits": "generic",
+        "title": "{business_name} Law Office",
+        "alt_text": "Interior view of {business_name} law office in {location}",
+        "caption": "Professional law office environment",
+        "description": "Professional law office at {business_name}{location_phrase}. Client-focused legal services."
+      },
+
+      "saas": {
+        "_inherits": "generic",
+        "title": "{business_name} Office",
+        "caption": "Collaborative workspace for {business_name} team",
+        "description": "Modern office space at {business_name}{location_phrase}. Collaborative environment for innovation."
+      }
+    },
+
+    "team": {
+      "generic": {
+        "title": "{name} – {business_name} Team",
+        "alt_text": "{name} from the {business_name} team",
+        "caption": "Professional team member at {business_name}",
+        "description": "{name} is a valued member of the {business_name} team{location_phrase}.",
+        "filename_pattern": "{business_name_slug}-team-{name_slug}",
+        "max_words": 4,
+        "variables_required": ["business_name"],
+        "variables_optional": ["name", "location"]
+      },
+
+      "medical": {
+        "_inherits": "generic",
+        "caption": "Healthcare professional at {business_name}",
+        "description": "{name} is a healthcare professional at {business_name}{location_phrase} providing patient-centered care."
+      },
+
+      "legal": {
+        "_inherits": "generic",
+        "caption": "Attorney at {business_name}",
+        "description": "{name} is an attorney at {business_name}{location_phrase} providing trusted legal counsel."
+      }
+    },
+
+    "testimonial": {
+      "generic": {
+        "title": "Client Testimonial – {subject_descriptor}",
+        "alt_text": "Testimonial from client at {business_name}",
+        "caption": "Real client experience with {business_name} services",
+        "description": "Client testimonial highlighting the quality of service at {business_name}{location_phrase}. {uvp}",
+        "filename_pattern": "client-testimonial-{subject_slug}-{location_slug}",
+        "max_words": 4
+      },
+
+      "medical": {
+        "_inherits": "generic",
+        "title": "Patient Testimonial – {subject_descriptor}",
+        "alt_text": "Testimonial from patient at {business_name}",
+        "caption": "Real patient experience with {business_name} care",
+        "description": "Testimonial from a {business_name} patient highlighting their care experience{location_phrase}. {uvp}",
+        "filename_pattern": "patient-testimonial-{subject_slug}-{location_slug}"
+      }
+    },
+
+    "service-icon": {
+      "generic": {
+        "title": "{concept} Icon",
+        "alt_text": "Icon representing {concept}",
+        "caption": "Visual icon for {concept}",
+        "description": "Icon representing {concept_label} services at {business_name}",
+        "filename_pattern": "{concept_slug}-icon-{location_slug}",
+        "max_words": 3
+      }
+    },
+
+    "product": {
+      "generic": {
+        "title": "{product_type}",
+        "alt_text": "{product_label} product",
+        "caption": "{product_label} product",
+        "description": "{product_label} available from {business_name}{location_phrase}. {uvp}",
+        "filename_pattern": "{product_slug}-{location_slug}",
+        "max_words": 4
+      },
+
+      "medical": {
+        "_inherits": "generic",
+        "alt_text": "{product_label} medical equipment",
+        "caption": "Professional medical equipment",
+        "description": "{product_label} used in professional medical programs at {business_name}{location_phrase}."
+      },
+
+      "ecommerce": {
+        "_inherits": "generic",
+        "description": "{product_label} available from {business_name}. {uvp}"
+      }
+    },
+
+    "logo": {
+      "generic": {
+        "title": "{business_name} Logo",
+        "alt_text": "{business_name} official logo",
+        "caption": "Official {business_name} branding",
+        "description": "The official logo for {business_name}, representing {uvp_or_industry_default}",
+        "filename_pattern": "{business_name_slug}-logo",
+        "max_words": 3
+      }
+    },
+
+    "equipment": {
+      "generic": {
+        "title": "Professional Equipment – {business_name}",
+        "alt_text": "Professional equipment at {business_name}",
+        "caption": "{industry_label} equipment and tools",
+        "description": "Professional equipment for {industry_label} services at {business_name}{location_phrase}. {uvp}",
+        "filename_pattern": "{descriptor_slug}-equipment-{location_slug}",
+        "max_words": 4
+      },
+
+      "medical": {
+        "_inherits": "generic",
+        "title": "Medical Equipment – {business_name}",
+        "alt_text": "Professional medical equipment at {business_name}",
+        "caption": "Advanced medical technology",
+        "description": "Professional medical equipment used for patient care at {business_name}{location_phrase}."
+      }
+    },
+
+    "business": {
+      "generic": {
+        "_comment": "Fallback for unclassified business images",
+        "title": "{descriptor} – {business_name}",
+        "alt_text": "{descriptor} at {business_name}",
+        "caption": "{descriptor_label}",
+        "description": "{descriptor}{location_phrase}. {uvp}",
+        "filename_pattern": "{descriptor_slug}-{business_name_slug}-{location_slug}",
+        "max_words": 4
+      }
+    }
+  },
+
+  "industries": {
+    "_comment": "Industry-specific overrides and profiles",
+
+    "generic": {
+      "label": "Professional Services",
+      "credentials": "",
+      "service_keywords": [],
+      "trust_signals": []
+    },
+
+    "medical": {
+      "label": "Medical Practice",
+      "credentials": "Board-certified physicians",
+      "service_area_suffix": "serving {service_area}",
+      "trust_signals": [
+        "Evidence-based care",
+        "Patient-centered approach",
+        "Modern medical technology"
+      ],
+      "service_keywords": [
+        "medical",
+        "healthcare",
+        "physician",
+        "diagnosis",
+        "treatment"
+      ]
+    },
+
+    "dental": {
+      "label": "Dental Clinic",
+      "credentials": "Licensed dentists",
+      "service_area_suffix": "serving {service_area}",
+      "trust_signals": [
+        "Family-friendly care",
+        "Modern dental technology",
+        "Comprehensive services"
+      ],
+      "service_keywords": [
+        "dental",
+        "dentist",
+        "hygiene",
+        "cleaning",
+        "orthodontics"
+      ]
+    },
+
+    "legal": {
+      "label": "Law Firm",
+      "credentials": "Licensed attorneys",
+      "service_area_suffix": "serving {service_area}",
+      "trust_signals": [
+        "Trusted legal counsel",
+        "Client-focused representation",
+        "Experienced attorneys"
+      ],
+      "service_keywords": [
+        "legal",
+        "attorney",
+        "lawyer",
+        "counsel",
+        "representation"
+      ]
+    },
+
+    "saas": {
+      "label": "SaaS Company",
+      "credentials": "",
+      "trust_signals": [
+        "Scalable solutions",
+        "Cloud-based platform",
+        "Enterprise-grade security"
+      ],
+      "service_keywords": [
+        "software",
+        "platform",
+        "cloud",
+        "subscription",
+        "api"
+      ]
+    },
+
+    "real_estate": {
+      "label": "Real Estate",
+      "credentials": "Licensed real estate professionals",
+      "service_area_suffix": "serving {service_area}",
+      "trust_signals": [
+        "Local market expertise",
+        "Full-service brokerage",
+        "Client satisfaction guarantee"
+      ],
+      "service_keywords": [
+        "property",
+        "real estate",
+        "listing",
+        "sale",
+        "rental"
+      ]
+    },
+
+    "ecommerce": {
+      "label": "Online Store",
+      "credentials": "",
+      "trust_signals": [
+        "Secure checkout",
+        "Fast shipping",
+        "Money-back guarantee"
+      ],
+      "service_keywords": [
+        "product",
+        "shop",
+        "buy",
+        "cart",
+        "checkout"
+      ]
+    }
+  },
+
+  "locales": {
+    "_comment": "Locale-specific translations for templates",
+
+    "en": {
+      "locale_name": "English",
+      "date_format": "F j, Y",
+      "text_direction": "ltr",
+      "template_overrides": {}
+    },
+
+    "fr": {
+      "locale_name": "Français",
+      "date_format": "j F Y",
+      "text_direction": "ltr",
+      "template_overrides": {
+        "facility": {
+          "generic": {
+            "title": "Espace de travail {business_name}",
+            "alt_text": "Vue intérieure de {business_name}",
+            "caption": "Espace collaboratif pour l'équipe {industry_label}",
+            "description": "L'espace de travail {business_name}{location_phrase} conçu pour la collaboration {industry_label}. {uvp}"
+          }
+        },
+        "team": {
+          "generic": {
+            "title": "{name} – Équipe {business_name}",
+            "alt_text": "{name} de l'équipe {business_name}",
+            "caption": "Membre professionnel de l'équipe chez {business_name}",
+            "description": "{name} est un membre précieux de l'équipe {business_name}{location_phrase}."
+          }
+        }
+      }
+    }
+  },
+
+  "detection_rules": {
+    "_comment": "Scene detection rules with token patterns",
+
+    "facility": {
+      "required_tokens": ["exterior", "building"],
+      "negative_tokens": ["interior", "room", "inside"],
+      "nice_to_have": ["clinic", "office", "entrance"],
+      "priority": 100,
+      "confidence_threshold": 0.7
+    },
+
+    "team": {
+      "required_tokens": ["team", "people"],
+      "negative_tokens": ["logo", "screenshot", "individual"],
+      "nice_to_have": ["group", "staff", "employees"],
+      "priority": 90,
+      "confidence_threshold": 0.7
+    },
+
+    "product": {
+      "required_tokens": ["white", "background"],
+      "negative_tokens": ["person", "landscape"],
+      "nice_to_have": ["product", "isolated", "studio"],
+      "priority": 85,
+      "confidence_threshold": 0.7
+    },
+
+    "service-icon": {
+      "dimension_constraints": {
+        "max_width": 800,
+        "max_height": 800
+      },
+      "filename_patterns": ["*-icon.*", "*icon.*"],
+      "priority": 80,
+      "confidence_threshold": 0.6
+    }
+  },
+
+  "filename_patterns": {
+    "_comment": "Filename generation patterns with truncation rules",
+
+    "team": {
+      "pattern": "{business_name_slug}-team-{name_slug}",
+      "max_words": 4,
+      "fallback": "{business_name_slug}-team-member"
+    },
+
+    "facility": {
+      "pattern": "{business_name_slug}-facility-{location_slug}",
+      "max_words": 4,
+      "fallback": "{business_name_slug}-facility"
+    },
+
+    "testimonial": {
+      "pattern": "{client_or_patient}-testimonial-{subject_slug}-{location_slug}",
+      "max_words": 4,
+      "prefix_by_industry": {
+        "medical": "patient",
+        "dental": "patient",
+        "generic": "client"
+      }
+    },
+
+    "service-icon": {
+      "pattern": "{concept_slug}-icon-{location_slug}",
+      "max_words": 3
+    },
+
+    "product": {
+      "pattern": "{product_slug}-{location_slug}",
+      "max_words": 4
+    },
+
+    "equipment": {
+      "pattern": "{descriptor_slug}-equipment-{location_slug}",
+      "max_words": 4
+    },
+
+    "business": {
+      "pattern": "{descriptor_slug}-{business_name_slug}-{location_slug}",
+      "max_words": 4
+    }
+  },
+
+  "confidence_scoring": {
+    "_comment": "Rules for calculating metadata confidence scores",
+
+    "filename_quality": {
+      "bonus_business_name": 5,
+      "bonus_location": 3,
+      "penalty_generic_word": -5,
+      "penalty_long_slug": -10,
+      "generic_words": ["image", "photo", "picture", "file", "attachment"]
+    },
+
+    "context_match": {
+      "manual_override": 100,
+      "ai_generated": 90,
+      "token_match_high": 80,
+      "token_match_medium": 60,
+      "heuristic_fallback": 40
+    }
+  },
+
+  "usage_notes": {
+    "_implementation": "MSH_Template_Registry class loads this JSON and provides get_template() method",
+    "_migration": "Gradually migrate hardcoded templates to this registry structure",
+    "_extensibility": "Sites can override templates by creating custom JSON files",
+    "_versioning": "Each template can have version field for change tracking",
+    "_testing": "A/B testing supported via 'variant' field in templates",
+
+    "example_usage": {
+      "_comment": "PHP code example for using registry",
+      "code": "
+        $registry = MSH_Template_Registry::get_instance();
+        $template = $registry->get_template(
+          'facility',           // scene
+          'medical',           // industry
+          array(               // variables
+            'business_name' => 'Main Street Health',
+            'location' => 'Toronto, Ontario',
+            'uvp' => 'Evidence-based care'
+          )
+        );
+
+        // Returns:
+        // array(
+        //   'title' => 'Main Street Health Medical Facility',
+        //   'alt_text' => 'Interior view of Main Street Health medical facility in Toronto, Ontario',
+        //   'caption' => 'Modern medical facility at Main Street Health',
+        //   'description' => 'Modern medical facility at Main Street Health in Toronto, Ontario. Professional medical practice with state-of-the-art equipment.',
+        //   'filename_pattern' => 'mainstreet-health-facility-toronto-ontario',
+        //   'confidence' => 80,
+        //   'source' => 'registry'
+        // )
+      "
+    }
+  }
+}

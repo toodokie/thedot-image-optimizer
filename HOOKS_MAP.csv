@@ -1,0 +1,35 @@
+Hook Type,Hook Name,Priority,Callback Method,Purpose,Class,File Path,Line Number,Parameters,Return Type
+WordPress Action,add_attachment,10,generate_suggestion_for_new_upload,Auto-generate filename suggestion on new upload,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,5658,"int $attachment_id",void
+WordPress Action,init,10,prime_season_cache,Initialize season detection cache for performance,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,5653,none,void
+WordPress Action,shutdown,10,log_cache_stats,Log season cache hit/miss statistics,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,215,none,void
+Custom Action,msh_regenerate_filename_suggestions,10,regenerate_all_filename_suggestions,Cron event to batch regenerate filename suggestions,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,5661,none,void
+WordPress Filter,attachment_fields_to_edit,10,add_context_attachment_field,Add Category dropdown to Media Library edit screen,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,5664,"array $form_fields, WP_Post $post",array
+WordPress Filter,attachment_fields_to_save,10,save_context_attachment_field,Save Category selection from Media Library,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,5665,"array $post, array $attachment",array
+AJAX,wp_ajax_msh_analyze_images,N/A,ajax_analyze_images,Scan all images and generate metadata preview,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,7558,none,JSON response
+AJAX,wp_ajax_msh_optimize_batch,N/A,ajax_optimize_batch,Apply metadata to batch of images,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,7753,none,JSON response
+AJAX,wp_ajax_msh_get_progress,N/A,ajax_get_progress,Get optimization progress status,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,8450,none,JSON response
+AJAX,wp_ajax_msh_reset_optimization,N/A,ajax_reset_optimization,Clear optimization state and start fresh,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,8499,none,JSON response
+AJAX,wp_ajax_msh_apply_filename_suggestions,N/A,ajax_apply_filename_suggestions,Batch apply filename suggestions with safe rename,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,8531,none,JSON response
+AJAX,wp_ajax_msh_save_filename_suggestion,N/A,ajax_save_filename_suggestion,Save single filename suggestion to post meta,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,8910,none,JSON response
+AJAX,wp_ajax_msh_remove_filename_suggestion,N/A,ajax_remove_filename_suggestion,Remove/reject filename suggestion,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,8965,none,JSON response
+AJAX,wp_ajax_msh_accept_filename_suggestion,N/A,ajax_accept_filename_suggestion,Accept and apply filename with safe rename system,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9618,none,JSON response
+AJAX,wp_ajax_msh_toggle_file_rename,N/A,ajax_toggle_file_rename,Enable/disable filename suggestion feature,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9554,none,JSON response
+AJAX,wp_ajax_msh_toggle_ai_mode,N/A,ajax_toggle_ai_mode,Enable/disable AI metadata generation,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9588,none,JSON response
+AJAX,wp_ajax_msh_reject_filename_suggestion,N/A,ajax_reject_filename_suggestion,Reject filename suggestion and prevent re-suggestion,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9693,none,JSON response
+AJAX,wp_ajax_msh_preview_meta_text,N/A,ajax_preview_meta_text,Generate metadata preview for single image,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9004,none,JSON response
+AJAX,wp_ajax_msh_save_edited_meta,N/A,ajax_save_edited_meta,Apply user-edited metadata to attachment,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9044,none,JSON response
+AJAX,wp_ajax_msh_update_context,N/A,ajax_update_context,Update Category selection for attachment,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,8335,none,JSON response
+AJAX,wp_ajax_msh_build_usage_index,N/A,ajax_build_usage_index,Build image usage index for content tracking,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9224,none,JSON response
+AJAX,wp_ajax_msh_clear_bad_suggestions,N/A,ajax_clear_bad_suggestions,Clear suggestions that match current filenames,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9128,none,JSON response
+AJAX,wp_ajax_msh_optimize_high_priority,N/A,ajax_optimize_high_priority,Optimize high-priority images first,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,7796,none,JSON response
+AJAX,wp_ajax_msh_optimize_medium_priority,N/A,ajax_optimize_medium_priority,Optimize medium-priority images,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,7858,none,JSON response
+AJAX,wp_ajax_msh_optimize_all_remaining,N/A,ajax_optimize_all_remaining,Optimize all remaining unprocessed images,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,7920,none,JSON response
+AJAX,wp_ajax_msh_verify_webp_status,N/A,ajax_verify_webp_status,Check WebP conversion status for images,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9731,none,JSON response
+AJAX,wp_ajax_msh_get_attachment_count,N/A,ajax_get_attachment_count,Count total image attachments,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9403,none,JSON response
+AJAX,wp_ajax_msh_get_remaining_count,N/A,ajax_get_remaining_count,Count unoptimized image attachments,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9437,none,JSON response
+AJAX,wp_ajax_msh_check_capabilities,N/A,ajax_check_capabilities,Check user permissions for operations,MSH_Contextual_Meta_Generator,includes/class-msh-image-optimizer.php,9483,none,JSON response
+REST Route,msh/v1/jobs/status,N/A,get_jobs_status,Get job queue status,MSH_REST_API,includes/class-msh-rest-api.php,57,none,JSON response
+REST Route,msh/v1/jobs/process,N/A,process_jobs,Process job queue with batch size,MSH_REST_API,includes/class-msh-rest-api.php,67,"int $batch_size, string $priority",JSON response
+REST Route,msh/v1/jobs/{id},N/A,get_job,Get single job details by ID,MSH_REST_API,includes/class-msh-rest-api.php,91,"int $id",JSON response
+Custom Action,msh_attachment_deleted_cleanup,10,N/A,Extensibility hook after attachment deletion cleanup,N/A,includes/automation/class-msh-automation-triggers.php,176,int $attachment_id,void
+Custom Filter,msh_trust_signals,10,N/A,Filter trust signals for industry/context,N/A,includes/class-msh-image-optimizer.php,851,"array $selected, string $industry, array $context",array
