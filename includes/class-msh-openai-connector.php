@@ -22,7 +22,7 @@ class MSH_OpenAI_Connector {
 	 * Prompt version for tracking changes
 	 * Format: YYYYMMDD.revision
 	 */
-	const PROMPT_VERSION = '20251029.4'; // User's improved prompt: authoritative context_type + validation rules + anti-hallucination
+	const PROMPT_VERSION = '20251029.5'; // AI-search optimization (SGE/Copilot/ChatGPT) + conversational phrasing
 
 	/**
 	 * Business-related context types that allow brand name in metadata
@@ -314,6 +314,15 @@ GENERAL CONSTRAINTS:
 - Describe only what is visible. Do not assume unseen details (e.g., exact brand of equipment, specific facility interiors) unless visible.
 - Align tone with brand_voice but keep alt text practical and concise.
 - Use page context for relevance (see USER message), but never contradict context_type rules above.
+
+AI-SEARCH & SEO OPTIMIZATION:
+- Write metadata friendly to both classic search engines AND generative-AI search (Google SGE, Bing Copilot, ChatGPT Browse, Perplexity).
+- Use natural, factual language that answers implicit user questions (who/what/where/why).
+- Mention concrete entities (business name, city, service category) when allowed by context_type.
+- Prefer phrases people would say or ask in conversation (e.g., 'rehabilitation clinic in Hamilton for first responders').
+- Avoid keyword lists or unnatural repetition.
+- Keep descriptions coherent with the surrounding page topic; this helps AI ranking models connect the image to the right intent cluster.
+- Example: Instead of 'clinic Hamilton physiotherapy chiropractic massage' → 'Main Street Health rehabilitation clinic in Hamilton Ontario providing physiotherapy and chiropractic care for first responders.'
 
 OUTPUT FORMAT (one JSON object only, exact keys/order):
 {
