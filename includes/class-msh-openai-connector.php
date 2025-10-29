@@ -22,7 +22,7 @@ class MSH_OpenAI_Connector {
 	 * Prompt version for tracking changes
 	 * Format: YYYYMMDD.revision
 	 */
-	const PROMPT_VERSION = '20251029.2'; // Added context_type guidance + anti-hallucination rules
+	const PROMPT_VERSION = '20251029.3'; // Explicit context_type respect + detailed testimonial guidance
 
 	/**
 	 * Business-related context types that allow brand name in metadata
@@ -294,22 +294,36 @@ You will also be provided with:
 - page_role: {$page_role}                        // e.g., header_image, article_body_image, service_page_photo
 - model_pass: {$model_pass}                       // e.g., overview, crops, high_detail
 
-CONTEXT TYPE GUIDANCE:
-- brand_logo: Company logo/branding imagery
-- team: Staff photos, team members
-- facility: Building/office/clinic photos showing actual business location
-- equipment: Business equipment, tools, machinery
-- clinical: Medical/service delivery imagery
-- business: Business operations, office scenes
-- testimonial: Client testimonial imagery (may be stock photo representing satisfaction/results)
-- decorative: Pure background/pattern with no informational value
-- stock: Generic stock photography unrelated to business
+CONTEXT TYPE (MANUALLY SET BY USER - RESPECT THIS):
+The context_type parameter was manually chosen by the user and indicates the TRUE purpose of this image.
+You MUST respect this categorization and tailor your metadata accordingly.
 
-CRITICAL RULES:
-1. If context_type is 'testimonial', 'decorative', or 'stock', describe ONLY what is visible. DO NOT claim the image shows the business location or is taken at the business.
-2. If context_type is 'facility', the image DOES show the actual business location - include business name.
-3. If the image is generic/stock (landscape, food, objects), describe it accurately WITHOUT forcing business connection.
-4. For testimonial images: Focus on the emotion/concept (e.g., \'satisfied client\', \'positive outcome\') not false location claims.
+Available context types and how to handle each:
+- brand_logo: Company logo/branding. Include business name, describe visual elements.
+- team: Staff photos. Include business name, describe people/setting professionally.
+- facility: Building/office/clinic showing ACTUAL business location. Include business name and location.
+- equipment: Business equipment/tools/machinery owned by business. Include business name.
+- clinical: Medical/service delivery imagery. May be stock or real. Check brand_name_visible flag.
+- business: Business operations, office scenes. May be stock or real. Check brand_name_visible flag.
+- testimonial: Client testimonial imagery. Usually stock photo representing concept (satisfaction, results, healing). Describe the CONCEPT and emotion, NOT a fake location.
+- service-icon: Icon/graphic for service category. Describe the visual/purpose, include business context.
+- decorative: Pure background/pattern with no informational value. Empty alt_text is appropriate.
+- stock: Generic stock photography unrelated to business. Describe ONLY what is visible accurately.
+
+CRITICAL RULES FOR EACH TYPE:
+1. brand_logo, team, facility, equipment: ALWAYS include business name - these are actual business assets
+2. testimonial: Describe the FEELING/CONCEPT (hope, recovery, satisfaction) + what is visible. NO false location claims like \'at Main Street Health\' or \'in our facility\'
+3. clinical, business: Follow brand_name_visible flag. If false, describe accurately without business connection
+4. stock, decorative: Describe ONLY what is visible. NO business connection whatsoever
+5. service-icon: Describe the icon purpose + connect to business service category
+
+TESTIMONIAL IMAGE RULES (MOST IMPORTANT):
+- User manually selected \'testimonial\' because this image represents a CLIENT OUTCOME or TESTIMONIAL CONCEPT
+- The image is almost certainly a STOCK PHOTO, not taken at the business
+- Focus on: emotion (hope, relief, healing, satisfaction), concept (recovery journey, positive outcome), what is visible
+- NEVER claim: \'at Main Street Health\', \'in our facility\', \'at our location\', \'Main Street Health client\'
+- Good: \'Person experiencing relief after treatment, symbolizing positive healthcare outcomes\'
+- Bad: \'Patient receiving care at Main Street Health clinic in Hamilton\'
 
 TASK:
 Using the image and all the context above, suggest the following exactly in JSON format:
