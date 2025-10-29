@@ -427,56 +427,19 @@ class MSH_Regeneration_Worker {
 	private function save_to_cache( $attachment_id, $locale, $field, $value, $reason ) {
 		global $wpdb;
 
-		$table = $wpdb->prefix . 'msh_metadata_cache';
-
-		// Check if entry exists
-		$existing = $wpdb->get_row( $wpdb->prepare(
-			"SELECT * FROM {$table}
-			WHERE attachment_id = %d
-			AND locale = %s
-			AND field = %s",
-			$attachment_id,
-			$locale,
-			$field
-		) );
-
-		if ( $existing ) {
-			// Update existing entry
-			$result = $wpdb->update(
-				$table,
-				array(
-					'ai_value'      => $value,
-					'stale_reason'  => null, // Clear staleness
-					'updated_at'    => current_time( 'mysql' ),
-				),
-				array(
-					'attachment_id' => $attachment_id,
-					'locale'        => $locale,
-					'field'         => $field,
-				),
-				array( '%s', '%s', '%s' ),
-				array( '%d', '%s', '%s' )
-			);
-		} else {
-			// Insert new entry
-			$result = $wpdb->insert(
-				$table,
-				array(
-					'attachment_id' => $attachment_id,
-					'locale'        => $locale,
-					'field'         => $field,
-					'ai_value'      => $value,
-					'manual_value'  => '',
-					'chosen_source' => 'ai',
-					'stale_reason'  => null,
-					'created_at'    => current_time( 'mysql' ),
-					'updated_at'    => current_time( 'mysql' ),
-				),
-				array( '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
-			);
+		if ( ! function_exists( 'msh_upsert_metadata_cache_value' ) ) {
+			return new WP_Error( 'cache_helper_missing', __( 'Metadata cache helper not available.', 'msh-image-optimizer' ) );
 		}
 
-		if ( false === $result ) {
+		$upserted = msh_upsert_metadata_cache_value(
+			$attachment_id,
+			$locale,
+			$field,
+			$value,
+			'ai'
+		);
+
+		if ( ! $upserted ) {
 			return new WP_Error( 'db_save_failed', __( 'Failed to save metadata to cache.', 'msh-image-optimizer' ), $wpdb->last_error );
 		}
 

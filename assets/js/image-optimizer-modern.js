@@ -1907,7 +1907,7 @@
                     <td colspan="8" style="text-align: center; padding: 40px;">
                         <div class="welcome-content">
                             <h3>🚀 Ready to Optimize Your Images!</h3>
-                            <p>Click "Analyze Published Images" to scan your site and see what needs optimization.</p>
+                            <p>Click "Analyze" to scan your site and see what needs optimization.</p>
                             <p><strong>New:</strong> WebP conversion now included automatically!</p>
                         </div>
                     </td>
@@ -3075,30 +3075,28 @@
         static resetOptimizationFlags() {
             this.updateLog('Resetting optimization flags...');
 
-            $.post(CONFIG.endpoints.optimize, {
-                action: 'msh_reset_optimization',
-                nonce: CONFIG.nonce
-            })
-            .done((response) => {
-                if (response && response.success) {
-                    const message = response.data && response.data.message
-                        ? response.data.message
-                        : 'Optimization flags have been reset.';
-                    this.updateLog(message);
+            this.postWithNonceRetry({ action: 'msh_reset_optimization' })
+                .then((response) => {
+                    if (response && response.success) {
+                        const message = response.data && response.data.message
+                            ? response.data.message
+                            : 'Optimization flags have been reset.';
+                        this.updateLog(message);
 
-                    AppState.images = [];
-                    FilterEngine.reset();
-                    this.updateFilterControls();
-                    this.showWelcomeState();
-                    this.updateStats();
-                    $('#progress-status').text('Ready for analysis…');
-                } else {
-                    this.updateLog('Error resetting optimization flags.');
-                }
-            })
-            .fail(() => {
-                this.updateLog('Error resetting optimization flags.');
-            });
+                        AppState.images = [];
+                        FilterEngine.reset();
+                        this.updateFilterControls();
+                        this.showWelcomeState();
+                        this.updateStats();
+                        $('#progress-status').text('Ready for analysis…');
+                    } else {
+                        this.updateLog('Error resetting optimization flags.');
+                    }
+                })
+                .catch((error) => {
+                    const message = error && error.message ? error.message : 'Error resetting optimization flags.';
+                    this.updateLog(message);
+                });
         }
 
         static showProgressModal(title, status, progress) {
@@ -3777,23 +3775,161 @@
             await this.processImagesBatch([image], `Image ${imageId}`);
         }
 
-        static async makeOptimizationRequest(action) {
-            return new Promise((resolve, reject) => {
-                $.post(CONFIG.endpoints.optimize, {
-                    action: action,
-                    nonce: CONFIG.nonce
-                })
-                .done((response) => {
-                    if (response.success) {
-                        resolve(response.data);
-                    } else {
-                        reject(new Error(response.data || 'Unknown error'));
-                    }
-                })
-                .fail((xhr) => {
-                    reject(new Error(`AJAX Error: ${xhr.statusText}`));
+        static async postWithNonceRetry(payload, retry = true) {
+            const execute = () => new Promise((resolve, reject) => {
+                $.ajax({
+                    url: CONFIG.endpoints.optimize,
+                    method: 'POST',
+                    data: { nonce: CONFIG.nonce, ...payload },
+                    success: resolve,
+                    error: (xhr) => reject(xhr)
                 });
             });
+
+            try {
+                return await execute();
+            } catch (xhr) {
+                if (retry && this.isNonceError(xhr)) {
+                    try {
+                        await this.refreshNonce();
+                        return await this.postWithNonceRetry(payload, false);
+                    } catch (refreshError) {
+                        const message = (refreshError && refreshError.message) ? refreshError.message : 'Nonce refresh failed';
+                        throw new Error(`AJAX Error: ${message}`);
+                    }
+                }
+
+                const statusText = (xhr && (xhr.statusText || xhr.responseText || '')).trim();
+                const message = statusText !== '' ? statusText : 'Unknown error';
+                throw new Error(`AJAX Error: ${message}`);
+            }
+        }
+
+        static isNonceError(xhr) {
+            if (!xhr) {
+                return false;
+            }
+
+            const status = xhr.status;
+            if (status === 401 || status === 403 || status === 405) {
+                return true;
+            }
+
+            const body = (xhr.responseText || '').toLowerCase();
+            if (body === '-1' || body === '0') {
+                return true;
+            }
+
+            return body.includes('nonce') || body.includes('not allowed') || body.includes('unauthorized');
+        }
+
+        static async refreshNonce() {
+            return new Promise((resolve, reject) => {
+                $.ajax({
+                    url: CONFIG.endpoints.optimize,
+                    method: 'POST',
+                    data: {
+                        action: 'msh_refresh_nonce',
+                        nonce: CONFIG.nonce
+                    },
+                    success: (response) => {
+                        if (response && response.success && response.data && response.data.nonce) {
+                            CONFIG.nonce = response.data.nonce;
+                            resolve(true);
+                        } else {
+                            const message = (response && response.data && response.data.message)
+                                ? response.data.message
+                                : 'Nonce refresh failed';
+                            reject(new Error(message));
+                        }
+                    },
+                    error: (xhr) => {
+                        const statusText = (xhr && (xhr.statusText || xhr.responseText || '')).trim();
+                        const message = statusText !== '' ? statusText : 'Nonce refresh failed';
+                        reject(new Error(message));
+                    }
+                });
+            });
+        }
+
+        static extractErrorMessage(response, fallback = 'Unknown error') {
+            if (!response) {
+                return fallback;
+            }
+
+            if (typeof response === 'string') {
+                return response;
+            }
+
+            if (typeof response.data === 'string') {
+                return response.data;
+            }
+
+            if (response.data && typeof response.data.message === 'string') {
+                return response.data.message;
+            }
+
+            if (typeof response.message === 'string') {
+                return response.message;
+            }
+
+            return fallback;
+        }
+
+        static resetBatchSize() {
+            const baseSize = CONFIG.batchSize && Number.isInteger(CONFIG.batchSize)
+                ? CONFIG.batchSize
+                : 5;
+            this.initialBatchSize = Math.max(1, baseSize);
+            this.currentBatchSize = this.initialBatchSize;
+        }
+
+        static shouldReduceBatchSize(error, batchLength) {
+            if (batchLength <= 1) {
+                return false;
+            }
+
+            const message = (error && error.message ? error.message : '').toLowerCase();
+            if (!message) {
+                return false;
+            }
+
+            if (
+                message.includes('gateway time-out') ||
+                message.includes('gateway timeout') ||
+                message.includes('504') ||
+                message.includes('timed out') ||
+                message.includes('timeout')
+            ) {
+                return true;
+            }
+
+            return false;
+        }
+
+        static reduceBatchSize() {
+            if (!this.currentBatchSize || this.currentBatchSize <= 1) {
+                return false;
+            }
+
+            const previousSize = this.currentBatchSize;
+            this.currentBatchSize = Math.max(1, Math.floor(this.currentBatchSize / 2));
+            UI.updateLog(`Request timed out. Reducing batch size from ${previousSize} to ${this.currentBatchSize} and retrying…`);
+            return true;
+        }
+
+        static delay(ms) {
+            return new Promise((resolve) => setTimeout(resolve, ms));
+        }
+
+        static async makeOptimizationRequest(action) {
+            const response = await this.postWithNonceRetry({ action });
+            if (response && response.success) {
+                return response.data;
+            }
+
+            const message = this.extractErrorMessage(response);
+            throw new Error(`AJAX Error: ${message}`);
         }
 
         static async processImagesBatch(images, label) {
@@ -3801,31 +3937,64 @@
 
             Wizard.ensureActive(2);
             AppState.processing = true;
-            const batchSize = 5; // Process 5 images at a time
+            this.resetBatchSize();
+            const totalImages = images.length;
             let processed = 0;
+            let index = 0;
+            let batchNumber = 1;
+            let lastLoggedBatchSize = this.currentBatchSize;
 
-            UI.showProgressModal(`Optimizing ${label}`, `Processing ${images.length} images in batches of ${batchSize}...`);
+            UI.showProgressModal(
+                `Optimizing ${label}`,
+                `Processing ${images.length} images in batches of ${this.currentBatchSize}...`
+            );
             UI.updateLog(`Starting optimization of ${images.length} ${label.toLowerCase()} images`);
 
             try {
-                for (let i = 0; i < images.length; i += batchSize) {
-                    const batch = images.slice(i, i + batchSize);
-                    const batchNum = Math.floor(i / batchSize) + 1;
-                    const totalBatches = Math.ceil(images.length / batchSize);
+                while (index < images.length) {
+                    const currentBatchSize = Math.min(this.currentBatchSize, images.length - index);
+                    const batch = images.slice(index, index + currentBatchSize);
 
-                    // Update progress
-                    const progressPercent = Math.floor((processed / images.length) * 100);
+                    if (currentBatchSize !== lastLoggedBatchSize) {
+                        UI.updateLog(`Adjusted batch size to ${currentBatchSize} images per request.`);
+                        lastLoggedBatchSize = currentBatchSize;
+                    }
+
+                    const rangeStart = index + 1;
+                    const rangeEnd = index + batch.length;
+                    const progressPercentBefore = Math.floor((processed / totalImages) * 100);
+
                     UI.updateProgressModal(
                         `Optimizing ${label}`,
-                        `Processing batch ${batchNum}/${totalBatches}: images ${i + 1}-${Math.min(i + batchSize, images.length)}...`,
-                        progressPercent
+                        `Processing batch ${batchNumber}: images ${rangeStart}-${rangeEnd}...`,
+                        progressPercentBefore
                     );
 
-                    UI.updateLog(`Processing batch ${batchNum}/${totalBatches}: ${batch.length} images`);
+                    UI.updateLog(`Processing batch ${batchNumber}: ${batch.length} image${batch.length === 1 ? '' : 's'}`);
 
-                    // Process this batch
-                    const results = await this.processBatch(batch);
+                    let results;
+
+                    try {
+                        results = await this.processBatch(batch);
+                    } catch (error) {
+                        if (this.shouldReduceBatchSize(error, batch.length) && this.reduceBatchSize()) {
+                            await this.delay(750);
+                            continue; // Retry same index with smaller batch
+                        }
+
+                        throw error;
+                    }
+
                     processed += batch.length;
+                    index += batch.length;
+                    batchNumber += 1;
+
+                    const progressPercentAfter = Math.floor((processed / images.length) * 100);
+                    UI.updateProgressModal(
+                        `Optimizing ${label}`,
+                        `Processed ${processed} of ${images.length} images…`,
+                        progressPercentAfter
+                    );
 
                     // Log results
                     results.forEach(result => {
@@ -3835,7 +4004,7 @@
                     });
 
                     // Small delay between batches to prevent overload
-                    if (i + batchSize < images.length) {
+                    if (index < images.length) {
                         await new Promise(resolve => setTimeout(resolve, 500));
                     }
                 }
@@ -3869,23 +4038,17 @@
         static async processBatch(batch) {
             const imageIds = batch.map(img => img.ID);
 
-            return new Promise((resolve, reject) => {
-                $.post(CONFIG.endpoints.optimize, {
-                    action: 'msh_optimize_batch',
-                    nonce: CONFIG.nonce,
-                    image_ids: imageIds
-                })
-                .done((response) => {
-                    if (response.success) {
-                        resolve(response.data);
-                    } else {
-                        reject(new Error(response.data || 'Unknown error'));
-                    }
-                })
-                .fail((xhr) => {
-                    reject(new Error(`AJAX Error: ${xhr.statusText}`));
-                });
+            const response = await this.postWithNonceRetry({
+                action: 'msh_optimize_batch',
+                image_ids: imageIds
             });
+
+            if (response && response.success) {
+                return response.data;
+            }
+
+            const message = this.extractErrorMessage(response);
+            throw new Error(`AJAX Error: ${message}`);
         }
 
         static handleOptimizationResponse(data, label) {

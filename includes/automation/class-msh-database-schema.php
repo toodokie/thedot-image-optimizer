@@ -43,7 +43,7 @@ class MSH_Database_Schema {
 	 *
 	 * @var string
 	 */
-	const CURRENT_VERSION = '2.0.0';
+	const CURRENT_VERSION = '2.1.0';
 
 	/**
 	 * Get singleton instance.
@@ -64,6 +64,9 @@ class MSH_Database_Schema {
 	private function __construct() {
 		// Hook into plugin activation
 		register_activation_hook( MSH_IO_PLUGIN_FILE, array( $this, 'install' ) );
+
+		// Ensure upgrades run when the plugin loads (handles existing installs)
+		add_action( 'plugins_loaded', array( $this, 'maybe_upgrade' ) );
 	}
 
 	/**
@@ -209,6 +212,36 @@ class MSH_Database_Schema {
 			$created['msh_metrics'] = true;
 		}
 
+		// Table 5: msh_metadata_cache (Field-level metadata cache)
+		$sql_metadata_cache = "CREATE TABLE {$wpdb->prefix}msh_metadata_cache (
+			id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+			attachment_id BIGINT UNSIGNED NOT NULL,
+			media_id BIGINT UNSIGNED NOT NULL,
+			locale VARCHAR(20) NOT NULL DEFAULT 'en_US',
+			field VARCHAR(50) NOT NULL,
+			ai_value LONGTEXT NULL,
+			manual_value LONGTEXT NULL,
+			chosen_source VARCHAR(20) NOT NULL DEFAULT 'manual',
+			input_fingerprint CHAR(40) DEFAULT NULL,
+			ai_model VARCHAR(64) DEFAULT NULL,
+			stale_reason VARCHAR(255) DEFAULT NULL,
+			created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+			updated_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+			UNIQUE KEY unique_field (attachment_id, locale, field),
+			INDEX idx_locale_field (locale, field),
+			INDEX idx_source (chosen_source),
+			INDEX idx_stale (stale_reason),
+			INDEX idx_media (media_id),
+			INDEX idx_fingerprint (input_fingerprint)
+		) $charset_collate;";
+
+		$result = dbDelta( $sql_metadata_cache );
+		if ( ! empty( $wpdb->last_error ) ) {
+			$errors['msh_metadata_cache'] = $wpdb->last_error;
+		} else {
+			$created['msh_metadata_cache'] = true;
+		}
+
 		// Log results
 		if ( ! empty( $created ) ) {
 			error_log( 'MSH Database Schema: Created tables - ' . implode( ', ', array_keys( $created ) ) );
@@ -237,6 +270,7 @@ class MSH_Database_Schema {
 			'msh_dead_letters',
 			'msh_telemetry',
 			'msh_metrics',
+			'msh_metadata_cache',
 		);
 
 		$results = array();
@@ -265,6 +299,7 @@ class MSH_Database_Schema {
 			'msh_dead_letters',
 			'msh_telemetry',
 			'msh_metrics',
+			'msh_metadata_cache',
 		);
 
 		$schemas = array();
@@ -301,6 +336,7 @@ class MSH_Database_Schema {
 			$wpdb->prefix . 'msh_dead_letters',
 			$wpdb->prefix . 'msh_telemetry',
 			$wpdb->prefix . 'msh_metrics',
+			$wpdb->prefix . 'msh_metadata_cache',
 		);
 
 		foreach ( $tables as $table ) {
@@ -330,6 +366,7 @@ class MSH_Database_Schema {
 			'msh_dead_letters',
 			'msh_telemetry',
 			'msh_metrics',
+			'msh_metadata_cache',
 		);
 
 		$counts = array();
@@ -356,6 +393,7 @@ class MSH_Database_Schema {
 			$wpdb->prefix . 'msh_dead_letters',
 			$wpdb->prefix . 'msh_telemetry',
 			$wpdb->prefix . 'msh_metrics',
+			$wpdb->prefix . 'msh_metadata_cache',
 		);
 
 		$total_size = 0;
@@ -379,5 +417,18 @@ class MSH_Database_Schema {
 			'size_bytes' => $total_size,
 			'size_human' => size_format( $total_size, 2 ),
 		);
+	}
+
+	/**
+	 * Run database install when version mismatch detected.
+	 *
+	 * @return void
+	 */
+	public function maybe_upgrade() {
+		$installed_version = get_option( self::DB_VERSION_OPTION, '0.0.0' );
+
+		if ( version_compare( $installed_version, self::CURRENT_VERSION, '<' ) ) {
+			$this->install();
+		}
 	}
 }

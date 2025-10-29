@@ -10,6 +10,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 class MSH_Safe_Rename_System {
 	private static $instance = null;
+	private static $cron_ok = null; // Cron availability cache
 	private $log_table;
 	private $test_mode                      = false;
 	private $last_replacements              = 0;
@@ -33,6 +34,92 @@ class MSH_Safe_Rename_System {
 		}
 
 		return self::$instance;
+	}
+
+	/**
+	 * Check if WP-Cron is available for scheduling
+	 * Uses static cache and transient backoff to avoid repeated failures
+	 *
+	 * @return bool True if cron is available, false otherwise
+	 */
+	private static function cron_is_available() {
+		// Return cached result for this request
+		if ( self::$cron_ok !== null ) {
+			return self::$cron_ok;
+		}
+
+		// Check if recently detected as broken (10-minute backoff)
+		if ( get_transient( 'msh_cron_broken' ) ) {
+			self::$cron_ok = false;
+			return false;
+		}
+
+		global $wpdb;
+
+		// Bail early if the cron option is excessively large (indicates previous bloat)
+		$size_threshold = (int) apply_filters( 'msh_cron_option_size_limit', 1024 * 1024 ); // 1 MB default
+		if ( $size_threshold > 0 && $wpdb instanceof wpdb ) {
+			$cron_size = (int) $wpdb->get_var(
+				"SELECT LENGTH(option_value) FROM {$wpdb->options} WHERE option_name = 'cron' LIMIT 1"
+			);
+
+			if ( $cron_size > $size_threshold ) {
+				self::$cron_ok = false;
+				set_transient( 'msh_cron_broken', 1, 10 * MINUTE_IN_SECONDS );
+				error_log(
+					sprintf(
+						'TinyDot: WP-Cron disabled; cron option is %s (limit %s).',
+						function_exists( 'size_format' ) ? size_format( $cron_size ) : $cron_size,
+						function_exists( 'size_format' ) ? size_format( $size_threshold ) : $size_threshold
+					)
+				);
+				return false;
+			}
+		}
+
+		// Probe cron by attempting to schedule a test event
+		$ts = time() + 300; // 5 minutes in future
+		$ok = @wp_schedule_single_event( $ts, 'msh_cron_probe', array() );
+
+		if ( ! $ok ) {
+			// Cron is broken - set backoff transient
+			self::$cron_ok = false;
+			set_transient( 'msh_cron_broken', 1, 10 * MINUTE_IN_SECONDS );
+			error_log( 'TinyDot: WP-Cron unavailable, disabling cleanup scheduling for 10 minutes.' );
+			return false;
+		}
+
+		// Clean up the test event
+		wp_unschedule_event( $ts, 'msh_cron_probe', array() );
+
+		self::$cron_ok = true;
+		return true;
+	}
+
+	/**
+	 * Schedule backup cleanup with tokenized path
+	 * Only schedules if cron is available
+	 *
+	 * @param string $backup_path Full path to backup file
+	 */
+	private function schedule_backup_cleanup_for_path( $backup_path ) {
+		if ( ! $backup_path || ! file_exists( $backup_path ) ) {
+			return;
+		}
+
+		// Only create token map and schedule if cron is available
+		if ( self::cron_is_available() ) {
+			// Map long path to short token to avoid cron option bloat
+			$token = md5( $backup_path );
+			update_option( 'msh_cleanup_map_' . $token, $backup_path, false ); // not autoloaded
+
+			@wp_schedule_single_event(
+				time() + (int) $this->backup_retention,
+				'msh_cleanup_rename_backup',
+				array( $token )
+			);
+		}
+		// If cron unavailable, backups will accumulate until manual cleanup or GC (Phase 2)
 	}
 
 	public function maybe_create_log_table() {
@@ -426,12 +513,8 @@ class MSH_Safe_Rename_System {
 			}
 		}
 
-		// Schedule cleanup of backups (suppress errors to prevent log spam)
-		$scheduled = @wp_schedule_single_event( time() + $this->backup_retention, 'msh_cleanup_rename_backup', array( $backup_path ) );
-		if ( is_wp_error( $scheduled ) ) {
-			// Silently fail if cron scheduling fails - backups will be cleaned manually
-			error_log( 'MSH Rename: Could not schedule backup cleanup for ' . basename( $backup_path ) . ' (cron system issue)' );
-		}
+		// Schedule cleanup with tokenized path (LOCATION 1)
+		$this->schedule_backup_cleanup_for_path( $backup_path );
 
 		return array(
 			'new_path'    => $new_path,
@@ -578,8 +661,8 @@ class MSH_Safe_Rename_System {
 		}
 
 		if ( $backup_success ) {
-			// Schedule cleanup (suppress errors to prevent log spam)
-			@wp_schedule_single_event( time() + $this->backup_retention, 'msh_cleanup_rename_backup', array( $backup_path ) );
+			// Schedule cleanup with tokenized path (LOCATION 2)
+			$this->schedule_backup_cleanup_for_path( $backup_path );
 			return $backup_path;
 		}
 
@@ -844,8 +927,28 @@ class MSH_Safe_Rename_System {
 		}
 	}
 
-	public function cleanup_backup( $backup_path ) {
-		$real = realpath( $backup_path );
+	public function cleanup_backup( $backup_path_or_token ) {
+		// Handle tokenized paths (new system)
+		if ( strlen( $backup_path_or_token ) === 32 && ctype_xdigit( $backup_path_or_token ) ) {
+			// This looks like an MD5 token
+			$token = sanitize_text_field( $backup_path_or_token );
+			$key   = 'msh_cleanup_map_' . $token;
+			$path  = get_option( $key );
+
+			if ( $path && is_string( $path ) && file_exists( $path ) ) {
+				if ( $this->is_safe_path( $path ) ) {
+					wp_delete_file( $path );
+				}
+			}
+
+			// Always delete the token map
+			delete_option( $key );
+			return;
+		}
+
+		// Legacy path handling (for backwards compatibility)
+		$backup_path = $backup_path_or_token;
+		$real        = realpath( $backup_path );
 		if ( ! $real ) {
 			return;
 		}

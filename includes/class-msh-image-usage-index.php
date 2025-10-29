@@ -693,6 +693,11 @@ class MSH_Image_Usage_Index {
 				}
 			}
 
+			// Skip if no variation matched (defensive check)
+			if ( $matched_variation === null ) {
+				continue;
+			}
+
 			$context_type = $this->determine_option_context( $option->option_name, $option->option_value );
 
 			$wpdb->insert(

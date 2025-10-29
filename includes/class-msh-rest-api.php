@@ -309,14 +309,19 @@ class MSH_REST_API {
 		$locale   = $request->get_param( 'locale' );
 		$limit    = (int) $request->get_param( 'limit' );
 
-		$table = $wpdb->prefix . 'optimizer_metadata_cache';
+		$table = $wpdb->prefix . 'msh_metadata_cache';
 
 		$where = array( '1=1' );
 		$args  = array();
 
+		$attachment_id = $request->get_param( 'attachment_id' );
+
 		if ( $media_id ) {
-			$where[] = 'media_id = %d';
-			$args[]  = $media_id;
+			$where[] = 'attachment_id = %d';
+			$args[]  = (int) $media_id;
+		} elseif ( $attachment_id ) {
+			$where[] = 'attachment_id = %d';
+			$args[]  = (int) $attachment_id;
 		}
 
 		if ( $locale ) {

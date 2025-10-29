@@ -1,0 +1,339 @@
+{
+  "site_name": "Main Street Health",
+  "site_url": "https://mainstreetrehab.com",
+  "industry": "Healthcare - Rehabilitation & Occupational Health",
+  "location": {
+    "city": "Hamilton",
+    "province": "Ontario",
+    "country": "Canada",
+    "service_area": "Greater Hamilton Area"
+  },
+  "brand_voice": {
+    "tone": "Professional, compassionate, evidence-based",
+    "style": "Direct, supportive, empowering",
+    "key_phrases": [
+      "Get back to work, get back to life",
+      "Specialized care for those who serve and protect",
+      "Evidence-based rehabilitation with advanced technology",
+      "Your partner in occupational health and wellness"
+    ]
+  },
+  "target_audiences": [
+    {
+      "id": "first-responders",
+      "name": "First Responders & Occupational Workers",
+      "priority": 1,
+      "segments": [
+        "Paramedics",
+        "Police Officers",
+        "Firefighters",
+        "Veterans Affairs members",
+        "High physical demand occupations"
+      ],
+      "pain_points": [
+        "Job-specific injuries",
+        "Physical stress and trauma",
+        "Need to maintain fitness for duty",
+        "Career longevity concerns"
+      ],
+      "seo_keywords": [
+        "first responder rehabilitation Hamilton",
+        "paramedic injury treatment",
+        "police officer physiotherapy",
+        "firefighter rehab",
+        "veterans health services Hamilton"
+      ]
+    },
+    {
+      "id": "injury-pain-management",
+      "name": "Injury & Pain Management Patients",
+      "priority": 1,
+      "segments": [
+        "Workplace injury victims",
+        "Chronic pain sufferers",
+        "Acute injury patients",
+        "Pre/post-operative patients"
+      ],
+      "pain_points": [
+        "Chronic pain management",
+        "Work-related injuries",
+        "Recovery from surgery",
+        "Need for rapid pain relief"
+      ],
+      "seo_keywords": [
+        "chronic pain treatment Hamilton",
+        "workplace injury rehabilitation",
+        "post-operative physiotherapy",
+        "acute injury care Hamilton",
+        "pain management clinic"
+      ]
+    },
+    {
+      "id": "corporate-health",
+      "name": "Corporate Health Clients",
+      "priority": 2,
+      "segments": [
+        "Companies needing occupational health services",
+        "Employers requiring FAE assessments",
+        "Businesses needing wellness programs"
+      ],
+      "pain_points": [
+        "Workplace injury prevention",
+        "Return-to-work assessments",
+        "Employee wellness and productivity",
+        "Compliance with occupational health requirements"
+      ],
+      "seo_keywords": [
+        "corporate wellness programs Hamilton",
+        "functional abilities evaluation",
+        "workplace injury prevention",
+        "occupational health services",
+        "return to work assessment"
+      ]
+    },
+    {
+      "id": "medical-professionals",
+      "name": "Medical Professionals",
+      "priority": 2,
+      "segments": [
+        "Physicians seeking rapid referral services",
+        "Healthcare providers needing specialist collaboration"
+      ],
+      "pain_points": [
+        "Need for quick specialist referrals",
+        "Coordinated patient care",
+        "Reliable rehabilitation partners"
+      ],
+      "seo_keywords": [
+        "physician referral services Hamilton",
+        "medical professional collaboration",
+        "specialist rehabilitation referral"
+      ]
+    }
+  ],
+  "services": [
+    {
+      "category": "Therapeutic Services",
+      "offerings": [
+        {
+          "name": "Physiotherapy",
+          "keywords": ["physiotherapy Hamilton", "physical therapy", "physio clinic", "rehabilitation therapy"],
+          "image_context": ["treatment rooms", "exercise therapy", "manual therapy", "rehabilitation equipment"]
+        },
+        {
+          "name": "Chiropractic Care",
+          "keywords": ["chiropractor Hamilton", "spinal adjustment", "chiropractic treatment", "back pain relief"],
+          "image_context": ["chiropractic adjustment", "spinal manipulation", "posture correction", "back treatment"]
+        },
+        {
+          "name": "Massage Therapy",
+          "keywords": ["massage therapy Hamilton", "therapeutic massage", "sports massage", "injury massage"],
+          "image_context": ["massage treatment", "soft tissue therapy", "muscle relaxation", "therapeutic touch"]
+        },
+        {
+          "name": "Acupuncture",
+          "keywords": ["acupuncture Hamilton", "traditional Chinese medicine", "pain relief acupuncture"],
+          "image_context": ["acupuncture needles", "traditional therapy", "holistic treatment"]
+        },
+        {
+          "name": "Active Release Technique",
+          "keywords": ["ART therapy Hamilton", "active release technique", "soft tissue treatment", "muscle therapy"],
+          "image_context": ["manual therapy", "soft tissue manipulation", "sports injury treatment"]
+        }
+      ]
+    },
+    {
+      "category": "Advanced Assessments",
+      "offerings": [
+        {
+          "name": "Functional Abilities Evaluation",
+          "keywords": ["FAE Hamilton", "functional abilities evaluation", "return to work assessment", "workplace capacity"],
+          "image_context": ["assessment testing", "functional evaluation", "workplace simulation", "capacity testing"]
+        },
+        {
+          "name": "Gait Scan Technology",
+          "keywords": ["gait analysis Hamilton", "foot scan technology", "walking assessment", "biomechanical analysis"],
+          "image_context": ["gait analysis", "foot scanning", "biomechanical assessment", "technology-based evaluation"]
+        },
+        {
+          "name": "Early Scoliosis Detection",
+          "keywords": ["scoliosis screening Hamilton", "spinal screening", "early detection scoliosis", "pediatric spine assessment"],
+          "image_context": ["spinal screening", "posture assessment", "pediatric evaluation"]
+        },
+        {
+          "name": "Pre/Postoperative Assessments",
+          "keywords": ["preoperative assessment", "postoperative rehabilitation", "surgical recovery", "pre-surgery physiotherapy"],
+          "image_context": ["surgical preparation", "post-surgery recovery", "rehabilitation assessment"]
+        }
+      ]
+    },
+    {
+      "category": "Specialized Programs",
+      "offerings": [
+        {
+          "name": "Veterans Affairs & First Responders Program",
+          "keywords": ["veterans health Hamilton", "first responder program", "VAC services", "paramedic injury treatment"],
+          "image_context": ["first responders", "veterans", "occupational health", "specialized care"]
+        },
+        {
+          "name": "Acute & Chronic Pain Program",
+          "keywords": ["chronic pain program Hamilton", "pain management clinic", "acute pain treatment", "comprehensive pain care"],
+          "image_context": ["pain treatment", "therapeutic intervention", "pain relief", "patient care"]
+        },
+        {
+          "name": "Concussion Management",
+          "keywords": ["concussion clinic Hamilton", "head injury treatment", "concussion rehabilitation", "brain injury recovery"],
+          "image_context": ["concussion assessment", "head injury care", "neurological rehabilitation"]
+        },
+        {
+          "name": "Corporate Wellness Programs",
+          "keywords": ["corporate wellness Hamilton", "workplace health programs", "employee wellness", "occupational health services"],
+          "image_context": ["workplace wellness", "corporate health", "group programs", "employee fitness"]
+        }
+      ]
+    }
+  ],
+  "unique_value_propositions": [
+    {
+      "title": "First Responder Specialization",
+      "description": "Dedicated programs specifically designed for paramedics, police officers, and firefighters",
+      "keywords": ["first responder care", "specialized rehabilitation", "occupational health"]
+    },
+    {
+      "title": "Rapid Physician Referral",
+      "description": "Fast-track referral system for medical professionals and urgent cases",
+      "keywords": ["rapid referral", "physician collaboration", "fast-track treatment"]
+    },
+    {
+      "title": "Rehab Rewards Program",
+      "description": "Patient loyalty and engagement program to support long-term wellness",
+      "keywords": ["patient rewards", "loyalty program", "wellness incentives"]
+    },
+    {
+      "title": "Comprehensive Multi-Disciplinary Care",
+      "description": "Integrated approach combining physiotherapy, chiropractic, massage, and more",
+      "keywords": ["multi-disciplinary care", "comprehensive treatment", "integrated healthcare"]
+    },
+    {
+      "title": "Virtual Care Options",
+      "description": "Remote consultation and telehealth services for convenient access",
+      "keywords": ["virtual care", "telehealth", "online consultation", "remote therapy"]
+    },
+    {
+      "title": "Advanced Technology",
+      "description": "State-of-the-art gait scan and early detection systems",
+      "keywords": ["advanced technology", "gait scan", "diagnostic technology", "modern healthcare"]
+    }
+  ],
+  "common_image_subjects": [
+    {
+      "subject": "Treatment & Therapy",
+      "keywords": ["physiotherapy", "chiropractic", "massage", "rehabilitation", "therapy session", "treatment", "patient care"],
+      "context_hints": ["Hamilton clinic", "professional therapy", "evidence-based treatment", "personalized care"]
+    },
+    {
+      "subject": "First Responders",
+      "keywords": ["paramedic", "police", "firefighter", "first responder", "emergency services", "veterans", "occupational health"],
+      "context_hints": ["specialized care", "job-specific treatment", "career support", "occupational rehabilitation"]
+    },
+    {
+      "subject": "Exercise & Rehabilitation",
+      "keywords": ["exercise therapy", "rehabilitation exercise", "strength training", "functional training", "recovery exercise"],
+      "context_hints": ["supervised exercise", "progressive rehabilitation", "return to function", "evidence-based protocols"]
+    },
+    {
+      "subject": "Assessment & Technology",
+      "keywords": ["gait scan", "assessment", "evaluation", "technology", "diagnostic", "screening", "testing"],
+      "context_hints": ["advanced assessment", "objective measurement", "data-driven care", "precise diagnosis"]
+    },
+    {
+      "subject": "Workplace & Corporate",
+      "keywords": ["workplace", "corporate", "ergonomics", "office", "occupational", "employee wellness", "workplace injury"],
+      "context_hints": ["workplace health", "injury prevention", "return to work", "functional abilities"]
+    },
+    {
+      "subject": "Clinic & Facilities",
+      "keywords": ["clinic", "facility", "treatment room", "reception", "waiting area", "equipment", "modern clinic"],
+      "context_hints": ["Hamilton location", "professional environment", "state-of-the-art", "welcoming space"]
+    },
+    {
+      "subject": "Patient Success & Lifestyle",
+      "keywords": ["patient success", "recovery", "active lifestyle", "wellness", "health goals", "pain-free living"],
+      "context_hints": ["back to life", "back to work", "patient outcomes", "success stories"]
+    }
+  ],
+  "location_context": {
+    "local_references": [
+      "Hamilton",
+      "Greater Hamilton Area",
+      "Ancaster",
+      "Dundas",
+      "Stoney Creek",
+      "Burlington",
+      "Grimsby",
+      "Niagara Region"
+    ],
+    "local_seo_modifiers": [
+      "near me",
+      "Hamilton Ontario",
+      "in Hamilton",
+      "Hamilton area",
+      "local Hamilton"
+    ]
+  },
+  "seo_priorities": {
+    "high_priority_keywords": [
+      "physiotherapy Hamilton",
+      "chiropractor Hamilton",
+      "first responder rehabilitation",
+      "workplace injury treatment",
+      "chronic pain management Hamilton",
+      "functional abilities evaluation",
+      "concussion clinic Hamilton",
+      "occupational health Hamilton"
+    ],
+    "geo_modifiers_required": true,
+    "include_service_type": true,
+    "include_condition_treated": true
+  },
+  "image_naming_conventions": {
+    "format": "{service-type}-{condition-or-audience}-{location}-{id}",
+    "examples": [
+      "physiotherapy-first-responder-hamilton-1234.jpg",
+      "chiropractic-back-pain-treatment-hamilton-5678.jpg",
+      "massage-therapy-workplace-injury-hamilton-9012.jpg",
+      "gait-scan-assessment-technology-hamilton-3456.jpg",
+      "corporate-wellness-program-hamilton-7890.jpg"
+    ],
+    "alt_text_format": "{Descriptive action} for {target audience/condition} at {location}",
+    "alt_text_examples": [
+      "Physiotherapy treatment for first responder injury at Hamilton clinic",
+      "Chiropractor performing spinal adjustment for chronic back pain in Hamilton",
+      "Massage therapist treating workplace injury patient in Hamilton",
+      "Gait scan technology analyzing walking pattern at Hamilton rehabilitation clinic",
+      "Corporate wellness program demonstration for employees in Hamilton"
+    ]
+  },
+  "content_guidelines": {
+    "avoid_generic_terms": true,
+    "require_location": true,
+    "require_service_specificity": true,
+    "emphasize_specializations": [
+      "First responder care",
+      "Occupational health",
+      "Evidence-based treatment",
+      "Multi-disciplinary approach",
+      "Advanced technology"
+    ],
+    "tone_requirements": [
+      "Professional but approachable",
+      "Empathetic and supportive",
+      "Evidence-based and credible",
+      "Action-oriented (recovery-focused)"
+    ]
+  },
+  "metadata_version": "1.0",
+  "created_date": "2025-10-27",
+  "last_updated": "2025-10-27",
+  "status": "active"
+}

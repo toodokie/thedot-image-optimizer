@@ -3,7 +3,7 @@
  * Plugin Name: MSH Image Optimizer
  * Plugin URI: https://github.com/toodokie/thedot-image-optimizer
  * Description: Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking.
- * Version: 1.2.1
+ * Version: 1.2.7
  * Author: Main Street Health
  * Author URI: https://github.com/toodokie
  * Text Domain: msh-image-optimizer
@@ -18,8 +18,22 @@ if (!defined('ABSPATH')) {
     exit;
 }
 
+// Define constants EARLY to prevent theme from loading duplicate classes
+if (!defined('MSH_IO_PLUGIN_FILE')) {
+    define('MSH_IO_PLUGIN_FILE', __FILE__);
+}
+if (!defined('MSH_IO_PLUGIN_DIR')) {
+    define('MSH_IO_PLUGIN_DIR', plugin_dir_path(__FILE__));
+}
+if (!defined('MSH_IO_PLUGIN_URL')) {
+    define('MSH_IO_PLUGIN_URL', plugin_dir_url(__FILE__));
+}
+if (!defined('MSH_IO_ASSETS_URL')) {
+    define('MSH_IO_ASSETS_URL', trailingslashit(plugin_dir_url(__FILE__) . 'assets'));
+}
+
 final class MSH_Image_Optimizer_Plugin {
-    const VERSION = '1.2.1';
+    const VERSION = '1.2.7';
 
     private static $instance = null;
 
@@ -34,21 +48,16 @@ final class MSH_Image_Optimizer_Plugin {
         $this->define_constants();
         $this->includes();
         add_action('plugins_loaded', [$this, 'init']);
+
+        // Phase 1A: Register tokenized backup cleanup handler
+        add_action('msh_cleanup_rename_backup', [$this, 'cleanup_backup_by_token'], 10, 1);
+
+        // Phase 1B: One-time transient purge hotfix
+        add_action('plugins_loaded', [$this, 'transient_bloat_hotfix'], 5);
     }
 
     private function define_constants() {
-        if (!defined('MSH_IO_PLUGIN_FILE')) {
-            define('MSH_IO_PLUGIN_FILE', __FILE__);
-        }
-        if (!defined('MSH_IO_PLUGIN_DIR')) {
-            define('MSH_IO_PLUGIN_DIR', plugin_dir_path(__FILE__));
-        }
-        if (!defined('MSH_IO_PLUGIN_URL')) {
-            define('MSH_IO_PLUGIN_URL', plugin_dir_url(__FILE__));
-        }
-        if (!defined('MSH_IO_ASSETS_URL')) {
-            define('MSH_IO_ASSETS_URL', trailingslashit(MSH_IO_PLUGIN_URL . 'assets'));
-        }
+        // Main constants now defined at top of file to prevent theme conflicts
         // Dev mode - enables Pro features for testing without license
         if (!defined('MSH_DEV_MODE')) {
             define('MSH_DEV_MODE', defined('WP_DEBUG') && WP_DEBUG);
@@ -56,29 +65,76 @@ final class MSH_Image_Optimizer_Plugin {
     }
 
     private function includes() {
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-safe-rename-system.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-url-variation-detector.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-targeted-replacement-engine.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-backup-verification-system.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-feature-flags.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-hash-cache-manager.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-usage-index.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-usage-index-background.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-content-usage-lookup.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-file-resolver.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-debug-logger.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-perceptual-hash.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-safe-rename-cli.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-qa-cli.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-media-cleanup.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-webp-delivery.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-service.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-regeneration-background.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-ajax-handlers.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-versioning.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-manual-edit-protection.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
+        // Core classes (skip if already loaded by theme)
+        if (!class_exists('MSH_Safe_Rename_System')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-safe-rename-system.php';
+        }
+        if (!class_exists('MSH_URL_Variation_Detector')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-url-variation-detector.php';
+        }
+        if (!class_exists('MSH_Targeted_Replacement_Engine')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-targeted-replacement-engine.php';
+        }
+        if (!class_exists('MSH_Backup_Verification_System')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-backup-verification-system.php';
+        }
+        if (!class_exists('MSH_Feature_Flags')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-feature-flags.php';
+        }
+        if (!class_exists('MSH_Hash_Cache_Manager')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-hash-cache-manager.php';
+        }
+        if (!class_exists('MSH_Image_Usage_Index')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-usage-index.php';
+        }
+        if (!class_exists('MSH_Usage_Index_Background')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-usage-index-background.php';
+        }
+        if (!class_exists('MSH_Content_Usage_Lookup')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-content-usage-lookup.php';
+        }
+        if (!class_exists('MSH_File_Resolver')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-file-resolver.php';
+        }
+        if (!class_exists('MSH_Debug_Logger')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-debug-logger.php';
+        }
+        if (!class_exists('MSH_Perceptual_Hash')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-perceptual-hash.php';
+        }
+        if (!class_exists('MSH_Safe_Rename_CLI')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-safe-rename-cli.php';
+        }
+        if (!class_exists('MSH_QA_CLI')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-qa-cli.php';
+        }
+        if (!class_exists('MSH_Media_Cleanup')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-media-cleanup.php';
+        }
+        if (!class_exists('MSH_WebP_Delivery')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-webp-delivery.php';
+        }
+        if (!class_exists('MSH_AI_Service')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-service.php';
+        }
+        if (!class_exists('MSH_OpenAI_Connector')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
+        }
+        if (!class_exists('MSH_Metadata_Regeneration_Background')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-regeneration-background.php';
+        }
+        if (!class_exists('MSH_AI_Ajax_Handlers')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-ajax-handlers.php';
+        }
+        if (!class_exists('MSH_Metadata_Versioning')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-versioning.php';
+        }
+        if (!class_exists('MSH_Manual_Edit_Protection')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-manual-edit-protection.php';
+        }
+        if (!class_exists('MSH_Image_Optimizer')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
+        }
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-tinydot-loader.php';
 
@@ -171,12 +227,14 @@ final class MSH_Image_Optimizer_Plugin {
         // Admin menu structure (must load first, priority 5)
         require_once MSH_IO_PLUGIN_DIR . 'admin/class-msh-optimizer-menu.php';
 
-        // Admin pages
+        // Admin pages (check for theme-loaded duplicates)
         require_once MSH_IO_PLUGIN_DIR . 'admin/dashboard-page.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/glossary-page.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/locale-profiles-page.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/class-msh-hub-page.php';
-        require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-admin.php';
+        if (!class_exists('MSH_Image_Optimizer_Admin')) {
+            require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-admin.php';
+        }
         require_once MSH_IO_PLUGIN_DIR . 'admin/image-optimizer-settings.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/context-fusion-admin.php';
         require_once MSH_IO_PLUGIN_DIR . 'admin/context-analytics-page.php';
@@ -262,10 +320,54 @@ final class MSH_Image_Optimizer_Plugin {
         // Ensure admin assets are enqueued by the admin file.
         do_action('msh_image_optimizer_plugin_loaded');
     }
+
+    /**
+     * Phase 1A: Cleanup backup by token
+     * Resolves tokenized path and delegates to Safe Rename System
+     *
+     * @param string $token MD5 token or legacy path
+     */
+    public function cleanup_backup_by_token($token) {
+        if (class_exists('MSH_Safe_Rename_System')) {
+            $system = MSH_Safe_Rename_System::get_instance();
+            if (method_exists($system, 'cleanup_backup')) {
+                $system->cleanup_backup($token);
+            }
+        }
+    }
+
+    /**
+     * Phase 1B: One-time transient purge hotfix
+     * Removes bloated 11MB+ transient from options table
+     */
+    public function transient_bloat_hotfix() {
+        // Only run once
+        if (get_option('msh_usage_cache_hotfix_done')) {
+            return;
+        }
+
+        // Delete the bloated transient and all related options
+        delete_transient('msh_content_usage_lookup');
+        delete_option('_transient_msh_content_usage_lookup');
+        delete_option('_transient_timeout_msh_content_usage_lookup');
+
+        // Mark as done
+        update_option('msh_usage_cache_hotfix_done', 1, false);
+
+        // Log the cleanup
+        error_log('TinyDot: Purged bloated content usage lookup transient (Phase 1B hotfix)');
+    }
 }
 
 // Instantiate plugin immediately (AJAX handlers need early registration)
 MSH_Image_Optimizer_Plugin::instance();
+
+// Phase 1B: Purge transient on deactivation
+register_deactivation_hook(__FILE__, function() {
+    delete_transient('msh_content_usage_lookup');
+    delete_option('_transient_msh_content_usage_lookup');
+    delete_option('_transient_timeout_msh_content_usage_lookup');
+});
 
 /**
  * Activation hook - Create database tables

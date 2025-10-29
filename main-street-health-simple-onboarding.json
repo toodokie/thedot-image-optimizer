@@ -1,0 +1,78 @@
+{
+  "site_name": "Main Street Health",
+  "site_url": "https://mainstreetrehab.com",
+  "industry": "Healthcare - Rehabilitation & Occupational Health",
+  "location": {
+    "city": "Hamilton",
+    "province": "Ontario",
+    "country": "Canada"
+  },
+  "brand_voice": {
+    "tone": "Professional, compassionate, evidence-based",
+    "tagline": "Get back to work, get back to life"
+  },
+  "target_audience": "First responders, occupational workers, and individuals seeking rehabilitation from workplace injuries, chronic pain, or sports injuries in the Hamilton area",
+  "services": [
+    "Physiotherapy",
+    "Chiropractic Care",
+    "Massage Therapy",
+    "Acupuncture",
+    "Active Release Technique (ART)",
+    "Functional Abilities Evaluation (FAE)",
+    "Gait Scan Technology",
+    "Concussion Management",
+    "Corporate Wellness Programs",
+    "Veterans Affairs & First Responders Program"
+  ],
+  "problems_solved": [
+    "Work-related injuries and rehabilitation",
+    "Acute and chronic pain treatment",
+    "Sports injuries",
+    "Motor vehicle accident injuries",
+    "Concussion management",
+    "Pre/postoperative care",
+    "Return-to-work assessments",
+    "Injury prevention"
+  ],
+  "unique_value_propositions": [
+    "Specialized first responder programs for paramedics, police, and firefighters",
+    "Rapid physician referral system",
+    "Multi-disciplinary comprehensive care",
+    "Advanced gait scan and diagnostic technology",
+    "Virtual care options available"
+  ],
+  "top_keywords": [
+    "physiotherapy Hamilton",
+    "chiropractor Hamilton",
+    "first responder rehabilitation",
+    "workplace injury treatment",
+    "chronic pain management Hamilton",
+    "functional abilities evaluation",
+    "concussion clinic Hamilton",
+    "massage therapy Hamilton",
+    "sports injury rehabilitation",
+    "occupational health Hamilton"
+  ],
+  "image_metadata_guidelines": {
+    "always_include_location": true,
+    "always_include_service_type": true,
+    "filename_format": "service-condition-location-id",
+    "examples": {
+      "physiotherapy_session": {
+        "filename": "physiotherapy-back-pain-treatment-hamilton-1234.jpg",
+        "alt_text": "Physiotherapist treating patient with back pain at Hamilton rehabilitation clinic",
+        "title": "Physiotherapy Back Pain Treatment Hamilton"
+      },
+      "first_responder_care": {
+        "filename": "physiotherapy-first-responder-rehabilitation-hamilton-5678.jpg",
+        "alt_text": "Specialized physiotherapy care for first responder injury at Hamilton clinic",
+        "title": "First Responder Rehabilitation Hamilton"
+      },
+      "massage_therapy": {
+        "filename": "massage-therapy-sports-injury-hamilton-9012.jpg",
+        "alt_text": "Massage therapy treatment for sports injury at Hamilton clinic",
+        "title": "Sports Injury Massage Therapy Hamilton"
+      }
+    }
+  }
+}

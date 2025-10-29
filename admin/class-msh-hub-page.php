@@ -1890,7 +1890,7 @@ class MSH_Hub_Page {
 
 		global $wpdb;
 		static $table_exists = null;
-		$table = $wpdb->prefix . 'optimizer_metadata_cache';
+		$table = $wpdb->prefix . 'msh_metadata_cache';
 
 		if ( null === $table_exists ) {
 			$table_exists = ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table );
@@ -2015,13 +2015,14 @@ class MSH_Hub_Page {
 
 		// Apply the chosen value to the database
 		global $wpdb;
-		$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+		$cache_table = $wpdb->prefix . 'msh_metadata_cache';
 
 		$value_to_apply = ( 'local' === $choice ) ? $conflict['local_value'] : $conflict['remote_value'];
 
 		$updated = $wpdb->update(
 			$cache_table,
 			array(
+				'media_id'      => $conflict['attachment_id'],
 				'manual_value' => $value_to_apply,
 				'chosen_source' => 'manual',
 				'updated_at' => current_time( 'mysql' ),

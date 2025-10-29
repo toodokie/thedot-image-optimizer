@@ -37,7 +37,7 @@ function msh_get_metadata_entries( $args = array() ) {
 	global $wpdb;
 
 	$metadata_table = $wpdb->prefix . 'msh_optimizer_metadata';
-	$cache_table    = $wpdb->prefix . 'optimizer_metadata_cache';
+	$cache_table    = $wpdb->prefix . 'msh_metadata_cache';
 
 	$args = wp_parse_args( $args, array(
 		'media_id'  => 0,
@@ -131,7 +131,7 @@ function msh_get_metadata_entries( $args = array() ) {
 function msh_get_cache_entries( $args = array() ) {
 	global $wpdb;
 
-	$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+	$cache_table = $wpdb->prefix . 'msh_metadata_cache';
 
 	// Parse args with defaults
 	$args = wp_parse_args( $args, array(
@@ -210,6 +210,129 @@ function msh_get_cache_entries( $args = array() ) {
 		'total'       => $total,
 		'total_pages' => $total_pages,
 	);
+}
+
+/**
+ * Upsert a metadata cache entry for an attachment field.
+ *
+ * @since 2.1.0
+ *
+ * @param int    $attachment_id Attachment ID.
+ * @param string $locale        Locale code (defaults to current locale).
+ * @param string $field         Metadata field (title, alt, caption, description).
+ * @param string $value         Metadata value to store.
+ * @param string $source        Source identifier ('manual' or 'ai').
+ * @param array  $extra         Optional extra data (input_fingerprint, ai_model).
+ * @return bool True on success, false otherwise.
+ */
+function msh_upsert_metadata_cache_value( $attachment_id, $locale, $field, $value, $source = 'manual', $extra = array() ) {
+	global $wpdb;
+
+	$table = $wpdb->prefix . 'msh_metadata_cache';
+
+	static $table_exists = null;
+	if ( null === $table_exists ) {
+		$table_exists = ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) === $table );
+	}
+
+	if ( ! $table_exists ) {
+		return false;
+	}
+
+	$attachment_id = absint( $attachment_id );
+	if ( $attachment_id <= 0 ) {
+		return false;
+	}
+
+	$locale = ! empty( $locale ) ? sanitize_text_field( $locale ) : get_locale();
+	$field  = strtolower( trim( $field ) );
+	if ( 'alt_text' === $field ) {
+		$field = 'alt';
+	}
+	$field = sanitize_key( $field );
+
+	$value  = is_null( $value ) ? '' : (string) $value;
+	$source = in_array( $source, array( 'ai', 'manual' ), true ) ? $source : 'manual';
+
+	$existing = $wpdb->get_row(
+		$wpdb->prepare(
+			"SELECT id FROM {$table} WHERE attachment_id = %d AND locale = %s AND field = %s",
+			$attachment_id,
+			$locale,
+			$field
+		),
+		ARRAY_A
+	);
+
+	$now     = current_time( 'mysql' );
+	$formats = array();
+	$data    = array();
+
+	if ( $existing ) {
+		$data = array(
+			'media_id'      => $attachment_id,
+			'updated_at'    => $now,
+			'stale_reason'  => '',
+		);
+		$formats = array( '%d', '%s', '%s' );
+
+		if ( 'ai' === $source ) {
+			$data['ai_value']      = $value;
+			$data['chosen_source'] = 'ai';
+			$formats[]             = '%s';
+			$formats[]             = '%s';
+
+			if ( isset( $extra['input_fingerprint'] ) ) {
+				$data['input_fingerprint'] = (string) $extra['input_fingerprint'];
+				$formats[]                 = '%s';
+			}
+
+			if ( isset( $extra['ai_model'] ) ) {
+				$data['ai_model'] = (string) $extra['ai_model'];
+				$formats[]        = '%s';
+			}
+		} else {
+			$data['manual_value']  = $value;
+			$data['chosen_source'] = 'manual';
+			$formats[]             = '%s';
+			$formats[]             = '%s';
+		}
+
+		$result = $wpdb->update(
+			$table,
+			$data,
+			array(
+				'attachment_id' => $attachment_id,
+				'locale'        => $locale,
+				'field'         => $field,
+			),
+			$formats,
+			array( '%d', '%s', '%s' )
+		);
+	} else {
+		$data = array(
+			'attachment_id'     => $attachment_id,
+			'media_id'          => $attachment_id,
+			'locale'            => $locale,
+			'field'             => $field,
+			'ai_value'          => ( 'ai' === $source ) ? $value : '',
+			'manual_value'      => ( 'manual' === $source ) ? $value : '',
+			'chosen_source'     => ( 'ai' === $source ) ? 'ai' : 'manual',
+			'input_fingerprint' => isset( $extra['input_fingerprint'] ) ? (string) $extra['input_fingerprint'] : '',
+			'ai_model'          => isset( $extra['ai_model'] ) ? (string) $extra['ai_model'] : '',
+			'stale_reason'      => '',
+			'created_at'        => $now,
+			'updated_at'        => $now,
+		);
+
+		$result = $wpdb->insert(
+			$table,
+			$data,
+			array( '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
+		);
+	}
+
+	return ( false !== $result );
 }
 
 /**
@@ -373,7 +496,7 @@ function msh_telemetry( $event_type, $data = array() ) {
 function msh_get_cache_stats() {
 	global $wpdb;
 
-	$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+	$cache_table = $wpdb->prefix . 'msh_metadata_cache';
 
 	$total_entries  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$cache_table}" );
 	$stale_entries  = (int) $wpdb->get_var( "SELECT COUNT(*) FROM {$cache_table} WHERE stale_reason IS NOT NULL AND stale_reason != ''" );
@@ -420,7 +543,7 @@ function msh_get_recent_events( $limit = 20 ) {
 	global $wpdb;
 
 	$jobs_table = $wpdb->prefix . 'msh_jobs';
-	$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+	$cache_table = $wpdb->prefix . 'msh_metadata_cache';
 	$limit = max( 1, (int) $limit );
 
 	$events = array();
@@ -633,7 +756,7 @@ function msh_get_sync_status() {
 
 	// Count pending items from cache table
 	global $wpdb;
-	$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+	$cache_table = $wpdb->prefix . 'msh_metadata_cache';
 	
 	$pending = $wpdb->get_var(
 		"SELECT COUNT(*)

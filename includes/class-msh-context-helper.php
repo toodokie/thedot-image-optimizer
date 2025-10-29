@@ -42,6 +42,12 @@ class MSH_Image_Optimizer_Context_Helper {
 			'ai_interest'     => ! empty( $context['ai_interest'] ),
 		);
 
+		// Normalise common location typos (e.g., "Hamilotn" -> "Hamilton").
+		$sanitized['city']         = self::normalize_location_value( $sanitized['city'] );
+		$sanitized['region']       = self::normalize_location_value( $sanitized['region'] );
+		$sanitized['country']      = self::normalize_location_value( $sanitized['country'] );
+		$sanitized['service_area'] = self::normalize_location_value( $sanitized['service_area'], false );
+
 		$stored_timestamp        = isset( $context['updated_at'] ) ? absint( $context['updated_at'] ) : absint( $existing_timestamp );
 		$sanitized['updated_at'] = $touch_timestamp ? current_time( 'timestamp' ) : $stored_timestamp;
 
@@ -322,6 +328,132 @@ class MSH_Image_Optimizer_Context_Helper {
 		$health_slugs = array( 'medical', 'dental', 'therapy', 'wellness' );
 
 		return in_array( $industry, $health_slugs, true );
+	}
+
+	/**
+	 * Convert text to URL-friendly slug.
+	 *
+	 * @param string $text Text to slugify.
+	 * @return string Slugified text.
+	 */
+	public static function slugify( $text ) {
+		$text = strtolower( $text );
+		// Strip dimension patterns before slugifying
+		$text = preg_replace( '/[-_]?\d+x\d+[-_]?/i', '', $text );
+		$text = preg_replace( '/[^a-z0-9]+/', '-', $text );
+		return trim( $text, '-' );
+	}
+
+	/**
+	 * Remove duplicate words from a slug.
+	 *
+	 * Example: "hamilton-hamilton-icon" becomes "hamilton-icon"
+	 *
+	 * @param string $slug Hyphenated slug with potential duplicates.
+	 * @return string Deduplicated slug.
+	 */
+	public static function deduplicate_slug( $slug ) {
+		$parts = explode( '-', $slug );
+		$seen = array();
+		$result = array();
+
+		foreach ( $parts as $part ) {
+			// Skip empty parts and numeric IDs at the end
+			if ( $part === '' ) {
+				continue;
+			}
+			// Keep numeric IDs (like image IDs) even if they appear multiple times
+			if ( is_numeric( $part ) ) {
+				$result[] = $part;
+				continue;
+			}
+			// Only add if not seen before (case-insensitive)
+			$part_lower = strtolower( $part );
+			if ( ! isset( $seen[ $part_lower ] ) ) {
+				$seen[ $part_lower ] = true;
+				$result[] = $part;
+			}
+		}
+
+		return implode( '-', $result );
+	}
+
+	/**
+	 * Normalise location strings by fixing known typos and casing.
+	 *
+	 * @since 1.2.2
+	 *
+	 * @param string $value          Location value to normalise.
+	 * @param bool   $normalize_case Optional. Whether to convert to title case. Default true.
+	 * @return string Normalised location string.
+	 */
+	public static function normalize_location_value( $value, $normalize_case = true ) {
+		return self::apply_location_corrections( $value, $normalize_case );
+	}
+
+	/**
+	 * Apply corrections to common location typos and casing.
+	 *
+	 * @param string $value          Raw location string.
+	 * @param bool   $normalize_case Whether to normalise casing.
+	 * @return string
+	 */
+	private static function apply_location_corrections( $value, $normalize_case = true ) {
+		$value = trim( (string) $value );
+		if ( $value === '' ) {
+			return '';
+		}
+
+		$replacements = array(
+			'/\bhamilotn\b/i' => 'Hamilton',
+			'/\bhamiton\b/i'  => 'Hamilton',
+			'/\bontatio\b/i'  => 'Ontario',
+			'/\bontairo\b/i'  => 'Ontario',
+			'/\bcananda\b/i'  => 'Canada',
+		);
+
+		$normalized = $value;
+		foreach ( $replacements as $pattern => $replacement ) {
+			$normalized = preg_replace( $pattern, $replacement, $normalized );
+		}
+
+		$normalized = preg_replace( '/\s+/', ' ', $normalized );
+
+		if ( ! $normalize_case ) {
+			return $normalized;
+		}
+
+		if ( strpos( $normalized, ',' ) !== false ) {
+			$parts = array_map( 'trim', explode( ',', $normalized ) );
+			$parts = array_map(
+				function ( $segment ) {
+					return self::apply_location_token_case( $segment );
+				},
+				$parts
+			);
+			return implode( ', ', array_filter( $parts, 'strlen' ) );
+		}
+
+		return self::apply_location_token_case( $normalized );
+	}
+
+	/**
+	 * Apply title-casing rules to a single location token.
+	 *
+	 * @param string $token Location token.
+	 * @return string
+	 */
+	private static function apply_location_token_case( $token ) {
+		$token = trim( (string) $token );
+		if ( $token === '' ) {
+			return '';
+		}
+
+		if ( preg_match( '/^[A-Z]{2,}$/', $token ) ) {
+			return strtoupper( $token );
+		}
+
+		return ucwords( strtolower( $token ) );
 	}
 
 	/**

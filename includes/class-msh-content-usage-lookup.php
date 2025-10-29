@@ -206,7 +206,25 @@ class MSH_Content_Usage_Lookup {
 			'context_counts' => $context_counts,
 		);
 
-		set_transient( $this->cache_key, $payload, $this->cache_ttl );
+		// Phase 1B: Size cap to prevent transient bloat (11MB+ killer bug fix)
+		$serialized = maybe_serialize( $payload );
+		$max_bytes  = (int) apply_filters( 'msh_lookup_max_bytes', 1024 * 1024 ); // 1 MB default
+
+		if ( strlen( $serialized ) > $max_bytes ) {
+			// Payload exceeds cap - log once per hour and skip writing
+			if ( ! get_transient( 'msh_lookup_size_warned' ) ) {
+				error_log(
+					'TinyDot: content-usage lookup skipped, payload ' .
+					round( strlen( $serialized ) / 1048576, 2 ) . 'MB exceeds ' .
+					round( $max_bytes / 1048576, 2 ) . 'MB cap.'
+				);
+				set_transient( 'msh_lookup_size_warned', 1, HOUR_IN_SECONDS );
+			}
+			// Do not write. System will operate without this cache.
+		} else {
+			// Size is acceptable - write to transient
+			set_transient( $this->cache_key, $payload, $this->cache_ttl );
+		}
 
 		$snapshot = array(
 			'generated_at'   => $payload['generated_at'],

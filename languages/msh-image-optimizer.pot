@@ -1147,7 +1147,7 @@ msgstr ""
 
 #: admin/image-optimizer-admin.php:755
 #: msh-image-optimizer/admin/image-optimizer-admin.php:735
-msgid "Step 1: Optimize Published Images"
+msgid "Step 1: Optimize Images"
 msgstr ""
 
 #: admin/image-optimizer-admin.php:765
@@ -1289,7 +1289,7 @@ msgstr ""
 
 #: admin/image-optimizer-admin.php:897
 #: msh-image-optimizer/admin/image-optimizer-admin.php:877
-msgid "Analyze Published Images"
+msgid "Analyze"
 msgstr ""
 
 #: admin/image-optimizer-admin.php:900
@@ -1459,7 +1459,7 @@ msgstr ""
 
 #: admin/image-optimizer-admin.php:1019
 #: msh-image-optimizer/admin/image-optimizer-admin.php:999
-msgid "Click \"Analyze Published Images\" to begin analysis."
+msgid "Click \"Analyze\" to begin analysis."
 msgstr ""
 
 #: admin/image-optimizer-admin.php:1028

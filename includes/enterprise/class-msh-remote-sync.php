@@ -417,7 +417,7 @@ class MSH_Remote_Sync {
 	 */
 	private function get_local_changes( $since ) {
 		global $wpdb;
-		$cache_table = $wpdb->prefix . 'optimizer_metadata_cache';
+		$cache_table = $wpdb->prefix . 'msh_metadata_cache';
 
 		// Get all cache entries updated since last sync
 		// Use current_time to match WordPress timezone handling
@@ -607,7 +607,7 @@ class MSH_Remote_Sync {
 		}
 
 		global $wpdb;
-		$cache_table       = $wpdb->prefix . 'optimizer_metadata_cache';
+		$cache_table       = $wpdb->prefix . 'msh_metadata_cache';
 		$conflict_strategy = get_option( self::CONFLICT_STRATEGY_OPTION, 'local_wins' );
 		$last_sync_time    = get_option( self::LAST_SYNC_OPTION, 0 );
 		$conflicts         = array();
@@ -639,14 +639,17 @@ class MSH_Remote_Sync {
 						$cache_table,
 						array(
 							'attachment_id' => $attachment_id,
+							'media_id'      => $attachment_id,
 							'locale'        => $locale,
 							'field'         => $field,
 							'manual_value'  => $remote_value,
+							'ai_value'      => '',
 							'chosen_source' => 'manual', // Remote synced data is treated as manual
+							'stale_reason'  => '',
 							'created_at'    => current_time( 'mysql' ),
 							'updated_at'    => date( 'Y-m-d H:i:s', $remote_updated_at ),
 						),
-						array( '%d', '%s', '%s', '%s', '%s', '%s', '%s' )
+						array( '%d', '%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s' )
 					);
 				} else {
 					// Local version exists - check for conflicts
@@ -691,6 +694,7 @@ class MSH_Remote_Sync {
 						$wpdb->update(
 							$cache_table,
 							array(
+								'media_id'      => $attachment_id,
 								'manual_value'  => $remote_value,
 								'chosen_source' => 'manual', // Remote synced data is treated as manual
 								'updated_at'    => date( 'Y-m-d H:i:s', $remote_updated_at ),
@@ -700,7 +704,7 @@ class MSH_Remote_Sync {
 								'locale'        => $locale,
 								'field'         => $field,
 							),
-							array( '%s', '%s', '%s' ),
+							array( '%d', '%s', '%s', '%s' ),
 							array( '%d', '%s', '%s' )
 						);
 					} elseif ( $is_conflict ) {

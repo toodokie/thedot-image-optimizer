@@ -22,7 +22,7 @@ class MSH_OpenAI_Connector {
 	 * Prompt version for tracking changes
 	 * Format: YYYYMMDD.revision
 	 */
-	const PROMPT_VERSION = '20251029.1'; // Phase 6: brand_name_visible + confidence + issues[]
+	const PROMPT_VERSION = '20251029.2'; // Added context_type guidance + anti-hallucination rules
 
 	/**
 	 * Business-related context types that allow brand name in metadata
@@ -288,11 +288,28 @@ You will also be provided with:
 - image_url: {$image_url}
 - original_filename: {$original_filename}
 - brand_name_visible: {$brand_name_visible}     // true or false
-- context_type: {$context_type}                 // e.g., clinic_building, product_photo, brand_logo, landscape, decorative
+- context_type: {$context_type}                 // Options: brand_logo, team, facility, equipment, clinical, business, testimonial, decorative, stock
 - page_title: {$page_title}
 - focus_keyword: {$focus_keyword}
 - page_role: {$page_role}                        // e.g., header_image, article_body_image, service_page_photo
 - model_pass: {$model_pass}                       // e.g., overview, crops, high_detail
+
+CONTEXT TYPE GUIDANCE:
+- brand_logo: Company logo/branding imagery
+- team: Staff photos, team members
+- facility: Building/office/clinic photos showing actual business location
+- equipment: Business equipment, tools, machinery
+- clinical: Medical/service delivery imagery
+- business: Business operations, office scenes
+- testimonial: Client testimonial imagery (may be stock photo representing satisfaction/results)
+- decorative: Pure background/pattern with no informational value
+- stock: Generic stock photography unrelated to business
+
+CRITICAL RULES:
+1. If context_type is 'testimonial', 'decorative', or 'stock', describe ONLY what is visible. DO NOT claim the image shows the business location or is taken at the business.
+2. If context_type is 'facility', the image DOES show the actual business location - include business name.
+3. If the image is generic/stock (landscape, food, objects), describe it accurately WITHOUT forcing business connection.
+4. For testimonial images: Focus on the emotion/concept (e.g., "satisfied client", "positive outcome") not false location claims.
 
 TASK:
 Using the image and all the context above, suggest the following exactly in JSON format:

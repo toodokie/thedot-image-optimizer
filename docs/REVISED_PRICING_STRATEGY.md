@@ -3,11 +3,31 @@
 
 > **Document Version**: 2.0 (Major Revision)
 > **Last Updated**: October 13, 2025
-> **Status**: Strategic Planning - Monthly Subscription Focus
+> **Status**: ⚠️ DEPRECATED - See TOKEN_BASED_PRICING_STRATEGY.md for current pricing
+>
+> **⚠️ IMPORTANT**: This document contains outdated AI cost calculations. Refer to [TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md) for corrected token-based pricing with accurate financial projections.
 
 ---
 
-## Executive Summary
+## Migration Notice
+
+This document has been superseded by a more accurate pricing model:
+
+📄 **[TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md)** - **Current pricing strategy (v3.1)**
+
+**Key Changes from This Document**:
+- ✅ Token-based metering (not generic "credits")
+- ✅ Correct OpenAI pricing ($5/M tokens, not $0.001/token)
+- ✅ Annual pricing (not monthly) for better cash flow
+- ✅ Much better margins than calculated here (88% vs 47%)
+- ✅ Free trial: 1,000 tokens for 30 days
+- ✅ Simplified tier structure (Free/Pro/Business/Enterprise)
+
+**This document is preserved for historical reference only.**
+
+---
+
+## Executive Summary (Historical)
 
 **Key Strategic Decisions**:
 1. ✅ **Two-Edition Model**: Clear separation between Non-AI (manual) and AI-Powered versions
@@ -15,6 +35,8 @@
 3. ✅ **No Chatbot**: Removed to simplify offering and reduce complexity
 4. ✅ **Strategic AI Losses Acceptable**: AI features as customer acquisition driver, not profit center
 5. ✅ **Focus on Core Value**: Media optimization, not support automation
+
+**⚠️ Note**: The AI cost projections in this document are incorrect. See [TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md) for accurate pricing.
 
 **Financial Philosophy**:
 - AI features = **Customer acquisition cost** (acceptable losses)

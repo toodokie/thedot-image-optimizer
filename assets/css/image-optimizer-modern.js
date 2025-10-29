@@ -1888,7 +1888,7 @@
                     <td colspan="8" style="text-align: center; padding: 40px;">
                         <div class="welcome-content">
                             <h3>🚀 Ready to Optimize Your Images!</h3>
-                            <p>Click "Analyze Published Images" to scan your site and see what needs optimization.</p>
+                            <p>Click "Analyze" to scan your site and see what needs optimization.</p>
                             <p><strong>New:</strong> WebP conversion now included automatically!</p>
                         </div>
                     </td>

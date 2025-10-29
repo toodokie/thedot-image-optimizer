@@ -23,6 +23,7 @@ class MSH_Image_Optimizer_Admin {
 		add_action( 'wp_ajax_msh_save_onboarding_context', array( $this, 'ajax_save_onboarding_context' ) );
 		add_action( 'wp_ajax_msh_reset_onboarding_context', array( $this, 'ajax_reset_onboarding_context' ) );
 		add_action( 'wp_ajax_msh_set_active_context_profile', array( $this, 'ajax_set_active_context_profile' ) );
+		add_action( 'wp_ajax_msh_refresh_nonce', array( $this, 'ajax_refresh_nonce' ) );
 	}
 
 	/**
@@ -537,7 +538,7 @@ class MSH_Image_Optimizer_Admin {
 
 							<?php
 							// Step 5: AI Configuration (Pro Only)
-							$is_pro = function_exists( 'msh_is_pro_active' ) && msh_is_pro_active();
+							$is_pro = function_exists( 'msh_can_use_pro_features' ) && msh_can_use_pro_features();
 							if ( $is_pro ) :
 								?>
 							<div class="onboarding-step" data-step="5">
@@ -855,7 +856,7 @@ class MSH_Image_Optimizer_Admin {
 
 				<!-- Step 1: Image Optimization -->
 				<div class="msh-actions-section">
-					<h2 style="color: #35332f;"><?php esc_html_e( 'Step 1: Optimize Published Images', 'msh-image-optimizer' ); ?></h2>
+					<h2 style="color: #35332f;"><?php esc_html_e( 'Step 1: Optimize Images', 'msh-image-optimizer' ); ?></h2>
 					<div class="msh-ai-toggle-section">
 						<div class="msh-rename-settings-section ai-toggle-panel">
 							<div class="rename-setting-card">
@@ -903,9 +904,9 @@ class MSH_Image_Optimizer_Admin {
 						</div>
 					</div>
 					<p style="margin-bottom: 15px; color: #35332f; font-size: 14px; background: #faf9f6; padding: 10px; border-radius: 4px;">
-						<strong>RECOMMENDED FIRST:</strong> Optimize your published images with WebP conversion, proper ALT text, and SEO improvements before cleaning duplicates.
+						<strong>RECOMMENDED FIRST:</strong> Optimize your images with WebP conversion, proper ALT text, and SEO improvements before cleaning duplicates.
 					</p>
-					<p class="msh-inline-note" style="margin-top: 4px;"><em><?php esc_html_e( 'We scan published content (pages, posts, widgets) and include images that are in use, plus auto-include newer SVG icons so they never get missed.', 'msh-image-optimizer' ); ?></em></p>
+					<p class="msh-inline-note" style="margin-top: 4px;"><em><?php esc_html_e( 'We scan content (pages, posts, widgets) and include images that are in use, plus auto-include newer SVG icons so they never get missed.', 'msh-image-optimizer' ); ?></em></p>
 					<p class="msh-inline-note"><em><?php esc_html_e( 'Smart Indexing: Files are indexed automatically when renamed for optimal performance', 'msh-image-optimizer' ); ?></em></p>
 					<div class="msh-rename-settings-section step-rename-settings">
 						<div class="rename-important-callout">
@@ -997,7 +998,7 @@ class MSH_Image_Optimizer_Admin {
 
 					<div class="action-buttons step-actions">
 						<button id="analyze-images" class="button button-dot-primary">
-							<?php esc_html_e( 'Analyze Published Images', 'msh-image-optimizer' ); ?>
+							<?php esc_html_e( 'Analyze', 'msh-image-optimizer' ); ?>
 						</button>
 						<button id="apply-filename-suggestions" class="button button-dot-primary" disabled>
 							<?php esc_html_e( 'Apply Filename Suggestions', 'msh-image-optimizer' ); ?>
@@ -1119,7 +1120,7 @@ class MSH_Image_Optimizer_Admin {
 							</thead>
 							<tbody id="results-tbody">
 								<tr class="no-results-row">
-									<td colspan="8" class="no-results"><?php esc_html_e( 'Click "Analyze Published Images" to begin analysis.', 'msh-image-optimizer' ); ?></td>
+									<td colspan="8" class="no-results"><?php esc_html_e( 'Click "Analyze" to begin analysis.', 'msh-image-optimizer' ); ?></td>
 								</tr>
 							</tbody>
 						</table>
@@ -1550,6 +1551,28 @@ class MSH_Image_Optimizer_Admin {
 
 		$format = get_option( 'date_format' ) . ' ' . get_option( 'time_format' );
 		return date_i18n( $format, $timestamp );
+	}
+
+	/**
+	 * AJAX: Refresh security nonce for long-running operations.
+	 *
+	 * @since 1.2.1
+	 */
+	public function ajax_refresh_nonce() {
+		// Check old nonce is still valid (within grace period)
+		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
+
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_send_json_error( array( 'message' => 'Unauthorized' ) );
+		}
+
+		// Generate fresh nonce
+		$new_nonce = wp_create_nonce( 'msh_image_optimizer' );
+
+		wp_send_json_success( array(
+			'nonce' => $new_nonce,
+			'message' => 'Nonce refreshed successfully',
+		) );
 	}
 }
 

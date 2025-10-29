@@ -18,6 +18,20 @@ class MSH_AI_Service {
 	private static $instance = null;
 
 	/**
+	 * Whether batch caching is currently active.
+	 *
+	 * @var bool
+	 */
+	private static $batch_enabled = false;
+
+	/**
+	 * Cached options for batch operations.
+	 *
+	 * @var array
+	 */
+	private static $batch_cache = array();
+
+	/**
 	 * Last access state (for debugging / messaging).
 	 *
 	 * @var array
@@ -59,6 +73,54 @@ class MSH_AI_Service {
 	}
 
 	/**
+	 * Prime the AI option cache for batch operations.
+	 *
+	 * @param array $options Seed values for options.
+	 */
+	public static function prime_batch( array $options ) {
+		self::$batch_enabled = true;
+		self::$batch_cache   = $options;
+	}
+
+	/**
+	 * Clear the AI option cache after batch operations.
+	 */
+	public static function clear_batch() {
+		self::$batch_enabled = false;
+		self::$batch_cache   = array();
+	}
+
+	/**
+	 * Retrieve an option value, using the batch cache when enabled.
+	 *
+	 * @param string $name    Option name.
+	 * @param mixed  $default Default value.
+	 * @return mixed
+	 */
+	private static function get_cached_option( $name, $default = null ) {
+		if ( self::$batch_enabled && array_key_exists( $name, self::$batch_cache ) ) {
+			return self::$batch_cache[ $name ];
+		}
+
+		return get_option( $name, $default );
+	}
+
+	/**
+	 * Update an option and keep the batch cache in sync.
+	 *
+	 * @param string $name  Option name.
+	 * @param mixed  $value Value to store.
+	 * @return bool
+	 */
+	private static function update_cached_option( $name, $value ) {
+		if ( self::$batch_enabled ) {
+			self::$batch_cache[ $name ] = $value;
+		}
+
+		return update_option( $name, $value );
+	}
+
+	/**
 	 * Determine whether AI can run for the current configuration.
 	 *
 	 * @since 1.0.0
@@ -74,10 +136,10 @@ class MSH_AI_Service {
 	 * }
 	 */
 	public function determine_access_state() {
-		$mode      = get_option( 'msh_ai_mode', 'manual' );
-		$plan_tier = get_option( 'msh_plan_tier', 'free' );
-		$api_key   = trim( (string) get_option( 'msh_ai_api_key', '' ) );
-		$features  = get_option( 'msh_ai_features', array() );
+		$mode      = self::get_cached_option( 'msh_ai_mode', 'manual' );
+		$plan_tier = self::get_cached_option( 'msh_plan_tier', 'free' );
+		$api_key   = trim( (string) self::get_cached_option( 'msh_ai_api_key', '' ) );
+		$features  = self::get_cached_option( 'msh_ai_features', array() );
 		if ( ! is_array( $features ) ) {
 			$features = array();
 		}
@@ -146,7 +208,7 @@ class MSH_AI_Service {
 	 * @return int Current credits available.
 	 */
 	public function get_credit_balance() {
-		$balance = get_option( 'msh_ai_credit_balance', null );
+		$balance = self::get_cached_option( 'msh_ai_credit_balance', null );
 
 		// Initialize if first time
 		if ( $balance === null ) {
@@ -162,11 +224,11 @@ class MSH_AI_Service {
 	 * @return int Initial credit balance.
 	 */
 	private function initialize_credits() {
-		$plan_tier = get_option( 'msh_plan_tier', 'free' );
+		$plan_tier = self::get_cached_option( 'msh_plan_tier', 'free' );
 		$credits   = self::PLAN_CREDITS[ $plan_tier ] ?? 0;
 
-		update_option( 'msh_ai_credit_balance', $credits );
-		update_option( 'msh_ai_credit_last_reset', time() );
+		self::update_cached_option( 'msh_ai_credit_balance', $credits );
+		self::update_cached_option( 'msh_ai_credit_last_reset', time() );
 
 		return $credits;
 	}
@@ -188,7 +250,7 @@ class MSH_AI_Service {
 		}
 
 		$new_balance = $balance - $amount;
-		update_option( 'msh_ai_credit_balance', $new_balance );
+		self::update_cached_option( 'msh_ai_credit_balance', $new_balance );
 
 		// Log usage
 		$this->log_credit_usage( $amount );
@@ -202,8 +264,8 @@ class MSH_AI_Service {
 	 * @param int $amount Credits used.
 	 */
 	private function log_credit_usage( $amount ) {
-		$usage     = get_option( 'msh_ai_credit_usage', array() );
-		$month_key = wp_date('Y-m');
+		$usage     = self::get_cached_option( 'msh_ai_credit_usage', array() );
+		$month_key = wp_date( 'Y-m' );
 
 		if ( ! isset( $usage[ $month_key ] ) ) {
 			$usage[ $month_key ] = 0;
@@ -217,7 +279,7 @@ class MSH_AI_Service {
 			$usage = array_slice( $usage, -12, null, true );
 		}
 
-		update_option( 'msh_ai_credit_usage', $usage );
+		self::update_cached_option( 'msh_ai_credit_usage', $usage );
 	}
 
 	/**
@@ -228,11 +290,11 @@ class MSH_AI_Service {
 	 * @return void
 	 */
 	public function refresh_monthly_credits() {
-		$plan_tier = get_option( 'msh_plan_tier', 'free' );
+		$plan_tier = self::get_cached_option( 'msh_plan_tier', 'free' );
 		$credits   = self::PLAN_CREDITS[ $plan_tier ] ?? 0;
 
-		update_option( 'msh_ai_credit_balance', $credits );
-		update_option( 'msh_ai_credit_last_reset', time() );
+		self::update_cached_option( 'msh_ai_credit_balance', $credits );
+		self::update_cached_option( 'msh_ai_credit_last_reset', time() );
 
 		error_log( '[MSH AI] Monthly credits refreshed: ' . $credits . ' credits for plan ' . $plan_tier );
 	}
@@ -273,7 +335,20 @@ class MSH_AI_Service {
 	 */
 	public function maybe_generate_metadata( $attachment_id, array $context, $generator, $ai_options = array() ) {
 		$state = $this->determine_access_state();
+
+		// DEBUG: Log access state
+		error_log( sprintf(
+			'[MSH DEBUG AI Service] Attachment %d - Access state: allowed=%s, reason=%s, mode=%s, access_mode=%s, features=%s',
+			$attachment_id,
+			$state['allowed'] ? 'TRUE' : 'FALSE',
+			$state['reason'] ?? 'none',
+			$state['mode'] ?? 'unknown',
+			$state['access_mode'] ?? 'none',
+			json_encode( $state['features'] ?? array() )
+		) );
+
 		if ( ! $state['allowed'] ) {
+			error_log( sprintf( '[MSH DEBUG AI Service] Attachment %d - Access DENIED: %s', $attachment_id, $state['reason'] ?? 'unknown' ) );
 			return null;
 		}
 
@@ -352,15 +427,23 @@ class MSH_AI_Service {
 		// Determine access state
 		$access_state = $this->determine_access_state();
 
-		if ( $access_state['access'] === 'none' ) {
-			return new WP_Error( 'no_access', __( 'AI features are not enabled.', 'msh-image-optimizer' ) );
+		// CRITICAL FIX: Check 'allowed' key, not 'access' (which doesn't exist)
+		if ( ! $access_state['allowed'] ) {
+			return new WP_Error(
+				'no_access',
+				sprintf(
+					__( 'AI features are not enabled. Reason: %s', 'msh-image-optimizer' ),
+					$access_state['reason'] ?? 'unknown'
+				)
+			);
 		}
 
 		// Calculate estimated cost
 		$estimated_cost = $count; // 1 credit per image
 
+		// CRITICAL FIX: Check 'access_mode' key, not 'access'
 		// Check credits availability
-		if ( $access_state['access'] === 'bundled' ) {
+		if ( $access_state['access_mode'] === 'bundled' ) {
 			$credits_available = $access_state['credits_remaining'];
 
 			if ( $estimated_cost > $credits_available ) {
@@ -373,15 +456,19 @@ class MSH_AI_Service {
 					)
 				);
 			}
-		} elseif ( $access_state['access'] === 'byok' ) {
+		} elseif ( $access_state['access_mode'] === 'byok' ) {
 			$credits_available = PHP_INT_MAX; // Unlimited with BYOK
+		} else {
+			// Fallback for unexpected access modes
+			$credits_available = 0;
 		}
 
+		// CRITICAL FIX: Use 'plan_tier' key, not 'plan'
 		return array(
 			'estimated_cost'    => $estimated_cost,
 			'credits_available' => $credits_available,
-			'access_mode'       => $access_state['access'],
-			'plan_tier'         => $access_state['plan'],
+			'access_mode'       => $access_state['access_mode'],
+			'plan_tier'         => $access_state['plan_tier'],
 			'images_to_process' => $count,
 		);
 	}
@@ -396,7 +483,7 @@ class MSH_AI_Service {
 	 * @return array Jobs list.
 	 */
 	public function get_recent_jobs( $limit = 5 ) {
-		$jobs = get_option( 'msh_metadata_regen_jobs', array() );
+		$jobs = self::get_cached_option( 'msh_metadata_regen_jobs', array() );
 
 		// Sort by created_at descending
 		uasort(

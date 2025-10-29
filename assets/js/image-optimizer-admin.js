@@ -298,7 +298,7 @@
             complete: function() {
                 isProcessing = false;
                 const $button = $('#analyze-images');
-                const restoreText = $button.data('original-text') || 'Analyze Published Images';
+                const restoreText = $button.data('original-text') || 'Analyze';
                 $button
                     .prop('disabled', false)
                     .removeClass('is-loading')
@@ -1107,7 +1107,7 @@
                     
                     // Clear image data to force re-analysis
                     imageData = [];
-                    $('#results-tbody').html('<tr><td colspan="8" class="no-results">Click "Analyze Published Images" to re-scan with improved metadata preservation.</td></tr>');
+                    $('#results-tbody').html('<tr><td colspan="8" class="no-results">Click "Analyze" to re-scan with improved metadata preservation.</td></tr>');
                 } else {
                     updateLog('Error resetting optimization flags.');
                 }

@@ -1230,29 +1230,39 @@ class MSH_Image_Optimizer_Settings {
 		$active_tab = isset( $_POST['active_tab'] ) ? sanitize_text_field( $_POST['active_tab'] ) : 'general';
 		$redirect_url = add_query_arg( array( 'tab' => $active_tab ), admin_url( 'admin.php?page=' . self::PAGE_SLUG ) );
 
-		$primary_raw = isset( $_POST['primary'] ) ? wp_unslash( $_POST['primary'] ) : array();
-		$primary     = MSH_Image_Optimizer_Context_Helper::sanitize_context(
-			$primary_raw,
-			true,
-			isset( $primary_raw['updated_at'] ) ? absint( $primary_raw['updated_at'] ) : 0
-		);
+		// CRITICAL FIX: Only update context if it's in POST data (context fields are only on Context tab)
+		// This prevents accidentally wiping context when saving from other tabs
+		if ( isset( $_POST['primary'] ) ) {
+			$primary_raw = wp_unslash( $_POST['primary'] );
+			$primary     = MSH_Image_Optimizer_Context_Helper::sanitize_context(
+				$primary_raw,
+				true,
+				isset( $primary_raw['updated_at'] ) ? absint( $primary_raw['updated_at'] ) : 0
+			);
+			update_option( self::PRIMARY_OPTION, $primary, false );
+		}
 
-		update_option( self::PRIMARY_OPTION, $primary, false );
-
-		$profiles_raw       = isset( $_POST['profiles'] ) ? wp_unslash( $_POST['profiles'] ) : array();
-		$sanitized_profiles = $this->sanitize_profiles( $profiles_raw );
-		update_option( self::PROFILES_OPTION, $sanitized_profiles, false );
+		// CRITICAL FIX: Only update profiles if in POST data
+		if ( isset( $_POST['profiles'] ) ) {
+			$profiles_raw       = wp_unslash( $_POST['profiles'] );
+			$sanitized_profiles = $this->sanitize_profiles( $profiles_raw );
+			update_option( self::PROFILES_OPTION, $sanitized_profiles, false );
+		}
 
 		$options_raw = isset( $_POST['options'] ) ? wp_unslash( $_POST['options'] ) : array();
 
 		$rename_enabled = ( isset( $options_raw['rename_enabled'] ) && '1' === (string) $options_raw['rename_enabled'] ) ? '1' : '0';
 		update_option( 'msh_enable_file_rename', $rename_enabled, false );
 
-		$user_mode = isset( $options_raw['user_mode'] ) ? sanitize_text_field( $options_raw['user_mode'] ) : 'basic';
-		if ( ! in_array( $user_mode, array( 'basic', 'advanced' ), true ) ) {
-			$user_mode = 'basic';
+		// CRITICAL FIX: Only update user_mode if it's in POST data (user_mode field is only on General tab)
+		// This prevents accidentally resetting to basic when saving from other tabs
+		if ( isset( $options_raw['user_mode'] ) ) {
+			$user_mode = sanitize_text_field( $options_raw['user_mode'] );
+			if ( ! in_array( $user_mode, array( 'basic', 'advanced' ), true ) ) {
+				$user_mode = 'basic';
+			}
+			update_option( 'msh_user_mode', $user_mode, false );
 		}
-		update_option( 'msh_user_mode', $user_mode, false );
 
 		$ai_mode = isset( $options_raw['ai_mode'] ) ? sanitize_text_field( $options_raw['ai_mode'] ) : 'manual';
 		if ( ! in_array( $ai_mode, array( 'manual', 'assist', 'hybrid' ), true ) ) {
@@ -1260,8 +1270,12 @@ class MSH_Image_Optimizer_Settings {
 		}
 		update_option( 'msh_ai_mode', $ai_mode, false );
 
-		$ai_api_key = isset( $options_raw['ai_api_key'] ) ? sanitize_text_field( $options_raw['ai_api_key'] ) : '';
-		update_option( 'msh_ai_api_key', $ai_api_key, false );
+		// CRITICAL FIX: Only update API key if it's actually in the POST data
+		// This prevents accidentally clearing the key when saving other settings
+		if ( isset( $options_raw['ai_api_key'] ) ) {
+			$ai_api_key = sanitize_text_field( $options_raw['ai_api_key'] );
+			update_option( 'msh_ai_api_key', $ai_api_key, false );
+		}
 
 		$ai_live_link_url = isset( $options_raw['ai_live_link_url'] ) ? esc_url_raw( $options_raw['ai_live_link_url'] ) : '';
 		update_option( 'msh_ai_live_link_url', $ai_live_link_url, false );

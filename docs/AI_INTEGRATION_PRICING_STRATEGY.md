@@ -3,13 +3,35 @@
 
 > **Document Version**: 1.0
 > **Last Updated**: October 13, 2025
-> **Status**: Strategic Planning
+> **Status**: ⚠️ DEPRECATED - See TOKEN_BASED_PRICING_STRATEGY.md for current pricing
+>
+> **⚠️ IMPORTANT**: This document contains outdated pricing calculations. Refer to [TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md) for corrected token economics and accurate financial projections.
 
 ---
 
-## Executive Summary
+## Migration Notice
+
+This document has been superseded by a more accurate pricing model:
+
+📄 **[TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md)** - **Current pricing strategy (v3.1)**
+
+**Key Changes**:
+- ✅ Corrected OpenAI token pricing ($5/M vs incorrect $0.001/token)
+- ✅ Accurate per-image costs (fractions of a cent, not dollars)
+- ✅ Better margins than originally projected (88% vs 77%)
+- ✅ Token-based metering with tier-aware caps
+- ✅ 1,000-token free trial with 30-day expiry
+- ✅ Removed chatbot complexity (focus on core AI vision)
+
+**This document is preserved for historical reference only.**
+
+---
+
+## Executive Summary (Historical)
 
 This document analyzes the integration of two AI-powered features into MSH Image Optimizer and their impact on pricing strategy, competitive positioning, and revenue projections. Both features leverage existing AI infrastructure to provide significant value differentiation while maintaining healthy unit economics.
+
+**⚠️ Note**: The token pricing calculations in this document are incorrect. See [TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md) for accurate pricing.
 
 ### Key Findings
 

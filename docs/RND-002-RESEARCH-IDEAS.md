@@ -27,7 +27,9 @@ A collection of **good ideas** we discover that could improve the MSH Image Opti
 4. [Idea #4: Staged Cloud Architecture (30-60-90 Day Roadmap)](#idea-4-staged-cloud-architecture-30-60-90-day-roadmap)
 5. [Idea #5: AI-Powered Image Delivery Optimization](#idea-5-ai-powered-image-delivery-optimization)
 6. [Idea #6: Per-Locale Image Sitemaps with Hreflang](#idea-6-per-locale-image-sitemaps-with-hreflang)
-7. [Future ideas...](#future-ideas)
+7. [Idea #7: Bandwidth & API Cost Optimization](#idea-7-bandwidth--api-cost-optimization)
+8. [Idea #8: Multi-Size Format Conversion](#idea-8-multi-size-format-conversion)
+9. [Future ideas...](#future-ideas)
 
 ---
 
@@ -5523,6 +5525,1328 @@ Per-locale image sitemaps with hreflang support is a **perfect fit** for Phase 7
 ---
 ---
 
+## Idea #7: Bandwidth & API Cost Optimization
+
+**Source:** User-provided best practices for cloud image processing (safe patterns for shared hosting)
+**Priority:** 🔴 High (Cost Savings + Performance)
+**Related Phases:** Current (OpenAI Vision API), Phase 10 Stage 1 (ImageKit AVIF)
+**Status:** ✅ Approved - Implement before Phase 10 Stage 1
+
+### Quick Summary
+
+Currently, the plugin sends **full-resolution images** (up to 6000px, 10MB+) to remote APIs for AI analysis and format conversion. On cheap shared hosting, this causes:
+- ❌ **Massive bandwidth usage** (10MB upload per image × 100 images = 1GB)
+- ❌ **Timeout failures** (20-30 second uploads on slow connections)
+- ❌ **Hosting overages** (surprise bills from exceeded bandwidth caps)
+- ❌ **Redundant processing** (re-analyzing unchanged images)
+
+**The Solution:** Pre-downscale images before sending to APIs, implement hash-based caching, and add bandwidth budgeting controls.
+
+**Expected Impact:**
+- ✅ **90-95% bandwidth reduction** (10MB → 400KB per AI analysis)
+- ✅ **100% cost savings on duplicates** (hash-based skip)
+- ✅ **Zero quality loss** (AI doesn't need 6000px to describe an image)
+- ✅ **Fail-safe controls** (daily bandwidth caps prevent overages)
+
+---
+
+### 7.1 The Problem
+
+#### Current Behavior Analysis
+
+Looking at [class-msh-openai-connector.php:366-414](../includes/class-msh-openai-connector.php#L366-L414):
+
+```php
+// Current: Sends FULL RESOLUTION to OpenAI
+$image_url = wp_get_attachment_url( $attachment_id );
+// → 6000 x 4000px, 10MB JPEG sent to API
+
+// For local dev: Encodes FULL SIZE to base64
+$image_data = file_get_contents( $absolute_path );
+$base64 = base64_encode( $image_data );
+// → 13.3MB base64 string in API request
+```
+
+**Bandwidth Impact Example:**
+
+| Scenario | Image Count | Size per Image | Total Bandwidth |
+|----------|-------------|----------------|-----------------|
+| Healthcare clinic (500 images) | 500 | 8MB avg | **4,000 MB (4GB)** |
+| Small business (100 images) | 100 | 6MB avg | **600 MB** |
+| Agency (10 sites × 200 images) | 2,000 | 7MB avg | **14,000 MB (14GB)** |
+
+**Hosting Limits:**
+- Cheap shared hosting: 50GB/month cap
+- Processing 500 images = **8% of monthly bandwidth gone**
+- Add WebP conversion + AVIF conversion = **24% of monthly bandwidth**
+
+---
+
+### 7.2 Current State Analysis
+
+#### What We Have ✅
+
+1. **Local base64 encoding** (for development)
+2. **Low-detail mode** for OpenAI (`'detail' => 'low'`)
+3. **Conditional processing** (checks if WebP exists before converting)
+
+#### What We're Missing ❌
+
+1. **No pre-downscaling** before sending to AI
+2. **No hash-based deduplication** (re-analyzes unchanged images)
+3. **No file size caps** (tries to process 50MB TIFFs)
+4. **No bandwidth budgeting** (no daily/monthly limits)
+5. **No per-provider tracking** (can't see OpenAI vs ImageKit costs)
+
+---
+
+### 7.3 Solution Architecture
+
+#### Strategy: Two-Layer Optimization
+
+Different strategies for different use cases:
+
+| Use Case | Current Behavior | Optimized Behavior | Savings |
+|----------|------------------|-------------------|---------|
+| **AI Analysis** | Send 6000px original | Downscale to 1200px | 95% bandwidth |
+| **Cloud AVIF Encoding** | Send full resolution | Downscale to 2000px | 80% bandwidth |
+| **Local WebP** | Process full size | Process all WP sizes | Better coverage |
+| **Duplicate Uploads** | Re-analyze every time | Hash check → skip | 100% on dupes |
+
+---
+
+### 7.4 Implementation Spec
+
+#### Component 1: Pre-Processing Downscale Helper
+
+**File:** `includes/cloud/class-msh-bandwidth-optimizer.php`
+
+```php
+<?php
+/**
+ * Bandwidth Optimizer
+ *
+ * Reduces bandwidth usage for remote API processing.
+ *
+ * @package MSH_Image_Optimizer
+ * @since Phase 10 Stage 1
+ */
+
+class MSH_Bandwidth_Optimizer {
+
+    /**
+     * Prepare image for remote API processing.
+     *
+     * Downscales large images to reasonable dimensions for API analysis.
+     * Creates a temporary working copy, original remains untouched.
+     *
+     * @param int    $attachment_id  Attachment ID.
+     * @param int    $max_dimension  Max width/height (800-1600px recommended).
+     * @param string $purpose        Purpose: 'ai_analysis', 'avif_convert', 'webp_convert'.
+     * @return string|WP_Error       Path to optimized working copy or WP_Error.
+     */
+    public function prepare_for_remote_processing( $attachment_id, $max_dimension = 1200, $purpose = 'ai_analysis' ) {
+        $original_path = get_attached_file( $attachment_id );
+
+        if ( ! file_exists( $original_path ) ) {
+            return new WP_Error( 'file_not_found', 'Original image file not found' );
+        }
+
+        // Check file size limit (default: 10MB)
+        $file_size = filesize( $original_path );
+        $size_cap  = $this->get_file_size_cap( $purpose );
+
+        if ( $file_size > $size_cap ) {
+            return new WP_Error(
+                'file_too_large',
+                sprintf(
+                    'File size (%s) exceeds cap (%s) for %s',
+                    size_format( $file_size ),
+                    size_format( $size_cap ),
+                    $purpose
+                )
+            );
+        }
+
+        // Get image dimensions
+        $image = wp_get_image_editor( $original_path );
+        if ( is_wp_error( $image ) ) {
+            return $original_path; // Fallback to original
+        }
+
+        $size = $image->get_size();
+        $needs_resize = max( $size['width'], $size['height'] ) > $max_dimension;
+
+        if ( ! $needs_resize ) {
+            return $original_path; // Small enough already
+        }
+
+        // Create working copy path
+        $file_info = pathinfo( $original_path );
+        $working_copy = $file_info['dirname'] . '/' .
+                        $file_info['filename'] . '-working-' . $purpose . '.' .
+                        $file_info['extension'];
+
+        // Downscale to max dimension
+        $image->resize( $max_dimension, $max_dimension, false );
+        $saved = $image->save( $working_copy );
+
+        if ( is_wp_error( $saved ) ) {
+            return $original_path; // Fallback to original
+        }
+
+        // Log savings
+        $bytes_saved = $file_size - filesize( $working_copy );
+        $this->log_bandwidth_savings( $attachment_id, $bytes_saved, $purpose );
+
+        error_log( sprintf(
+            '[MSH Bandwidth] Downscaled #%d for %s: %s x %s → %dpx max (saved %s)',
+            $attachment_id,
+            $purpose,
+            number_format( $size['width'] ),
+            number_format( $size['height'] ),
+            $max_dimension,
+            size_format( $bytes_saved )
+        ));
+
+        return $working_copy;
+    }
+
+    /**
+     * Check if image needs reprocessing.
+     *
+     * Uses SHA-256 hash to detect if file content changed.
+     *
+     * @param int    $attachment_id Attachment ID.
+     * @param string $operation     Operation: 'ai_analysis', 'avif_convert', 'webp_convert'.
+     * @return bool                 True if needs processing, false if cache hit.
+     */
+    public function should_process_image( $attachment_id, $operation ) {
+        $image_path = get_attached_file( $attachment_id );
+
+        if ( ! file_exists( $image_path ) ) {
+            return false;
+        }
+
+        // Calculate file hash
+        $current_hash = hash_file( 'sha256', $image_path );
+        $cache_key = "_msh_{$operation}_hash";
+        $cached_hash = get_post_meta( $attachment_id, $cache_key, true );
+
+        // Check if file changed
+        if ( $cached_hash === $current_hash ) {
+            error_log( "[MSH Cache] Skipping {$operation} for #{$attachment_id} (unchanged)" );
+            return false; // Skip - already processed
+        }
+
+        // Store new hash
+        update_post_meta( $attachment_id, $cache_key, $current_hash );
+
+        return true; // Needs processing
+    }
+
+    /**
+     * Check if within bandwidth budget.
+     *
+     * @param int    $bytes_to_send Bytes about to be sent.
+     * @param string $provider      Provider: 'openai', 'imagekit', 'google_vision'.
+     * @return bool|WP_Error        True if OK, WP_Error if over budget.
+     */
+    public function check_bandwidth_budget( $bytes_to_send, $provider = 'all' ) {
+        $daily_cap = $this->get_daily_bandwidth_cap();
+
+        $today = date( 'Y-m-d' );
+        $usage = get_transient( "msh_bandwidth_used_{$today}" ) ?: 0;
+
+        if ( $usage + $bytes_to_send > $daily_cap ) {
+            return new WP_Error(
+                'bandwidth_exceeded',
+                sprintf(
+                    'Daily bandwidth cap exceeded: %s used of %s',
+                    size_format( $usage ),
+                    size_format( $daily_cap )
+                )
+            );
+        }
+
+        return true;
+    }
+
+    /**
+     * Track bandwidth usage.
+     *
+     * @param int    $bytes    Bytes sent.
+     * @param string $provider Provider: 'openai', 'imagekit', 'google_vision'.
+     */
+    public function track_bandwidth_usage( $bytes, $provider ) {
+        $today = date( 'Y-m-d' );
+
+        // Track total usage
+        $total_usage = get_transient( "msh_bandwidth_used_{$today}" ) ?: 0;
+        set_transient( "msh_bandwidth_used_{$today}", $total_usage + $bytes, DAY_IN_SECONDS );
+
+        // Track per-provider usage
+        $provider_usage = get_transient( "msh_bandwidth_{$provider}_{$today}" ) ?: 0;
+        set_transient( "msh_bandwidth_{$provider}_{$today}", $provider_usage + $bytes, DAY_IN_SECONDS );
+
+        error_log( sprintf(
+            '[MSH Bandwidth] Tracked %s to %s (daily total: %s)',
+            size_format( $bytes ),
+            $provider,
+            size_format( $total_usage + $bytes )
+        ));
+    }
+
+    /**
+     * Get file size cap for operation.
+     *
+     * @param string $purpose Purpose: 'ai_analysis', 'avif_convert', 'webp_convert'.
+     * @return int            Size cap in bytes.
+     */
+    private function get_file_size_cap( $purpose ) {
+        $defaults = array(
+            'ai_analysis'  => 10 * 1024 * 1024, // 10MB
+            'avif_convert' => 20 * 1024 * 1024, // 20MB
+            'webp_convert' => 50 * 1024 * 1024, // 50MB (local processing)
+        );
+
+        $cap = $defaults[ $purpose ] ?? $defaults['ai_analysis'];
+
+        /**
+         * Filter file size cap for remote processing.
+         *
+         * @param int    $cap     Size cap in bytes.
+         * @param string $purpose Processing purpose.
+         */
+        return apply_filters( 'msh_file_size_cap', $cap, $purpose );
+    }
+
+    /**
+     * Get daily bandwidth cap.
+     *
+     * @return int Daily bandwidth cap in bytes.
+     */
+    private function get_daily_bandwidth_cap() {
+        $default = 500 * 1024 * 1024; // 500MB default
+        $cap = get_option( 'msh_daily_bandwidth_cap', $default );
+
+        /**
+         * Filter daily bandwidth cap.
+         *
+         * @param int $cap Daily bandwidth cap in bytes.
+         */
+        return apply_filters( 'msh_daily_bandwidth_cap', $cap );
+    }
+
+    /**
+     * Log bandwidth savings.
+     *
+     * @param int    $attachment_id Attachment ID.
+     * @param int    $bytes_saved   Bytes saved.
+     * @param string $purpose       Purpose.
+     */
+    private function log_bandwidth_savings( $attachment_id, $bytes_saved, $purpose ) {
+        $total_saved = get_option( 'msh_total_bandwidth_saved', 0 );
+        update_option( 'msh_total_bandwidth_saved', $total_saved + $bytes_saved );
+    }
+
+    /**
+     * Clean up working copy after processing.
+     *
+     * @param string $working_copy Path to working copy.
+     * @param string $original     Path to original (safety check).
+     */
+    public function cleanup_working_copy( $working_copy, $original ) {
+        // Safety: never delete the original
+        if ( $working_copy === $original ) {
+            return;
+        }
+
+        // Safety: only delete files with '-working-' in name
+        if ( strpos( $working_copy, '-working-' ) === false ) {
+            return;
+        }
+
+        if ( file_exists( $working_copy ) ) {
+            @unlink( $working_copy );
+            error_log( '[MSH Bandwidth] Cleaned up working copy: ' . basename( $working_copy ) );
+        }
+    }
+}
+```
+
+---
+
+### 7.5 Integration Points
+
+#### OpenAI Connector Integration
+
+**File:** `includes/class-msh-openai-connector.php`
+
+**Before (current):**
+```php
+$image_url = wp_get_attachment_url( $attachment_id );
+$image_data = $this->get_image_data( $image_url );
+```
+
+**After (optimized):**
+```php
+// Initialize bandwidth optimizer
+$bandwidth_optimizer = new MSH_Bandwidth_Optimizer();
+
+// Check if image needs processing (hash-based cache)
+if ( ! $bandwidth_optimizer->should_process_image( $attachment_id, 'ai_analysis' ) ) {
+    // Return cached metadata
+    return get_post_meta( $attachment_id, '_msh_ai_metadata', true );
+}
+
+// Prepare downscaled working copy (6000px → 1200px)
+$working_copy = $bandwidth_optimizer->prepare_for_remote_processing(
+    $attachment_id,
+    1200, // Max dimension for AI analysis
+    'ai_analysis'
+);
+
+if ( is_wp_error( $working_copy ) ) {
+    // File too large or error - use fallback mode
+    error_log( '[MSH OpenAI] ' . $working_copy->get_error_message() );
+    return null; // Triggers intelligent fallback
+}
+
+// Check bandwidth budget
+$file_size = filesize( $working_copy );
+$budget_check = $bandwidth_optimizer->check_bandwidth_budget( $file_size, 'openai' );
+
+if ( is_wp_error( $budget_check ) ) {
+    error_log( '[MSH OpenAI] ' . $budget_check->get_error_message() );
+    $bandwidth_optimizer->cleanup_working_copy( $working_copy, get_attached_file( $attachment_id ) );
+    return null; // Triggers fallback
+}
+
+// Get image data from working copy
+$image_data = $this->get_image_data( $working_copy );
+
+// Call OpenAI Vision API
+$response = $this->call_openai_vision( $image_data, $prompt, $api_key );
+
+// Track bandwidth usage
+$bandwidth_optimizer->track_bandwidth_usage( $file_size, 'openai' );
+
+// Clean up working copy
+$bandwidth_optimizer->cleanup_working_copy( $working_copy, get_attached_file( $attachment_id ) );
+```
+
+**Bandwidth Savings:**
+- **Before:** 10MB original → 10MB sent to API
+- **After:** 10MB original → 400KB working copy → 400KB sent to API
+- **Savings:** 9.6MB (96% reduction) per image
+
+---
+
+#### ImageKit Integration (Phase 10 Stage 1)
+
+**File:** `includes/cloud/class-msh-imagekit-adapter.php` (future)
+
+```php
+public function convert_to_avif( $attachment_id ) {
+    $bandwidth_optimizer = new MSH_Bandwidth_Optimizer();
+
+    // Check if already processed (hash-based)
+    if ( ! $bandwidth_optimizer->should_process_image( $attachment_id, 'avif_convert' ) ) {
+        return $this->get_cached_avif_url( $attachment_id );
+    }
+
+    // Prepare for ImageKit (downscale to 2000px for quality balance)
+    $working_copy = $bandwidth_optimizer->prepare_for_remote_processing(
+        $attachment_id,
+        2000, // Higher quality for AVIF encoding
+        'avif_convert'
+    );
+
+    if ( is_wp_error( $working_copy ) ) {
+        return $working_copy;
+    }
+
+    // Upload to ImageKit
+    $result = $this->upload_to_imagekit( $working_copy, $attachment_id );
+
+    // Track bandwidth
+    $bandwidth_optimizer->track_bandwidth_usage( filesize( $working_copy ), 'imagekit' );
+
+    // Cleanup
+    $bandwidth_optimizer->cleanup_working_copy( $working_copy, get_attached_file( $attachment_id ) );
+
+    return $result;
+}
+```
+
+---
+
+### 7.6 Settings UI
+
+**Location:** Settings → Advanced Tab (or new "Bandwidth" tab)
+
+```
+┌─────────────────────────────────────────────────────────────────────┐
+│ Bandwidth & API Cost Optimization                                  │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                     │
+│ Remote Processing Limits                                           │
+│ ━━━━━━━━━━━━━━━━━━━━━━━━━━━                                         │
+│                                                                     │
+│ ☑ Pre-downscale images before sending to APIs                      │
+│   Reduces bandwidth by 90-95% with zero quality loss               │
+│                                                                     │
+│   AI Analysis max dimension:     [1200] px (recommended: 800-1600) │
+│   AVIF Encoding max dimension:   [2000] px (recommended: 1600-2400)│
+│                                                                     │
+│ ☑ Skip unchanged images (hash-based caching)                       │
+│   Prevents redundant API calls for duplicate uploads               │
+│                                                                     │
+│ File Size Limits                                                   │
+│ ━━━━━━━━━━━━━━━━                                                    │
+│                                                                     │
+│   Max file size for AI analysis:   [10] MB                         │
+│   Max file size for AVIF encoding: [20] MB                         │
+│   Larger files will use local fallback mode                        │
+│                                                                     │
+│ Bandwidth Budget                                                   │
+│ ━━━━━━━━━━━━━━━━━━                                                  │
+│                                                                     │
+│   Daily bandwidth cap: [500] MB                                    │
+│   Current usage today: 127 MB (25%) [View Details]                │
+│                                                                     │
+│   ℹ️  Prevents unexpected hosting overages on shared hosting       │
+│                                                                     │
+│ Statistics                                                         │
+│ ━━━━━━━━━━                                                          │
+│                                                                     │
+│   Total bandwidth saved: 47.2 GB                                   │
+│   Images processed: 1,247                                          │
+│   Average savings per image: 38.7 MB                               │
+│   Cache hit rate: 23% (287 images skipped)                        │
+│                                                                     │
+│   [View Detailed Bandwidth Report]                                 │
+│                                                                     │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 7.7 WP-CLI Commands
+
+```bash
+# View bandwidth statistics
+wp msh bandwidth stats
+
+# Output:
+# Today's Usage:
+#   OpenAI Vision:    47 MB (12 requests)
+#   ImageKit AVIF:    123 MB (34 conversions)
+#   Total:            170 MB of 500 MB (34%)
+#
+# This Week:
+#   Total:            847 MB
+#   Savings:          12.4 GB (93% reduction)
+#   Cache hits:       247 images (19%)
+#
+# All Time:
+#   Processed:        1,247 images
+#   Bandwidth saved:  47.2 GB
+#   Avg per image:    38.7 MB saved
+
+# Set bandwidth cap
+wp msh bandwidth set-cap 1000 --unit=mb
+# Success: Daily bandwidth cap set to 1000 MB
+
+# Clear cache (force reprocess)
+wp msh bandwidth clear-cache --operation=ai_analysis
+# Success: Cleared 1,247 hash entries for ai_analysis
+
+# Test downscaling
+wp msh bandwidth test-downscale 123 --max-dimension=1200
+# Testing downscale for attachment #123...
+# Original: 6000 x 4000px, 9.8 MB
+# Working copy: 1200 x 800px, 387 KB
+# Savings: 9.4 MB (96% reduction)
+```
+
+---
+
+### 7.8 ROI Analysis
+
+#### Cost Savings Calculation
+
+**Scenario: Small Healthcare Clinic**
+- 500 images in media library
+- Average image: 6000 x 4000px, 8MB
+
+**Without Optimization:**
+```
+AI Analysis:    500 × 8MB = 4,000 MB (4GB upload)
+AVIF Encoding:  500 × 8MB = 4,000 MB (4GB upload)
+Total:          8,000 MB (8GB)
+
+Shared hosting bandwidth cap: 50GB/month
+Percentage used: 16% of monthly bandwidth
+```
+
+**With Optimization:**
+```
+AI Analysis:    500 × 400KB = 200 MB (1200px downscale)
+AVIF Encoding:  500 × 1.2MB = 600 MB (2000px downscale)
+Duplicates:     100 × 0MB = 0 MB (hash cache hits)
+Total:          800 MB (after deduplication)
+
+Percentage used: 1.6% of monthly bandwidth
+Savings: 7,200 MB (90% reduction)
+```
+
+**Agency Scenario (10 Clients):**
+- Without: 80GB bandwidth
+- With: 8GB bandwidth
+- **Savings: 72GB (90% reduction)**
+
+#### Time Savings
+
+**Upload Speed: 1 Mbps** (typical cheap shared hosting)
+
+| File Size | Upload Time | Optimized Time | Time Saved |
+|-----------|-------------|----------------|------------|
+| 10MB original | 80 seconds | 3.2 seconds | 76.8 sec |
+| 100 images | 2.2 hours | 5.3 minutes | 2 hours |
+| 500 images | 11 hours | 27 minutes | 10.5 hours |
+
+**Timeout Reduction:**
+- Before: 30-40% timeout rate on slow connections
+- After: <1% timeout rate
+
+---
+
+### 7.9 Testing Strategy
+
+#### Unit Tests
+
+```php
+class Test_Bandwidth_Optimizer extends WP_UnitTestCase {
+
+    public function test_downscale_large_image() {
+        $attachment_id = $this->create_test_image( 6000, 4000 );
+        $optimizer = new MSH_Bandwidth_Optimizer();
+
+        $working_copy = $optimizer->prepare_for_remote_processing(
+            $attachment_id,
+            1200,
+            'ai_analysis'
+        );
+
+        $this->assertFileExists( $working_copy );
+
+        $size = getimagesize( $working_copy );
+        $this->assertEquals( 1200, $size[0] ); // Width capped at 1200
+        $this->assertLessThan( 500 * 1024, filesize( $working_copy ) ); // < 500KB
+    }
+
+    public function test_hash_cache_prevents_reprocessing() {
+        $attachment_id = $this->create_test_image( 3000, 2000 );
+        $optimizer = new MSH_Bandwidth_Optimizer();
+
+        // First call: should process
+        $this->assertTrue( $optimizer->should_process_image( $attachment_id, 'ai_analysis' ) );
+
+        // Second call: should skip (hash matches)
+        $this->assertFalse( $optimizer->should_process_image( $attachment_id, 'ai_analysis' ) );
+    }
+
+    public function test_bandwidth_budget_enforcement() {
+        $optimizer = new MSH_Bandwidth_Optimizer();
+
+        // Set low cap for testing
+        update_option( 'msh_daily_bandwidth_cap', 1024 * 1024 ); // 1MB cap
+
+        // First 500KB: OK
+        $result = $optimizer->check_bandwidth_budget( 500 * 1024, 'test' );
+        $this->assertTrue( $result );
+
+        $optimizer->track_bandwidth_usage( 500 * 1024, 'test' );
+
+        // Another 600KB: Should exceed 1MB cap
+        $result = $optimizer->check_bandwidth_budget( 600 * 1024, 'test' );
+        $this->assertWPError( $result );
+        $this->assertEquals( 'bandwidth_exceeded', $result->get_error_code() );
+    }
+}
+```
+
+#### Integration Tests
+
+1. **OpenAI Connector Test:**
+   - Upload large image (10MB, 6000px)
+   - Verify working copy created at 1200px
+   - Verify API receives downscaled version
+   - Verify working copy cleaned up after
+
+2. **ImageKit Adapter Test:**
+   - Upload large image
+   - Verify downscale to 2000px for AVIF
+   - Verify bandwidth tracking
+   - Verify cleanup
+
+3. **Cache Test:**
+   - Upload image, process with AI
+   - Re-upload same image (different filename)
+   - Verify hash cache hit, no API call
+
+---
+
+### 7.10 Performance Metrics
+
+**Success Criteria:**
+
+| Metric | Before | Target | Measured |
+|--------|--------|--------|----------|
+| Bandwidth per AI analysis | 8-10MB | <500KB | TBD |
+| Bandwidth per AVIF encoding | 8-10MB | <1.5MB | TBD |
+| Duplicate detection rate | 0% | 15-25% | TBD |
+| Timeout rate (1Mbps upload) | 30-40% | <5% | TBD |
+| API cost per 100 images | $1.00 | $0.10-0.50 | TBD |
+
+**Monitoring:**
+- Dashboard widget showing daily bandwidth usage
+- Email alerts at 80% of daily cap
+- Weekly bandwidth reports
+- Per-provider cost tracking
+
+---
+
+### 7.11 Implementation Timeline
+
+**Phase 0 (Immediate - Before Phase 10):**
+- Week 1: Build `MSH_Bandwidth_Optimizer` class
+- Week 1: Integrate into OpenAI connector
+- Week 1: Add hash-based caching
+- Week 2: Settings UI + WP-CLI commands
+- Week 2: Testing + documentation
+
+**Phase 10 Stage 1:**
+- Day 1: Integrate into ImageKit adapter
+- Day 2-3: Multi-size processing support
+- Day 4: Bandwidth dashboard widget
+- Day 5: Final testing + launch
+
+**Total:** 2-3 weeks
+
+---
+
+### 7.12 Conclusion
+
+Bandwidth optimization is **critical** for:
+- ✅ **Shared hosting compatibility** (won't blow bandwidth caps)
+- ✅ **Cost control** (90-95% savings on API transfers)
+- ✅ **Better UX** (faster processing, fewer timeouts)
+- ✅ **Scalability** (agencies can process thousands of images)
+
+**Why Now:**
+- Current OpenAI integration sends 10MB images → wasteful
+- Phase 10 ImageKit adds more remote processing → compounds problem
+- Cheap shared hosting has strict limits → plugin must be lean
+
+**Quick Wins:**
+1. Pre-downscale to 1200px for AI analysis → **96% bandwidth savings**
+2. Hash-based caching → **100% savings on duplicates**
+3. File size caps → **fail-safe protection**
+
+**Status:** ✅ Approved - Implement before Phase 10 Stage 1
+
+---
+---
+
+## Idea #8: Multi-Size Format Conversion
+
+**Source:** WordPress image size system analysis + responsive images best practices
+**Priority:** 🟡 Medium (Quality of Life + Performance)
+**Related Phases:** Current (WebP), Phase 10 (AVIF)
+**Status:** ✅ Approved - Implement during Phase 10 Stage 1
+
+### Quick Summary
+
+WordPress automatically generates multiple image sizes (thumbnail, medium, large, custom) for responsive display, but **the plugin only converts the full-size original** to WebP/AVIF. This means:
+- ❌ Themes using `wp_get_attachment_image( $id, 'thumbnail' )` → get JPG, not WebP
+- ❌ Responsive images (`srcset`) → missing WebP/AVIF variants
+- ❌ Cards, grids, galleries → use larger JPG files instead of tiny WebP
+- ❌ Mobile users → download 300KB JPG instead of 30KB WebP
+
+**The Solution:** Generate WebP/AVIF for **ALL WordPress image sizes**, not just full-size original.
+
+**Expected Impact:**
+- ✅ **60-80% file size reduction** on thumbnails and medium sizes
+- ✅ **Complete format coverage** for all theme display sizes
+- ✅ **Responsive image support** with proper `<picture>` tags
+- ✅ **Mobile performance** (serve tiny WebP thumbnails, not full JPGs)
+
+---
+
+### 8.1 The Problem
+
+#### Current Behavior
+
+Looking at [class-msh-image-optimizer.php:9636-9666](../includes/class-msh-image-optimizer.php#L9636-L9666):
+
+```php
+private function convert_to_webp( $source_path, $webp_path ) {
+    // Only converts: image.jpg → image.webp (full-size only)
+    $image = imagecreatefromjpeg( $source_path );
+    imagewebp( $image, $webp_path, 80 );
+}
+```
+
+**WordPress Image Size System:**
+
+When you upload `doctor-consultation.jpg` (6000 x 4000px), WordPress creates:
+
+```php
+Array (
+    [width] => 6000
+    [height] => 4000
+    [file] => 2024/01/doctor-consultation.jpg
+    [sizes] => Array (
+        [thumbnail] => Array (
+            [file] => doctor-consultation-150x150.jpg
+            [width] => 150
+            [height] => 150
+            [mime-type] => image/jpeg
+        )
+        [medium] => Array (
+            [file] => doctor-consultation-300x200.jpg
+            [width] => 300
+            [height] => 200
+            [mime-type] => image/jpeg
+        )
+        [medium_large] => Array (
+            [file] => doctor-consultation-768x512.jpg
+            [width] => 768
+            [height] => 512
+            [mime-type] => image/jpeg
+        )
+        [large] => Array (
+            [file] => doctor-consultation-1024x683.jpg
+            [width] => 1024
+            [height] => 683
+            [mime-type] => image/jpeg
+        )
+        [1536x1536] => Array (
+            [file] => doctor-consultation-1536x1024.jpg
+            [width] => 1536
+            [height] => 1024
+            [mime-type] => image/jpeg
+        )
+        [2048x2048] => Array (
+            [file] => doctor-consultation-2048x1365.jpg
+            [width] => 2048
+            [height] => 1365
+            [mime-type] => image/jpeg
+        )
+    )
+)
+```
+
+**Plugin Currently Creates:**
+- ✅ `doctor-consultation.webp` (full-size, 6000px)
+
+**Plugin Currently MISSING:**
+- ❌ `doctor-consultation-150x150.webp` (thumbnail)
+- ❌ `doctor-consultation-300x200.webp` (medium)
+- ❌ `doctor-consultation-768x512.webp` (medium_large)
+- ❌ `doctor-consultation-1024x683.webp` (large)
+- ❌ `doctor-consultation-1536x1024.webp` (1536x1536)
+- ❌ `doctor-consultation-2048x1365.webp` (2048x2048)
+
+---
+
+#### Real-World Impact
+
+**Scenario:** Blog post with featured image displayed at 768px width
+
+**Theme Code:**
+```php
+the_post_thumbnail( 'medium_large' );
+// WordPress looks for: doctor-consultation-768x512.webp
+// Finds: doctor-consultation-768x512.jpg (120KB JPG)
+// Uses: JPG instead of WebP (would be 28KB)
+```
+
+**Result:**
+- User downloads **120KB JPG** instead of **28KB WebP**
+- **92KB wasted bandwidth** per image
+- Slower page load, worse Core Web Vitals
+
+**Multiply by:**
+- Homepage: 10 featured images = 920KB wasted
+- Blog archive: 24 cards = 2.2MB wasted
+- Gallery: 50 thumbnails = 4.6MB wasted
+
+---
+
+### 8.2 Solution Architecture
+
+#### Strategy: Process All WordPress Sizes
+
+```php
+/**
+ * Convert all WordPress image sizes to WebP/AVIF.
+ *
+ * Iterates through _wp_attachment_metadata['sizes'] and converts each.
+ *
+ * @param int    $attachment_id Attachment ID.
+ * @param string $format        Format: 'webp' or 'avif'.
+ * @return array                Results for each size.
+ */
+public function convert_all_sizes( $attachment_id, $format = 'webp' ) {
+    $metadata = wp_get_attachment_metadata( $attachment_id );
+    $upload_dir = wp_get_upload_dir();
+    $results = array();
+
+    // Convert full-size original
+    $original_path = get_attached_file( $attachment_id );
+    $original_result = $this->convert_single_file( $original_path, $format );
+    $results['full'] = $original_result;
+
+    // Convert all generated sizes
+    if ( ! empty( $metadata['sizes'] ) ) {
+        $base_dir = dirname( $original_path );
+
+        foreach ( $metadata['sizes'] as $size_name => $size_data ) {
+            $size_path = $base_dir . '/' . $size_data['file'];
+
+            // Skip if size doesn't exist
+            if ( ! file_exists( $size_path ) ) {
+                continue;
+            }
+
+            // Skip if size is larger than original (shouldn't happen, but safety)
+            if ( filesize( $size_path ) > filesize( $original_path ) ) {
+                continue;
+            }
+
+            // Convert this size
+            $size_result = $this->convert_single_file( $size_path, $format );
+            $results[ $size_name ] = $size_result;
+
+            error_log( sprintf(
+                '[MSH Multi-Size] Converted %s to %s: %s',
+                $size_name,
+                strtoupper( $format ),
+                $size_result['success'] ? 'Success' : 'Failed'
+            ));
+        }
+    }
+
+    return $results;
+}
+```
+
+---
+
+### 8.3 Implementation Spec
+
+#### Component: Multi-Size Converter
+
+**File:** `includes/class-msh-multi-size-converter.php`
+
+```php
+<?php
+/**
+ * Multi-Size Format Converter
+ *
+ * Converts all WordPress image sizes to modern formats (WebP, AVIF).
+ *
+ * @package MSH_Image_Optimizer
+ * @since Phase 10 Stage 1
+ */
+
+class MSH_Multi_Size_Converter {
+
+    /**
+     * Convert all sizes to target format.
+     *
+     * @param int    $attachment_id Attachment ID.
+     * @param string $format        Format: 'webp' or 'avif'.
+     * @return array                Results array with success/failure for each size.
+     */
+    public function convert_all_sizes( $attachment_id, $format = 'webp' ) {
+        $metadata = wp_get_attachment_metadata( $attachment_id );
+        $results = array();
+
+        // Safety check
+        if ( empty( $metadata ) ) {
+            return array( 'error' => 'No metadata found' );
+        }
+
+        // Get original file path
+        $original_path = get_attached_file( $attachment_id );
+
+        if ( ! file_exists( $original_path ) ) {
+            return array( 'error' => 'Original file not found' );
+        }
+
+        // Convert full-size original
+        $results['full'] = $this->convert_single_size(
+            $original_path,
+            $format,
+            $metadata['width'],
+            $metadata['height']
+        );
+
+        // Convert all generated sizes
+        if ( ! empty( $metadata['sizes'] ) ) {
+            $base_dir = dirname( $original_path );
+
+            foreach ( $metadata['sizes'] as $size_name => $size_data ) {
+                $size_path = $base_dir . '/' . $size_data['file'];
+
+                if ( ! file_exists( $size_path ) ) {
+                    $results[ $size_name ] = array( 'success' => false, 'error' => 'File not found' );
+                    continue;
+                }
+
+                $results[ $size_name ] = $this->convert_single_size(
+                    $size_path,
+                    $format,
+                    $size_data['width'],
+                    $size_data['height']
+                );
+            }
+        }
+
+        // Store conversion metadata
+        $this->store_conversion_results( $attachment_id, $format, $results );
+
+        return $results;
+    }
+
+    /**
+     * Convert single file to target format.
+     *
+     * @param string $source_path Source file path.
+     * @param string $format      Target format: 'webp' or 'avif'.
+     * @param int    $width       Image width (for logging).
+     * @param int    $height      Image height (for logging).
+     * @return array              Result array with success, output_path, file_size, etc.
+     */
+    private function convert_single_size( $source_path, $format, $width, $height ) {
+        $extension = strtolower( $format );
+        $output_path = preg_replace( '/\.(jpg|jpeg|png)$/i', ".{$extension}", $source_path );
+
+        // Check if already exists and source hasn't changed
+        if ( file_exists( $output_path ) && filemtime( $source_path ) <= filemtime( $output_path ) ) {
+            return array(
+                'success' => true,
+                'output_path' => $output_path,
+                'file_size' => filesize( $output_path ),
+                'skipped' => true,
+                'reason' => 'Already up-to-date',
+            );
+        }
+
+        // Load image
+        $image = wp_get_image_editor( $source_path );
+
+        if ( is_wp_error( $image ) ) {
+            return array(
+                'success' => false,
+                'error' => $image->get_error_message()
+            );
+        }
+
+        // Set quality based on format
+        $quality = $this->get_quality_for_format( $format );
+        $image->set_quality( $quality );
+
+        // Set output format
+        $image->set_mime_type( "image/{$extension}" );
+
+        // Save converted file
+        $saved = $image->save( $output_path );
+
+        if ( is_wp_error( $saved ) ) {
+            return array(
+                'success' => false,
+                'error' => $saved->get_error_message()
+            );
+        }
+
+        // Calculate savings
+        $original_size = filesize( $source_path );
+        $converted_size = filesize( $output_path );
+        $savings_bytes = $original_size - $converted_size;
+        $savings_percent = round( ( $savings_bytes / $original_size ) * 100, 1 );
+
+        return array(
+            'success' => true,
+            'output_path' => $output_path,
+            'file_size' => $converted_size,
+            'original_size' => $original_size,
+            'savings_bytes' => $savings_bytes,
+            'savings_percent' => $savings_percent,
+            'dimensions' => "{$width}x{$height}",
+        );
+    }
+
+    /**
+     * Get quality setting for format.
+     *
+     * @param string $format Format: 'webp' or 'avif'.
+     * @return int           Quality (0-100).
+     */
+    private function get_quality_for_format( $format ) {
+        $defaults = array(
+            'webp' => 80,
+            'avif' => 75,
+        );
+
+        $quality = $defaults[ $format ] ?? 80;
+
+        /**
+         * Filter format conversion quality.
+         *
+         * @param int    $quality Quality (0-100).
+         * @param string $format  Format: 'webp' or 'avif'.
+         */
+        return apply_filters( 'msh_format_quality', $quality, $format );
+    }
+
+    /**
+     * Store conversion results in post meta.
+     *
+     * @param int    $attachment_id Attachment ID.
+     * @param string $format        Format: 'webp' or 'avif'.
+     * @param array  $results       Results array.
+     */
+    private function store_conversion_results( $attachment_id, $format, $results ) {
+        $meta_key = "_msh_{$format}_conversion_results";
+        $data = array(
+            'timestamp' => time(),
+            'results' => $results,
+            'total_sizes' => count( $results ),
+            'successful' => count( array_filter( $results, function( $r ) {
+                return ! empty( $r['success'] );
+            })),
+        );
+
+        update_post_meta( $attachment_id, $meta_key, $data );
+    }
+
+    /**
+     * Get conversion statistics for attachment.
+     *
+     * @param int    $attachment_id Attachment ID.
+     * @param string $format        Format: 'webp' or 'avif'.
+     * @return array|false          Statistics array or false if not converted.
+     */
+    public function get_conversion_stats( $attachment_id, $format ) {
+        $meta_key = "_msh_{$format}_conversion_results";
+        return get_post_meta( $attachment_id, $meta_key, true );
+    }
+}
+```
+
+---
+
+### 8.4 Integration with Picture Tag Support
+
+**File:** Phase 10 Quick Win #1 (already planned)
+
+```html
+<!-- Before (current) -->
+<img src="doctor-consultation-768x512.jpg" alt="...">
+
+<!-- After (with multi-size conversion) -->
+<picture>
+    <source
+        type="image/avif"
+        srcset="
+            doctor-consultation-300x200.avif 300w,
+            doctor-consultation-768x512.avif 768w,
+            doctor-consultation-1024x683.avif 1024w
+        ">
+    <source
+        type="image/webp"
+        srcset="
+            doctor-consultation-300x200.webp 300w,
+            doctor-consultation-768x512.webp 768w,
+            doctor-consultation-1024x683.webp 1024w
+        ">
+    <img
+        src="doctor-consultation-768x512.jpg"
+        srcset="
+            doctor-consultation-300x200.jpg 300w,
+            doctor-consultation-768x512.jpg 768w,
+            doctor-consultation-1024x683.jpg 1024w
+        "
+        sizes="(max-width: 768px) 100vw, 768px"
+        alt="Medical consultation room">
+</picture>
+```
+
+**Result:**
+- Mobile (300px): Loads **18KB AVIF** instead of 85KB JPG → **67KB saved**
+- Tablet (768px): Loads **52KB AVIF** instead of 220KB JPG → **168KB saved**
+- Desktop (1024px): Loads **89KB AVIF** instead of 340KB JPG → **251KB saved**
+
+---
+
+### 8.5 Performance Impact
+
+**Test Case: Blog Homepage with 10 Featured Images**
+
+| Size Used | Format | File Size | Load Time (3G) | Total (10 images) |
+|-----------|--------|-----------|----------------|-------------------|
+| 768x512 JPG | JPEG | 220KB | 0.88s | **8.8s, 2.2MB** |
+| 768x512 WebP | WebP | 52KB | 0.21s | **2.1s, 520KB** |
+| 768x512 AVIF | AVIF | 35KB | 0.14s | **1.4s, 350KB** |
+
+**Savings:**
+- **WebP:** 7.4 seconds faster, 1.68MB saved (76% reduction)
+- **AVIF:** 7.4 seconds faster, 1.85MB saved (84% reduction)
+
+**Core Web Vitals Impact:**
+- **LCP improvement:** 300-600ms (less data to download for hero image)
+- **CLS improvement:** Faster load = less layout shift
+- **FID improvement:** Page becomes interactive sooner
+
+---
+
+### 8.6 Testing Strategy
+
+```bash
+# WP-CLI command to test multi-size conversion
+wp msh convert-sizes 123 --format=webp --dry-run
+
+# Output:
+# Testing multi-size WebP conversion for attachment #123...
+#
+# Original: doctor-consultation.jpg (6000 x 4000px, 9.8 MB)
+#
+# Conversion Plan:
+#   ✓ full (6000x4000) → doctor-consultation.webp (2.1 MB, 79% savings)
+#   ✓ thumbnail (150x150) → doctor-consultation-150x150.webp (12 KB, 73% savings)
+#   ✓ medium (300x200) → doctor-consultation-300x200.webp (18 KB, 79% savings)
+#   ✓ medium_large (768x512) → doctor-consultation-768x512.webp (52 KB, 76% savings)
+#   ✓ large (1024x683) → doctor-consultation-1024x683.webp (89 KB, 74% savings)
+#   ✓ 1536x1536 (1536x1024) → doctor-consultation-1536x1024.webp (187 KB, 76% savings)
+#   ✓ 2048x2048 (2048x1365) → doctor-consultation-2048x1365.webp (312 KB, 77% savings)
+#
+# Total sizes: 7
+# Total savings: 7.2 MB (75% average reduction)
+#
+# Run without --dry-run to execute conversion.
+
+# Execute conversion
+wp msh convert-sizes 123 --format=webp
+# Success: Converted 7 sizes to WebP (7.2 MB saved)
+
+# Batch convert all images
+wp msh convert-sizes --all --format=webp --batch-size=50
+# Processing images in batches of 50...
+# Batch 1/10: 50 images converted (347 sizes, 1.2 GB saved)
+# Batch 2/10: 50 images converted (341 sizes, 1.1 GB saved)
+# ...
+```
+
+---
+
+### 8.7 Implementation Timeline
+
+**Phase 10 Stage 1:**
+- Day 3-4: Build `MSH_Multi_Size_Converter` class
+- Day 4: Integrate into existing WebP conversion flow
+- Day 5: Add AVIF support (ImageKit adapter)
+- Day 6: Picture tag integration with srcset
+- Day 7: WP-CLI commands + testing
+
+**Total:** 4-5 days (parallel with ImageKit integration)
+
+---
+
+### 8.8 Settings UI
+
+**Location:** Settings → Formats Tab
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│ Image Format Conversion                                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│ WebP Settings                                              │
+│ ━━━━━━━━━━━━                                                │
+│                                                             │
+│ ☑ Convert images to WebP format                            │
+│   ☑ Convert ALL WordPress sizes (recommended)              │
+│     Generates WebP for: thumbnail, medium, large, etc.     │
+│                                                             │
+│   Quality: [80] (0-100, recommended: 75-85)                │
+│                                                             │
+│ AVIF Settings (Phase 10)                                   │
+│ ━━━━━━━━━━━━━                                               │
+│                                                             │
+│ ☑ Convert images to AVIF format                            │
+│   ☑ Convert ALL WordPress sizes (recommended)              │
+│     Generates AVIF for: thumbnail, medium, large, etc.     │
+│                                                             │
+│   Quality: [75] (0-100, recommended: 70-80)                │
+│   Provider: ● ImageKit ○ Local (requires ImageMagick 7+)  │
+│                                                             │
+│ Size Selection                                             │
+│ ━━━━━━━━━━━━━━                                              │
+│                                                             │
+│ ☑ thumbnail (150x150)                                      │
+│ ☑ medium (300x200)                                         │
+│ ☑ medium_large (768x512)                                   │
+│ ☑ large (1024x683)                                         │
+│ ☑ 1536x1536                                                │
+│ ☑ 2048x2048                                                │
+│ ☑ All custom sizes defined by theme                        │
+│                                                             │
+│ [Select All] [Deselect All] [Reset to Defaults]           │
+│                                                             │
+│ Conversion Statistics                                      │
+│ ━━━━━━━━━━━━━━━━━━━━                                        │
+│                                                             │
+│ Images with WebP:  847 / 1,247 (68%)                       │
+│ Images with AVIF:  234 / 1,247 (19%)                       │
+│ Total sizes:       8,729 WebP + 2,106 AVIF variants        │
+│ Total savings:     47.2 GB                                 │
+│                                                             │
+│ [Regenerate All Formats] [View Detailed Report]           │
+│                                                             │
+└─────────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 8.9 Conclusion
+
+Multi-size format conversion is **essential** for:
+- ✅ **Complete format coverage** (all theme display sizes)
+- ✅ **Responsive image support** (proper srcset with AVIF/WebP)
+- ✅ **Mobile performance** (tiny thumbnails load 10× faster)
+- ✅ **Core Web Vitals** (better LCP, faster page loads)
+
+**Why Phase 10:**
+- Current WebP implementation is incomplete (only full-size)
+- Phase 10 adds AVIF → perfect time to complete multi-size support
+- Picture tag support (Quick Win #1) needs all sizes in all formats
+
+**Quick Wins:**
+1. Generate WebP for all sizes → **60-80% savings on thumbnails**
+2. Generate AVIF for all sizes → **80-90% savings**
+3. Complete srcset support → **responsive images done right**
+
+**Status:** ✅ Approved - Implement during Phase 10 Stage 1
+
+---
+---
+
 ## Future Ideas
 
 *This section is reserved for additional R&D ideas. Add new ideas as they come up.*
@@ -5558,5 +6882,5 @@ Per-locale image sitemaps with hreflang support is a **perfect fit** for Phase 7
 ---
 
 **Living Document Status:** 📋 Active - Add ideas as discovered
-**Last Updated:** October 22, 2025
-**Total Ideas:** 6 (Safe Migrations, Feature Flags, AVIF Conversion, Staged Cloud Architecture, AI-Powered Image Delivery, Per-Locale Image Sitemaps)
+**Last Updated:** October 27, 2025
+**Total Ideas:** 8 (Safe Migrations, Feature Flags, AVIF Conversion, Staged Cloud Architecture, AI-Powered Image Delivery, Per-Locale Image Sitemaps, Bandwidth Optimization, Multi-Size Format Conversion)
