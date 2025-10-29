@@ -309,7 +309,7 @@ CRITICAL RULES:
 1. If context_type is 'testimonial', 'decorative', or 'stock', describe ONLY what is visible. DO NOT claim the image shows the business location or is taken at the business.
 2. If context_type is 'facility', the image DOES show the actual business location - include business name.
 3. If the image is generic/stock (landscape, food, objects), describe it accurately WITHOUT forcing business connection.
-4. For testimonial images: Focus on the emotion/concept (e.g., "satisfied client", "positive outcome") not false location claims.
+4. For testimonial images: Focus on the emotion/concept (e.g., \'satisfied client\', \'positive outcome\') not false location claims.
 
 TASK:
 Using the image and all the context above, suggest the following exactly in JSON format:
