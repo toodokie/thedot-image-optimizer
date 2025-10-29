@@ -1,7 +1,7 @@
 # Phase 6: AI Metadata Generation Improvements
 
 **Date:** 2025-10-29
-**Version:** 20251029.4
+**Version:** 20251029.5
 **Status:** ✅ Implemented
 
 ## Overview
@@ -206,17 +206,65 @@ Return exactly one JSON object matching the specified schema, nothing else.
 - Must add `brand_name_assumed` if violating rules + lower confidence ≤ 0.70
 - Must add `context_mismatch` if output conflicts with context_type semantics
 
-### 7. Prompt Version Tracking
+### 7. AI-Search Optimization (v20251029.5)
+
+**Problem:** Traditional SEO focuses on keywords + crawl structure, but generative AI search (Google SGE, Bing Copilot, ChatGPT Browse, Perplexity) focuses on semantic clarity and factual grounding.
+
+**Solution:** Added "AI-SEARCH & SEO OPTIMIZATION" section to SYSTEM prompt instructing AI to write metadata friendly to BOTH classic search AND generative-AI search.
+
+**What "AI-search friendly" means:**
+- **Semantic clarity:** Answer implicit questions (who/what/where/why visible in image)
+- **Natural language:** Conversational phrasing, not keyword stuffing
+- **Real entities:** Business name, city, service category (when context_type allows)
+- **Coherence:** Consistent with on-page copy (SGE scores this)
+- **Intent:** Convey why image exists (showing service, illustrating recovery, etc.)
+
+**Prompt Instructions:**
+```
+AI-SEARCH & SEO OPTIMIZATION:
+- Write metadata friendly to both classic search engines AND generative-AI search
+- Use natural, factual language that answers implicit user questions (who/what/where/why)
+- Mention concrete entities (business name, city, service category) when allowed by context_type
+- Prefer phrases people would say or ask in conversation
+- Avoid keyword lists or unnatural repetition
+- Keep descriptions coherent with surrounding page topic; helps AI ranking models connect image to intent cluster
+```
+
+**Example Given in Prompt:**
+```
+❌ Old SEO: "clinic Hamilton physiotherapy chiropractic massage"
+✅ AI + SEO: "Main Street Health rehabilitation clinic in Hamilton Ontario providing
+            physiotherapy and chiropractic care for first responders."
+```
+
+The second reads like a mini answer a conversational engine can quote.
+
+**Benefits:**
+
+| Benefit | Impact |
+|---------|--------|
+| Appears in AI-search snippets | Increases visibility when SGE cites sources |
+| Higher topical authority | Models rank you as relevant expert in service area |
+| Human readability | Better UX → engagement → SEO reinforcement |
+| Future-proofing | Won't need metadata rewrite when AI-first search fully rolls out |
+
+**How LLMs Use This:**
+- Link to knowledge graphs (real entities: businesses, locations, treatments)
+- Score coherence across text + image metadata
+- Match to user intent clusters
+- Provide natural-language answers in conversational search
+
+### 8. Prompt Version Tracking
 
 **Implementation:**
 ```php
 // class-msh-openai-connector.php:25
-const PROMPT_VERSION = '20251029.4'; // Authoritative context_type + server-side validator
+const PROMPT_VERSION = '20251029.5'; // AI-search optimization (SGE/Copilot/ChatGPT) + conversational phrasing
 ```
 
 **Logged in Every AI Call:**
 ```
-[MSH OpenAI] Prompt v20251029.4 - context_type: team, brand_name_visible: true
+[MSH OpenAI] Prompt v20251029.5 - context_type: team, brand_name_visible: true
 ```
 
 **Included in Metadata Response:**
@@ -229,7 +277,7 @@ $sanitized['prompt_version'] = self::PROMPT_VERSION;
 - Increment revision for same-day changes
 - Increment date for new-day changes
 
-### 8. Token Usage Tracking
+### 9. Token Usage Tracking
 
 **Extraction from OpenAI Response:**
 ```php
@@ -258,7 +306,7 @@ if ( isset( $response_data['usage'] ) ) {
 // }
 ```
 
-### 9. Batch Telemetry Logging
+### 10. Batch Telemetry Logging
 
 **Metrics Tracked Per Batch:**
 - `confidence_scores[]` → calculates average
