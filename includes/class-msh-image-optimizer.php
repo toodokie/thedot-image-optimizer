@@ -8094,8 +8094,8 @@ class MSH_Image_Optimizer {
 				$telemetry['low_confidence_count']
 			) );
 
-			// Future: Log to Supabase when ready
-			// do_action( 'msh_log_telemetry', 'ai_batch_complete', $telemetry );
+			// Log to telemetry system (integrated with MSH_Telemetry)
+			do_action( 'msh_log_telemetry', 'ai_batch_complete', $telemetry );
 		}
 
 		update_option( 'msh_last_analyzer_run', current_time( 'mysql' ) );

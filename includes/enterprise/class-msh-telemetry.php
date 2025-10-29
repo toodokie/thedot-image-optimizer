@@ -65,6 +65,10 @@ class MSH_Telemetry {
 		// Weekly telemetry send
 		add_action( 'msh_send_telemetry', array( $this, 'send_telemetry_snapshot' ) );
 
+		// AI telemetry hooks (Phase 6)
+		add_action( 'msh_log_telemetry', array( $this, 'log_ai_telemetry' ), 10, 2 );
+		add_action( 'msh_log_token_usage', array( $this, 'log_token_usage' ), 10, 3 );
+
 		if ( ! wp_next_scheduled( 'msh_send_telemetry' ) ) {
 			wp_schedule_event( time(), 'weekly', 'msh_send_telemetry' );
 		}
@@ -329,6 +333,62 @@ class MSH_Telemetry {
 			'events_pending' => (int) $pending,
 			'events_sent'    => (int) $sent,
 			'last_sent'      => $last_sent,
+		);
+	}
+
+	/**
+	 * Log AI batch telemetry (Phase 6).
+	 *
+	 * @param string $event_type Event type.
+	 * @param array  $data Telemetry data.
+	 * @return void
+	 */
+	public function log_ai_telemetry( $event_type, $data ) {
+		if ( 'ai_batch_complete' !== $event_type ) {
+			return;
+		}
+
+		// Calculate confidence average
+		$confidence_avg = ! empty( $data['confidence_scores'] )
+			? array_sum( $data['confidence_scores'] ) / count( $data['confidence_scores'] )
+			: 0.0;
+
+		// Track as telemetry event
+		$this->track_event(
+			'ai_batch_complete',
+			array(
+				'batch_size'                => $data['ai_success_count'] + $data['ai_fallback_count'],
+				'ai_success_count'          => $data['ai_success_count'],
+				'ai_fallback_count'         => $data['ai_fallback_count'],
+				'confidence_avg'            => round( $confidence_avg, 2 ),
+				'brand_name_assumed_count'  => $data['brand_name_assumed_count'],
+				'decorative_image_count'    => $data['decorative_image_count'],
+				'text_detected_count'       => $data['text_detected_count'],
+				'low_confidence_count'      => $data['low_confidence_count'],
+				'prompt_version'            => defined( 'MSH_OpenAI_Connector::PROMPT_VERSION' ) ? MSH_OpenAI_Connector::PROMPT_VERSION : 'unknown',
+			)
+		);
+	}
+
+	/**
+	 * Log token usage per image (Phase 6).
+	 *
+	 * @param int    $attachment_id Attachment ID.
+	 * @param array  $tokens_used Token usage data.
+	 * @param string $prompt_version Prompt version.
+	 * @return void
+	 */
+	public function log_token_usage( $attachment_id, $tokens_used, $prompt_version ) {
+		// Track as telemetry event
+		$this->track_event(
+			'ai_token_usage',
+			array(
+				'attachment_id'     => $attachment_id,
+				'prompt_tokens'     => $tokens_used['prompt_tokens'],
+				'completion_tokens' => $tokens_used['completion_tokens'],
+				'total_tokens'      => $tokens_used['total_tokens'],
+				'prompt_version'    => $prompt_version,
+			)
 		);
 	}
 }

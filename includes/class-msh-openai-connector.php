@@ -156,8 +156,8 @@ class MSH_OpenAI_Connector {
 			//     $token_manager->deduct( $attachment_id, $tokens_used['total_tokens'], 'vision_metadata' );
 			// }
 
-			// Future: Log to telemetry
-			// do_action( 'msh_log_token_usage', $attachment_id, $tokens_used, self::PROMPT_VERSION );
+			// Log to telemetry system (integrated with MSH_Telemetry)
+			do_action( 'msh_log_token_usage', $attachment_id, $tokens_used, self::PROMPT_VERSION );
 		}
 
 		// Parse response into metadata structure
