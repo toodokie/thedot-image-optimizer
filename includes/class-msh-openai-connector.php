@@ -652,7 +652,8 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 	 * @return true|WP_Error True if valid, WP_Error if critical violation
 	 */
 	private function validate_context_rules( $context, &$metadata, &$issues ) {
-		$type = isset( $context['context_type'] ) ? $context['context_type'] : 'stock';
+		// Note: Context array uses 'type' key, not 'context_type'
+		$type = isset( $context['type'] ) ? $context['type'] : 'stock';
 		$business_name = isset( $context['business_name'] ) ? strtolower( $context['business_name'] ) : '';
 
 		// Combine all text fields for checking
