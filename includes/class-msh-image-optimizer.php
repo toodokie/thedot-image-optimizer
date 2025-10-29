@@ -39,6 +39,12 @@ class MSH_Contextual_Meta_Generator {
 	private $season_cache_hits    = 0;
 	private $season_cache_misses  = 0;
 
+	// Phase 1F: Runtime cache for batch optimization (avoid repeated wp_options queries)
+	private $msh_batch_mode           = false;
+	private $msh_batch_context_cached = false;
+	private $msh_cached_context       = array();
+	private $msh_cached_signature     = '';
+
 	private $industry_service_defaults = array(
 		'legal'        => 'legal',
 		'accounting'   => 'accounting',
@@ -216,6 +222,11 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function hydrate_active_context() {
+		// Phase 1F: Return cached context if batch mode is active
+		if ( $this->msh_batch_mode && $this->msh_batch_context_cached ) {
+			return $this->msh_cached_context;
+		}
+
 		if ( ! class_exists( 'MSH_Image_Optimizer_Context_Helper' ) ) {
 			return;
 		}
@@ -242,11 +253,18 @@ class MSH_Contextual_Meta_Generator {
 		$country      = isset( $context['country'] ) ? sanitize_text_field( $context['country'] ) : '';
 		$service_area = isset( $context['service_area'] ) ? sanitize_text_field( $context['service_area'] ) : '';
 
+		if ( class_exists( 'MSH_Image_Optimizer_Context_Helper' ) ) {
+			$city         = MSH_Image_Optimizer_Context_Helper::normalize_location_value( $city );
+			$region       = MSH_Image_Optimizer_Context_Helper::normalize_location_value( $region );
+			$country      = MSH_Image_Optimizer_Context_Helper::normalize_location_value( $country );
+			$service_area = MSH_Image_Optimizer_Context_Helper::normalize_location_value( $service_area, false );
+		}
+
 		$this->service_area = $service_area;
 		$this->country      = $country;
 
 		$this->city      = $city;
-		$this->city_slug = $city !== '' ? $this->slugify( $city ) : '';
+		$this->city_slug = $city !== '' ? MSH_Image_Optimizer_Context_Helper::slugify( $city ) : '';
 
 		$location_parts = array_filter( array( $city, $region, $country ), 'strlen' );
 		if ( ! empty( $location_parts ) ) {
@@ -256,9 +274,9 @@ class MSH_Contextual_Meta_Generator {
 		}
 
 		if ( ! empty( $this->location ) ) {
-			$this->location_slug = $this->slugify( $this->location );
+			$this->location_slug = MSH_Image_Optimizer_Context_Helper::slugify( $this->location );
 		} elseif ( $service_area !== '' ) {
-			$this->location_slug = $this->slugify( $service_area );
+			$this->location_slug = MSH_Image_Optimizer_Context_Helper::slugify( $service_area );
 		}
 
 		$this->industry        = isset( $context['industry'] ) ? sanitize_text_field( $context['industry'] ) : '';
@@ -273,6 +291,11 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function ensure_fresh_context() {
+		// Phase 1F: Skip during batch mode - context was pre-cached
+		if ( $this->msh_batch_mode && $this->msh_batch_context_cached ) {
+			return;
+		}
+
 		if ( ! class_exists( 'MSH_Image_Optimizer_Context_Helper' ) ) {
 			return;
 		}
@@ -292,6 +315,11 @@ class MSH_Contextual_Meta_Generator {
 	 * @return string Context signature hash.
 	 */
 	public function get_context_signature() {
+		// Phase 1F: Return cached signature if batch mode is active
+		if ( $this->msh_batch_mode && ! empty( $this->msh_cached_signature ) ) {
+			return $this->msh_cached_signature;
+		}
+
 		if ( empty( $this->context_signature ) && class_exists( 'MSH_Image_Optimizer_Context_Helper' ) ) {
 			$this->context_signature = MSH_Image_Optimizer_Context_Helper::get_active_context_signature( $this->active_context );
 		}
@@ -304,21 +332,11 @@ class MSH_Contextual_Meta_Generator {
 			return 'clinical';
 		}
 
-		if ( $this->is_healthcare_industry( $this->industry ) ) {
+		if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
 			return 'clinical';
 		}
 
 		return 'business';
-	}
-
-	private function is_healthcare_industry( $industry ) {
-		if ( $industry === '' ) {
-			return false;
-		}
-
-		$health_slugs = array( 'medical', 'dental', 'therapy' );
-
-		return in_array( $industry, $health_slugs, true );
 	}
 
 	private function get_default_service_slug( $industry ) {
@@ -1232,7 +1250,7 @@ class MSH_Contextual_Meta_Generator {
 		$file_name                    = $file_meta ? basename( $file_meta ) : '';
 		$file_basename                = $file_name ? strtolower( pathinfo( $file_name, PATHINFO_FILENAME ) ) : '';
 		$context['file_basename']     = $file_basename;
-		$context['attachment_slug']   = $this->slugify( ! empty( $context['attachment_title'] ) ? $context['attachment_title'] : $file_basename );
+		$context['attachment_slug']   = MSH_Image_Optimizer_Context_Helper::slugify( ! empty( $context['attachment_title'] ) ? $context['attachment_title'] : $file_basename );
 		$context['filename']          = $file_name;
 		$context['original_filename'] = $file_name; // Add for keyword extraction
 
@@ -1381,7 +1399,7 @@ class MSH_Contextual_Meta_Generator {
 				$context['type']  = 'business';
 				$context['asset'] = 'graphic';
 			} elseif ( $asset_type === 'product' ) {
-				if ( $this->is_healthcare_industry( $this->industry ) ) {
+				if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
 					$context['type'] = 'equipment';
 				} else {
 					$context['type'] = 'business';
@@ -1724,7 +1742,7 @@ class MSH_Contextual_Meta_Generator {
 		$text = trim( $text );
 
 		if ( $text === '' ) {
-			return $this->is_healthcare_industry( $this->industry ) ? 'Patient' : 'Client';
+			return MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ? 'Patient' : 'Client';
 		}
 
 		$lower              = strtolower( $text );
@@ -1735,7 +1753,7 @@ class MSH_Contextual_Meta_Generator {
 
 		$normalized = ucwords( strtolower( $text ) );
 		if ( empty( $normalized ) ) {
-			return $this->is_healthcare_industry( $this->industry ) ? 'Patient' : 'Client';
+			return MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ? 'Patient' : 'Client';
 		}
 
 		return $normalized;
@@ -1745,6 +1763,9 @@ class MSH_Contextual_Meta_Generator {
 		if ( empty( $slug ) ) {
 			return '';
 		}
+
+		// FIRST: Deduplicate words (e.g., "hamilton-hamilton-icon" -> "hamilton-icon")
+		$slug = MSH_Image_Optimizer_Context_Helper::deduplicate_slug( $slug );
 
 		$parts     = preg_split( '/-+/', strtolower( $slug ) );
 		$stopwords = array( 'and', 'with', 'the', 'for', 'a', 'an', 'to', 'of', 'in', 'at', 'on', 'by', 'from', 'about' );
@@ -1837,7 +1858,7 @@ class MSH_Contextual_Meta_Generator {
 		$title         = strtolower( $context['attachment_title'] ?? '' );
 		$caption       = strtolower( (string) get_post_field( 'post_excerpt', $attachment_id ) );
 		$combined      = $filename . ' ' . $title . ' ' . $caption;
-		$is_healthcare = $this->is_healthcare_industry( $this->industry );
+		$is_healthcare = MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry );
 
 		$patterns = array(
 			'/mediflow|waterbase|pillow/'               => array( 'product_type' => 'therapeutic-pillow' ),
@@ -2068,11 +2089,31 @@ class MSH_Contextual_Meta_Generator {
 		$this->hydrate_active_context();
 		$this->log_debug( "MSH Meta Generation: Type='{$context['type']}', attachment_id=$attachment_id, title='{$context['attachment_title']}'" );
 
-		if ( ! $this->is_healthcare_industry( $this->industry ) && $context['type'] === 'clinical' ) {
+		if ( ! MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) && $context['type'] === 'clinical' ) {
 			$context['type'] = 'business';
 		}
 
-		$ai_meta = MSH_AI_Service::get_instance()->maybe_generate_metadata( $attachment_id, $context, $this, $ai_options );
+		// Phase 1F: Check AI mode before calling AI service to avoid unnecessary wp_options queries
+		// AI mode is passed via $ai_options array from the calling function
+		$ai_mode = isset( $ai_options['ai_mode'] ) ? $ai_options['ai_mode'] : get_option( 'msh_ai_mode', 'manual' );
+
+		// DEBUG: Log AI mode check
+		error_log( sprintf(
+			'[MSH DEBUG] generate_meta_fields - attachment_id: %d, ai_mode: %s, ai_options: %s',
+			$attachment_id,
+			$ai_mode,
+			json_encode( $ai_options )
+		) );
+
+		$ai_meta = null;
+		if ( $ai_mode !== 'manual' ) {
+			error_log( sprintf( '[MSH DEBUG] AI mode is not manual, calling maybe_generate_metadata for attachment %d', $attachment_id ) );
+			$ai_meta = MSH_AI_Service::get_instance()->maybe_generate_metadata( $attachment_id, $context, $this, $ai_options );
+			error_log( sprintf( '[MSH DEBUG] maybe_generate_metadata returned: %s', json_encode( $ai_meta ) ) );
+		} else {
+			error_log( sprintf( '[MSH DEBUG] AI mode is manual, skipping AI metadata generation for attachment %d', $attachment_id ) );
+		}
+
 		if ( is_array( $ai_meta ) && ! empty( $ai_meta ) ) {
 			$this->log_debug( 'MSH Meta Generation: AI metadata returned, skipping heuristic generator.' );
 
@@ -2087,7 +2128,7 @@ class MSH_Contextual_Meta_Generator {
 
 		// Industry lock: Prevent industry-incompatible scene types
 		// Healthcare industries should not use non-healthcare scene types
-		if ( $this->is_healthcare_industry( $context['industry'] ) ) {
+		if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $context['industry'] ) ) {
 			$healthcare_scenes = array( 'team', 'testimonial', 'facility', 'equipment', 'clinical', 'service-icon', 'icon', 'business' );
 			if ( ! in_array( $context['type'], $healthcare_scenes, true ) ) {
 				error_log( '[MSH] Industry lock: Resetting incompatible scene type "' . $context['type'] . '" to default for healthcare industry' );
@@ -2149,27 +2190,27 @@ class MSH_Contextual_Meta_Generator {
 			: get_post_meta( $attachment_id, '_msh_ai_filename_slug', true );
 
 		if ( ! empty( $ai_slug_raw ) ) {
-			$ai_slug = $this->slugify( $ai_slug_raw );
+			$ai_slug = MSH_Image_Optimizer_Context_Helper::slugify( $ai_slug_raw );
 			// Enforce 4-word maximum (AI should generate 3-4 words, but truncate as safeguard)
 			$ai_slug = $this->truncate_slug( $ai_slug, 4 );
 			error_log( '[MSH] Using AI-generated filename slug (truncated to 4 words): ' . $ai_slug );
 			return $ai_slug;
 		}
 
-		if ( ! $this->is_healthcare_industry( $this->industry ) && $context['type'] === 'clinical' ) {
+		if ( ! MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) && $context['type'] === 'clinical' ) {
 			$context['type'] = 'business';
 		}
 
 		switch ( $context['type'] ) {
 			case 'team':
 				$name = ! empty( $context['staff_name'] ) ? $context['staff_name'] : 'team-member';
-				$slug = $this->slugify( "{$this->business_name}-team-{$name}" );
+				$slug = MSH_Image_Optimizer_Context_Helper::slugify( "{$this->business_name}-team-{$name}" );
 				return $this->truncate_slug( $slug, 4 );
 			case 'testimonial':
-				$prefix             = $this->is_healthcare_industry( $this->industry ) ? 'patient' : 'client';
+				$prefix             = MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ? 'patient' : 'client';
 				$subject_slug       = ! empty( $context['attachment_slug'] ) ? $this->truncate_slug( $context['attachment_slug'], 3 ) : $prefix;
 				$location_component = $this->location_slug !== '' ? '-' . $this->location_slug : '';
-				$slug = $this->slugify( $prefix . '-testimonial-' . $subject_slug . $location_component );
+				$slug = MSH_Image_Optimizer_Context_Helper::slugify( $prefix . '-testimonial-' . $subject_slug . $location_component );
 				return $this->truncate_slug( $slug, 4 );
 			case 'icon':
 				// Legacy fallback - reuse service-icon generator with proper arguments
@@ -2186,21 +2227,26 @@ class MSH_Contextual_Meta_Generator {
 				if ( ! empty( $extracted_keywords ) ) {
 					$concept_source = $extracted_keywords;
 				} else {
-					$concept_source = ! empty( $context['icon_concept'] ) ? $this->slugify( $context['icon_concept'] ) : '';
+					$concept_source = ! empty( $context['icon_concept'] ) ? MSH_Image_Optimizer_Context_Helper::slugify( $context['icon_concept'] ) : '';
 					if ( $concept_source === '' ) {
 						$concept_source = $context['service'] ?? 'service';
 					}
 				}
 
-				$concept = $this->slugify( $concept_source );
+				$concept = MSH_Image_Optimizer_Context_Helper::slugify( $concept_source );
 				if ( $concept === '' ) {
 					$concept = 'service';
 				}
 
-				// Debug disabled for performance
-				return $this->slugify( $concept . '-icon-' . $this->location_slug );
+				$components = array( $concept, 'icon' );
+				if ( $this->location_slug !== '' ) {
+					$components[] = $this->location_slug;
+				}
+
+				$slug = $this->assemble_slug( $components );
+				return $this->truncate_slug( $slug, 4 );
 			case 'facility':
-				return $this->slugify( $this->business_name . '-facility-' . $this->location_slug );
+				return MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name . '-facility-' . $this->location_slug );
 			case 'equipment':
 				// Smart filename extraction from original name
 				$original_filename  = $context['original_filename'] ?? '';
@@ -2209,7 +2255,7 @@ class MSH_Contextual_Meta_Generator {
 				$this->log_debug( "MSH Debug Equipment Case: Original='$original_filename', Extracted='$extracted_keywords'" );
 
 				if ( ! empty( $extracted_keywords ) ) {
-					return $this->slugify( $extracted_keywords . '-equipment-' . $this->location_slug );
+					return MSH_Image_Optimizer_Context_Helper::slugify( $extracted_keywords . '-equipment-' . $this->location_slug );
 				}
 
 				if ( ! empty( $context['asset'] ) && $context['asset'] === 'product' ) {
@@ -2225,7 +2271,7 @@ class MSH_Contextual_Meta_Generator {
 					$product_type = $context['product_type'] ?? 'support';
 					$product_slug = $this->truncate_slug( $product_map[ $product_type ] ?? $product_type, 2 );
 					$components   = array_filter( array( $product_slug, $this->location_slug ) );
-					$slug = $this->slugify( implode( '-', $components ) );
+					$slug = MSH_Image_Optimizer_Context_Helper::slugify( implode( '-', $components ) );
 					return $this->truncate_slug( $slug, 4 );
 				}
 
@@ -2235,13 +2281,13 @@ class MSH_Contextual_Meta_Generator {
 
 				if ( ! empty( $descriptor_slug ) && $descriptor_slug !== 'brand' ) {
 					$location_suffix = $this->location_slug !== '' ? '-' . $this->location_slug : '';
-					$slug            = $this->slugify( $descriptor_slug . '-equipment' . $location_suffix );
+					$slug            = MSH_Image_Optimizer_Context_Helper::slugify( $descriptor_slug . '-equipment' . $location_suffix );
 					return $this->truncate_slug( $slug, 4 );
 				}
 
 				// Final fallback
 				$location_suffix = $this->location_slug !== '' ? '-' . $this->location_slug : '';
-				$slug            = $this->slugify( 'equipment-showcase' . $location_suffix );
+				$slug            = MSH_Image_Optimizer_Context_Helper::slugify( 'equipment-showcase' . $location_suffix );
 				return $this->truncate_slug( $slug, 4 );
 			case 'business':
 				$original_filename = strtolower( $context['original_filename'] ?? '' );
@@ -2266,7 +2312,7 @@ class MSH_Contextual_Meta_Generator {
 						$components[] = $attachment_id_component;
 					}
 
-					$slug = $this->slugify( implode( '-', array_filter( $components ) ) );
+					$slug = MSH_Image_Optimizer_Context_Helper::slugify( implode( '-', array_filter( $components ) ) );
 					return $this->truncate_slug( $slug, 4 );
 				}
 
@@ -2277,9 +2323,9 @@ class MSH_Contextual_Meta_Generator {
 
 				$brand_slug = '';
 				if ( ! empty( $brand_keywords ) ) {
-					$brand_slug = $this->limit_slug_parts( $this->slugify( $brand_keywords ), 2 );
+					$brand_slug = $this->limit_slug_parts( MSH_Image_Optimizer_Context_Helper::slugify( $brand_keywords ), 2 );
 				} elseif ( $this->business_name !== '' ) {
-					$brand_slug = $this->limit_slug_parts( $this->slugify( $this->business_name ), 1 );
+					$brand_slug = $this->limit_slug_parts( MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name ), 1 );
 				}
 
 				$include_brand    = $this->should_include_business_name( $context, $descriptor_slug );
@@ -2361,7 +2407,7 @@ class MSH_Contextual_Meta_Generator {
 
 				if ( ! empty( $extracted_keywords ) && $this->is_high_quality_extracted_name( $extracted_keywords, $original_filename ) ) {
 					$this->log_debug( "MSH Clinical Debug: Using high-quality extracted keywords '$extracted_keywords' from '$original_filename'" );
-					$slug = $this->slugify( $extracted_keywords . '-' . $this->location_slug );
+					$slug = MSH_Image_Optimizer_Context_Helper::slugify( $extracted_keywords . '-' . $this->location_slug );
 					return $this->truncate_slug( $slug, 4 );
 				}
 
@@ -2418,7 +2464,7 @@ class MSH_Contextual_Meta_Generator {
 				$parts[] = $treatment_type;
 
 				$base_slug = implode( '-', array_filter( $parts ) );
-				$slug      = $this->slugify( $base_slug );
+				$slug      = MSH_Image_Optimizer_Context_Helper::slugify( $base_slug );
 				return $this->truncate_slug( $slug, 4 );
 		}
 	}
@@ -2468,14 +2514,14 @@ class MSH_Contextual_Meta_Generator {
 		}
 
 		if ( $this->industry_label !== '' ) {
-			$label_slug = $this->slugify( $this->industry_label );
+			$label_slug = MSH_Image_Optimizer_Context_Helper::slugify( $this->industry_label );
 			if ( $label_slug !== '' ) {
 				return $label_slug;
 			}
 		}
 
 		if ( $this->business_name !== '' ) {
-			$brand_slug = $this->slugify( $this->business_name );
+			$brand_slug = MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name );
 			if ( $brand_slug !== '' ) {
 				return $brand_slug;
 			}
@@ -2559,7 +2605,7 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function generate_team_meta( array $context ) {
-		$is_healthcare = $this->is_healthcare_industry( $this->industry );
+		$is_healthcare = MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry );
 		$default_name  = $is_healthcare ? __( 'Healthcare Professional', 'msh-image-optimizer' ) : __( 'Team Member', 'msh-image-optimizer' );
 		$name          = ! empty( $context['staff_name'] ) ? $context['staff_name'] : $default_name;
 
@@ -2629,7 +2675,7 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function generate_testimonial_meta( array $context ) {
-		$is_healthcare = $this->is_healthcare_industry( $this->industry );
+		$is_healthcare = MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry );
 		$subject       = ! empty( $context['subject_name'] )
 			? $context['subject_name']
 			: ( $is_healthcare ? __( 'Patient', 'msh-image-optimizer' ) : __( 'Client', 'msh-image-optimizer' ) );
@@ -2742,27 +2788,34 @@ class MSH_Contextual_Meta_Generator {
 			$title_base .= ' | ' . $this->location;
 		}
 
+		$brand_label     = $this->business_name !== '' ? $this->business_name : __( 'the brand', 'msh-image-optimizer' );
+		$location_phrase = $this->get_location_phrase( ' in ' );
+
 		$alt_text = $this->business_name !== ''
-			? sprintf( __( 'Illustrated %1$s icon for %2$s%3$s.', 'msh-image-optimizer' ), $concept_label, $this->business_name, $this->get_location_phrase( ' in ' ) )
-			: sprintf( __( 'Illustrated %s icon.', 'msh-image-optimizer' ), $concept_label );
+			? sprintf( __( '%1$s icon for %2$s%3$s.', 'msh-image-optimizer' ), $concept_label, $this->business_name, $location_phrase )
+			: sprintf( __( '%s icon graphic.', 'msh-image-optimizer' ), $concept_label );
+
+		$caption = $this->business_name !== ''
+			? sprintf( __( '%1$s icon used across %2$s digital platforms.', 'msh-image-optimizer' ), $concept_label, $this->business_name )
+			: sprintf( __( '%s icon used across digital platforms.', 'msh-image-optimizer' ), $concept_label );
 
 		$description_parts = array_filter(
 			array(
 				sprintf(
-					__( 'Custom %1$s icon supporting %2$s digital experience%3$s.', 'msh-image-optimizer' ),
+					__( 'Custom %1$s icon supporting %2$s brand presence%3$s.', 'msh-image-optimizer' ),
 					strtolower( $concept_label ),
-					$this->business_name !== '' ? $this->business_name : __( 'the brand', 'msh-image-optimizer' ),
-					$this->get_location_phrase( ' in ' )
+					$brand_label,
+					$location_phrase
 				),
-				sprintf( __( 'Designed for %s navigation.', 'msh-image-optimizer' ), strtolower( $industry_label ) ),
-				$this->get_cta_sentence(),
+				__( 'Provides consistent visual language across navigation.', 'msh-image-optimizer' ),
+				__( 'Optimized for clarity and accessibility across digital touchpoints.', 'msh-image-optimizer' ),
 			)
 		);
 
 		return array(
 			'title'       => $this->clean_text( $this->ensure_unique_title( $title_base, $context['attachment_id'] ?? 0 ) ),
 			'alt_text'    => $this->clean_text( $alt_text ),
-			'caption'     => $this->clean_text( sprintf( __( '%1$s icon for %2$s', 'msh-image-optimizer' ), $concept_label, strtolower( $industry_label ) ) ),
+			'caption'     => $this->clean_text( $caption ),
 			'description' => $this->clean_text( implode( ' ', $description_parts ) ),
 		);
 	}
@@ -2809,7 +2862,7 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function generate_product_meta( array $context ) {
-		if ( ! $this->is_healthcare_industry( $this->industry ) ) {
+		if ( ! MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
 			$product_name = ! empty( $context['attachment_title'] )
 				? $context['attachment_title']
 				: __( 'Featured Product', 'msh-image-optimizer' );
@@ -2923,7 +2976,7 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function generate_facility_meta( array $context ) {
-		if ( $this->is_healthcare_industry( $this->industry ) ) {
+		if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
 			return array(
 				'title'       => $this->clean_text( "{$this->business_name} Clinic - {$this->location} Rehabilitation Facility" ),
 				'alt_text'    => $this->clean_text( "Interior view of {$this->business_name} rehabilitation clinic in {$this->location}" ),
@@ -2971,7 +3024,7 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function generate_equipment_meta( array $context ) {
-		if ( $this->is_healthcare_industry( $this->industry ) ) {
+		if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
 			return array(
 				'title'       => $this->clean_text( "Therapeutic Equipment - {$this->business_name} {$this->location}" ),
 				'alt_text'    => $this->clean_text( "Therapeutic rehabilitation equipment at {$this->business_name} clinic in {$this->location}" ),
@@ -4531,7 +4584,7 @@ class MSH_Contextual_Meta_Generator {
 			$filters[] = 'hamilton';
 		}
 
-		if ( ! $this->is_healthcare_industry( $this->industry ) ) {
+		if ( ! MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
 			$filters = array_merge( $filters, array( 'rehabilitation', 'physiotherapy', 'therapy', 'clinical', 'treatment' ) );
 		}
 
@@ -4583,13 +4636,13 @@ class MSH_Contextual_Meta_Generator {
 		if ( ! empty( $filtered_keywords ) ) {
 			$tokens           = array_slice( $filtered_keywords, 0, 2 );
 			$descriptor_label = $this->format_descriptor_label( $tokens );
-			$descriptor_slug  = $this->limit_slug_parts( $this->slugify( implode( ' ', $tokens ) ), 2 );
+			$descriptor_slug  = $this->limit_slug_parts( MSH_Image_Optimizer_Context_Helper::slugify( implode( ' ', $tokens ) ), 2 );
 		} else {
 			$descriptor_label = $this->derive_business_descriptor_fallback_label( $context );
-			$descriptor_slug  = $this->limit_slug_parts( $this->slugify( $descriptor_label ), 2 );
+			$descriptor_slug  = $this->limit_slug_parts( MSH_Image_Optimizer_Context_Helper::slugify( $descriptor_label ), 2 );
 		}
 
-		if ( ! $this->is_healthcare_industry( $this->industry ) ) {
+		if ( ! MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
 			$descriptor_slug  = $this->strip_healthcare_terms_from_slug( $descriptor_slug );
 			$descriptor_label = $this->strip_healthcare_terms_from_text( $descriptor_label );
 		}
@@ -4598,7 +4651,7 @@ class MSH_Contextual_Meta_Generator {
 
 		if ( $descriptor_slug === '' ) {
 			if ( $this->business_name !== '' ) {
-				$descriptor_slug = $this->limit_slug_parts( $this->slugify( $this->business_name ), 1 );
+				$descriptor_slug = $this->limit_slug_parts( MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name ), 1 );
 			} else {
 				$descriptor_slug = 'brand';
 			}
@@ -4847,7 +4900,7 @@ class MSH_Contextual_Meta_Generator {
 			return 'brand';
 		}
 
-		$slug = $this->slugify( implode( '-', $components ) );
+		$slug = MSH_Image_Optimizer_Context_Helper::slugify( implode( '-', $components ) );
 
 		if ( $slug !== '' ) {
 			$parts = array_filter( explode( '-', $slug ), 'strlen' );
@@ -4857,7 +4910,7 @@ class MSH_Contextual_Meta_Generator {
 
 		while ( strlen( $slug ) > $max_length && count( $components ) > 1 ) {
 			array_pop( $components );
-			$slug = $this->slugify( implode( '-', $components ) );
+			$slug = MSH_Image_Optimizer_Context_Helper::slugify( implode( '-', $components ) );
 			if ( $slug !== '' ) {
 				$parts = array_filter( explode( '-', $slug ), 'strlen' );
 				$parts = $this->dedupe_slug_tokens( $parts );
@@ -4958,7 +5011,7 @@ class MSH_Contextual_Meta_Generator {
 			return false;
 		}
 
-		$brand_slug = $this->slugify( $this->business_name );
+		$brand_slug = MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name );
 		if ( $descriptor_slug !== '' && strpos( $descriptor_slug, $brand_slug ) !== false ) {
 			return false;
 		}
@@ -5093,7 +5146,7 @@ class MSH_Contextual_Meta_Generator {
 		$normalized = array();
 
 		foreach ( $components as $component ) {
-			$component = $this->slugify( (string) $component );
+			$component = MSH_Image_Optimizer_Context_Helper::slugify( (string) $component );
 			if ( $component === '' ) {
 				continue;
 			}
@@ -5426,17 +5479,47 @@ class MSH_Contextual_Meta_Generator {
 		return str_replace( ' ', '-', $term_lower );
 	}
 
-	private function slugify( $text ) {
-		$text = strtolower( $text );
-		// Strip dimension patterns before slugifying
-		$text = preg_replace( '/[-_]?\d+x\d+[-_]?/i', '', $text );
-		$text = preg_replace( '/[^a-z0-9]+/', '-', $text );
-		return trim( $text, '-' );
-	}
-
 	private function clean_text( $text ) {
 		$text = preg_replace( '/\s+/', ' ', $text );
 		return trim( $text );
+	}
+
+	/**
+	 * Phase 1F: Enable batch mode and cache active context + signature.
+	 * Call this ONCE before batch loop to avoid repeated wp_options queries.
+	 *
+	 * @since 1.2.5
+	 */
+	public function msh_enable_batch_mode_with_cache() {
+		$this->msh_batch_mode = true;
+
+		// Hydrate context ONCE (this will trigger get_option calls)
+		$context = $this->hydrate_active_context();
+
+		// Cache it for the entire batch
+		$this->msh_cached_context       = $context;
+		$this->msh_batch_context_cached = true;
+
+		// Phase 1F: Ensure signature is computed NOW so cache has it
+		if ( empty( $this->context_signature ) && class_exists( 'MSH_Image_Optimizer_Context_Helper' ) ) {
+			$this->context_signature = MSH_Image_Optimizer_Context_Helper::build_context_signature( $context );
+		}
+
+		// Cache the signature
+		$this->msh_cached_signature = $this->context_signature;
+	}
+
+	/**
+	 * Phase 1F: Disable batch mode and clear caches.
+	 * Call this at batch end to prevent cache leaks.
+	 *
+	 * @since 1.2.5
+	 */
+	public function msh_disable_batch_mode() {
+		$this->msh_batch_mode           = false;
+		$this->msh_batch_context_cached = false;
+		$this->msh_cached_context       = array();
+		$this->msh_cached_signature     = '';
 	}
 }
 
@@ -5449,6 +5532,10 @@ class MSH_Image_Optimizer {
 	private $processed_count       = 0;
 	private $current_attachment_id = null;
 	private $contextual_meta_generator;
+
+	// Phase 1F: Cached AI mode for batch optimization (avoid get_option during loop)
+	private $msh_batch_ai_mode = null;
+
 	private $healthcare_contexts = array(
 		'homepage_hero' => array(
 			'max_width'  => 1200,
@@ -5519,6 +5606,23 @@ class MSH_Image_Optimizer {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Phase 1F: Get AI mode during batch optimization.
+	 * Returns cached value if batch mode is active, otherwise queries wp_options.
+	 *
+	 * @since 1.2.5
+	 * @return string AI mode setting ('manual', 'fill-empty', 'always-regenerate')
+	 */
+	private function get_batch_ai_mode() {
+		// If batch mode is active and we have cached AI mode, return it
+		if ( $this->msh_batch_ai_mode !== null ) {
+			return $this->msh_batch_ai_mode;
+		}
+
+		// Otherwise query wp_options (non-batch context)
+		return get_option( 'msh_ai_mode', 'manual' );
 	}
 
 	private function clear_analysis_cache() {
@@ -6482,17 +6586,49 @@ class MSH_Image_Optimizer {
 		$active_context_slug       = $manual_context_value !== ''
 			? $manual_context_value
 			: ( $context_info['type'] ?? $auto_context_value );
+
+		// DEBUG: Log before generate_meta_fields call
+		error_log( sprintf(
+			'[MSH DEBUG] Before generate_meta_fields - attachment_id: %d, context_info: %s, ai_options: %s',
+			$attachment_id,
+			json_encode( $context_info ),
+			json_encode( $ai_options )
+		) );
+
 		$generated_meta            = $this->contextual_meta_generator->generate_meta_fields( $attachment_id, $context_info, $ai_options );
+
+		// CRITICAL FIX: Check if generate_meta_fields returned WP_Error
+		if ( is_wp_error( $generated_meta ) ) {
+			error_log( sprintf(
+				'[MSH ERROR] generate_meta_fields returned WP_Error for attachment %d: %s',
+				$attachment_id,
+				$generated_meta->get_error_message()
+			) );
+			return array(
+				'error' => $generated_meta->get_error_message(),
+				'error_code' => $generated_meta->get_error_code(),
+			);
+		}
 
 		// Check if this is an AI regeneration request BEFORE using the variable
 		$is_ai_regeneration = ! empty( $ai_options['ai_regeneration'] );
+
+		// DEBUG: Log AI regeneration flow
+		error_log( sprintf(
+			'[MSH DEBUG] AI Regeneration Flow - attachment_id: %d, is_ai_regeneration: %s, ai_options: %s',
+			$attachment_id,
+			$is_ai_regeneration ? 'TRUE' : 'FALSE',
+			json_encode( $ai_options )
+		) );
 
 		$pending_ai_fields   = array();
 		$has_pending_ai_meta = false;
 		$staged_ai_metadata  = null;
 
 		if ( $is_ai_regeneration ) {
-			if ( ! empty( $generated_meta ) ) {
+			error_log( sprintf( '[MSH DEBUG] Entering AI regeneration branch for attachment %d', $attachment_id ) );
+			error_log( sprintf( '[MSH DEBUG] generated_meta: %s', json_encode( $generated_meta ) ) );
+			if ( ! empty( $generated_meta ) && is_array( $generated_meta ) ) {
 				$staged_ai_metadata = array_intersect_key(
 					$generated_meta,
 					array_flip( array( 'title', 'alt_text', 'caption', 'description' ) )
@@ -7029,7 +7165,7 @@ class MSH_Image_Optimizer {
 		}
 
 		// Industry alignment check
-		if ( $this->is_healthcare_industry( $context['industry'] ) ) {
+		if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $context['industry'] ) ) {
 			$healthcare_scenes = array( 'team', 'testimonial', 'facility', 'equipment', 'clinical', 'service-icon' );
 			if ( in_array( $context['type'], $healthcare_scenes, true ) ) {
 				$score += 5;
@@ -7077,7 +7213,7 @@ class MSH_Image_Optimizer {
 
 		// Check for location/business name (increase confidence)
 		if ( $this->business_name !== '' ) {
-			$business_slug = $this->slugify( $this->business_name );
+			$business_slug = MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name );
 			if ( strpos( $filename, $business_slug ) !== false ) {
 				$score += 5;
 			}
@@ -7775,6 +7911,17 @@ class MSH_Image_Optimizer {
 		$current_index    = 0;
 		$total_to_process = count( $images );
 
+		// Telemetry metrics for batch quality tracking
+		$telemetry = array(
+			'confidence_scores'        => array(),
+			'brand_name_assumed_count' => 0,
+			'decorative_image_count'   => 0,
+			'text_detected_count'      => 0,
+			'low_confidence_count'     => 0,
+			'ai_success_count'         => 0,
+			'ai_fallback_count'        => 0,
+		);
+
 		// For AI regeneration with many images, increase timeout
 		if ( $is_ai_regeneration && $total_to_process > 10 ) {
 			set_time_limit( 3600 ); // 1 hour
@@ -7817,7 +7964,52 @@ class MSH_Image_Optimizer {
 				}
 
 				$analysis = $this->analyze_single_image( $image['ID'], $ai_options );
+
+				// CRITICAL FIX: Check if analysis returned an error before continuing
+				if ( isset( $analysis['error'] ) ) {
+					error_log( sprintf(
+						'[MSH ERROR] analyze_single_image failed for attachment %d: %s (code: %s)',
+						$image['ID'],
+						$analysis['error'],
+						$analysis['error_code'] ?? 'unknown'
+					) );
+					// Add error result to output and continue to next image
+					$analysis_results[] = array_merge( $image, $analysis );
+					$telemetry['ai_fallback_count']++;
+					continue;
+				}
+
+				// Track AI telemetry if this was an AI regeneration
+				if ( $is_ai_regeneration && isset( $analysis['ai_metadata'] ) ) {
+					$ai_meta = $analysis['ai_metadata'];
+
+					// Track confidence scores
+					if ( isset( $ai_meta['confidence'] ) ) {
+						$telemetry['confidence_scores'][] = floatval( $ai_meta['confidence'] );
+						if ( $ai_meta['confidence'] < 0.7 ) {
+							$telemetry['low_confidence_count']++;
+						}
+					}
+
+					// Track issues
+					if ( isset( $ai_meta['issues'] ) && is_array( $ai_meta['issues'] ) ) {
+						if ( in_array( 'brand_name_assumed', $ai_meta['issues'], true ) ) {
+							$telemetry['brand_name_assumed_count']++;
+						}
+						if ( in_array( 'decorative_image', $ai_meta['issues'], true ) ) {
+							$telemetry['decorative_image_count']++;
+						}
+						if ( in_array( 'text_in_image_detected', $ai_meta['issues'], true ) ) {
+							$telemetry['text_detected_count']++;
+						}
+					}
+
+					$telemetry['ai_success_count']++;
+				}
+
 				$priority = $this->calculate_healthcare_priority( $image );
+
+
 
 				// Map current_size_bytes to file_size for frontend compatibility
 				if ( isset( $analysis['current_size_bytes'] ) ) {
@@ -7884,6 +8076,28 @@ class MSH_Image_Optimizer {
 
 		$this->log_debug( "MSH: Analysis complete in {$duration_ms}ms, cached for 30 minutes" );
 
+		// Log telemetry for AI regeneration batches
+		if ( $is_ai_regeneration && $telemetry['ai_success_count'] > 0 ) {
+			$confidence_avg = ! empty( $telemetry['confidence_scores'] )
+				? array_sum( $telemetry['confidence_scores'] ) / count( $telemetry['confidence_scores'] )
+				: 0.0;
+
+			error_log( sprintf(
+				'[MSH Telemetry] AI Batch Complete - processed: %d, success: %d, fallback: %d, confidence_avg: %.2f, brand_assumed: %d, decorative: %d, text_detected: %d, low_confidence: %d',
+				$total_to_process,
+				$telemetry['ai_success_count'],
+				$telemetry['ai_fallback_count'],
+				$confidence_avg,
+				$telemetry['brand_name_assumed_count'],
+				$telemetry['decorative_image_count'],
+				$telemetry['text_detected_count'],
+				$telemetry['low_confidence_count']
+			) );
+
+			// Future: Log to Supabase when ready
+			// do_action( 'msh_log_telemetry', 'ai_batch_complete', $telemetry );
+		}
+
 		update_option( 'msh_last_analyzer_run', current_time( 'mysql' ) );
 
 		wp_send_json_success( $response_data );
@@ -7903,26 +8117,68 @@ class MSH_Image_Optimizer {
 			wp_die( 'Unauthorized' );
 		}
 
+		// Phase 1F: Define batch constant to guard other operations
+		if ( ! defined( 'MSH_IN_OPTIMIZE_BATCH' ) ) {
+			define( 'MSH_IN_OPTIMIZE_BATCH', true );
+		}
+
 		$image_ids = $_POST['image_ids'] ?? array();
 		$results   = array();
 
-		$generator     = $this->contextual_meta_generator;
-		$batch_capable = is_object( $generator ) && method_exists( $generator, 'enable_batch_mode' );
+		// Phase 1G: Prime AI service cache to avoid per-image option reads
+		$ai_service_available = class_exists( 'MSH_AI_Service' );
+		$ai_cache_seed        = array(
+			'msh_ai_mode'              => get_option( 'msh_ai_mode', 'manual' ),
+			'msh_plan_tier'            => get_option( 'msh_plan_tier', 'free' ),
+			'msh_ai_api_key'           => get_option( 'msh_ai_api_key', '' ),
+			'msh_ai_features'          => get_option( 'msh_ai_features', array() ),
+			'msh_ai_credit_balance'    => get_option( 'msh_ai_credit_balance', null ),
+			'msh_ai_credit_usage'      => get_option( 'msh_ai_credit_usage', array() ),
+			'msh_ai_credit_last_reset' => get_option( 'msh_ai_credit_last_reset', 0 ),
+			'msh_ai_provider'          => get_option( 'msh_ai_provider', 'openai' ),
+			'msh_metadata_regen_jobs'  => get_option( 'msh_metadata_regen_jobs', array() ),
+		);
 
-		if ( $batch_capable && ! empty( $image_ids ) ) {
-			$generator->enable_batch_mode();
+		if ( ! is_array( $ai_cache_seed['msh_ai_features'] ) ) {
+			$ai_cache_seed['msh_ai_features'] = array();
+		}
+		if ( ! is_array( $ai_cache_seed['msh_ai_credit_usage'] ) ) {
+			$ai_cache_seed['msh_ai_credit_usage'] = array();
+		}
+		if ( ! is_array( $ai_cache_seed['msh_metadata_regen_jobs'] ) ) {
+			$ai_cache_seed['msh_metadata_regen_jobs'] = array();
 		}
 
-		foreach ( $image_ids as $attachment_id ) {
-			$result    = $this->optimize_single_image( intval( $attachment_id ) );
-			$results[] = array(
-				'id'     => $attachment_id,
-				'result' => $result,
-			);
+		if ( $ai_service_available ) {
+			MSH_AI_Service::prime_batch( $ai_cache_seed );
 		}
 
-		if ( $batch_capable && ! empty( $image_ids ) ) {
-			$generator->disable_batch_mode();
+		// Phase 1F: Cache AI mode ONCE before batch loop starts
+		$this->msh_batch_ai_mode = $ai_cache_seed['msh_ai_mode'];
+
+		// Phase 1F: Pre-hydrate contextual generator ONCE before batch loop
+		if ( isset( $this->contextual_meta_generator ) && is_object( $this->contextual_meta_generator ) ) {
+			$this->contextual_meta_generator->msh_enable_batch_mode_with_cache();
+		}
+
+		try {
+			// Execute batch optimization loop
+			foreach ( $image_ids as $attachment_id ) {
+				$result    = $this->optimize_single_image( intval( $attachment_id ) );
+				$results[] = array(
+					'id'     => $attachment_id,
+					'result' => $result,
+				);
+			}
+		} finally {
+			// Phase 1F: Teardown batch state - runs even if loop errors
+			$this->msh_batch_ai_mode = null;
+			if ( isset( $this->contextual_meta_generator ) && is_object( $this->contextual_meta_generator ) ) {
+				$this->contextual_meta_generator->msh_disable_batch_mode();
+			}
+			if ( $ai_service_available ) {
+				MSH_AI_Service::clear_batch();
+			}
 		}
 
 		if ( ! empty( $image_ids ) ) {
@@ -8448,6 +8704,53 @@ class MSH_Image_Optimizer {
 			$this->clear_analysis_cache();
 		}
 
+		if ( function_exists( 'msh_upsert_metadata_cache_value' ) ) {
+			$cache_locale = '';
+			if ( isset( $context_details['locale'] ) && ! empty( $context_details['locale'] ) ) {
+				$cache_locale = $context_details['locale'];
+			}
+
+			if ( '' === $cache_locale ) {
+				$cache_locale = get_locale();
+			}
+
+			$fresh_attachment = get_post( $attachment_id );
+			$final_title       = $fresh_attachment ? $fresh_attachment->post_title : get_the_title( $attachment_id );
+			$final_caption     = $fresh_attachment ? $fresh_attachment->post_excerpt : '';
+			$final_description = $fresh_attachment ? $fresh_attachment->post_content : '';
+			$final_alt         = get_post_meta( $attachment_id, '_wp_attachment_image_alt', true );
+
+			$cache_fields = array(
+				'title'       => array(
+					'value'       => $final_title,
+					'applied_key' => 'title',
+				),
+				'alt'         => array(
+					'value'       => $final_alt,
+					'applied_key' => 'alt_text',
+				),
+				'caption'     => array(
+					'value'       => $final_caption,
+					'applied_key' => 'caption',
+				),
+				'description' => array(
+					'value'       => $final_description,
+					'applied_key' => 'description',
+				),
+			);
+
+			foreach ( $cache_fields as $field_key => $cache_data ) {
+				$field_value = is_null( $cache_data['value'] ) ? '' : (string) $cache_data['value'];
+				$field_value = trim( $field_value );
+
+				$cache_source = ( $using_staged_ai_meta && isset( $meta_applied[ $cache_data['applied_key'] ] ) )
+					? 'ai'
+					: 'manual';
+
+				msh_upsert_metadata_cache_value( $attachment_id, $cache_locale, $field_key, $field_value, $cache_source );
+			}
+		}
+
 		$result['status']             = $this->get_optimization_status( $attachment_id );
 		$result['actions'][]          = $context_message;
 		$result['context']            = array(
@@ -8555,15 +8858,15 @@ class MSH_Image_Optimizer {
 		}
 
 		try {
-			// Check if AI mode is enabled - if so, regenerate with AI
-			$ai_mode    = get_option( 'msh_ai_mode', 'manual' );
-			$ai_options = array();
+			// Phase 1F: Check if AI mode is enabled - use cached value during batch
+			$ai_mode    = $this->get_batch_ai_mode();
+			$ai_options = array(
+				'ai_mode' => $ai_mode, // Pass cached AI mode to avoid repeated wp_options queries
+			);
 			if ( $ai_mode !== 'manual' ) {
-				$ai_options = array(
-					'ai_regeneration' => true,
-					'ai_mode'         => 'fill-empty', // Fill empty fields
-					'ai_fields'       => array( 'title', 'alt_text', 'caption', 'description' ), // All fields
-				);
+				$ai_options['ai_regeneration'] = true;
+				$ai_options['ai_mode']         = 'fill-empty'; // Fill empty fields
+				$ai_options['ai_fields']       = array( 'title', 'alt_text', 'caption', 'description' ); // All fields
 			}
 
 			$image_data = $this->analyze_single_image( $attachment_id, $ai_options );
@@ -9086,8 +9389,10 @@ class MSH_Image_Optimizer {
 			}
 		}
 
-		// Save the suggestion with timestamp
-		$current_context_signature = MSH_Image_Optimizer_Context_Helper::get_active_context_signature();
+		// Phase 1F: Save the suggestion with timestamp - use cached signature
+		$current_context_signature = isset( $this->contextual_meta_generator ) && is_object( $this->contextual_meta_generator )
+			? $this->contextual_meta_generator->get_context_signature()
+			: MSH_Image_Optimizer_Context_Helper::get_active_context_signature();
 		update_post_meta( $image_id, '_msh_suggested_filename', $suggested_filename );
 		update_post_meta( $image_id, 'msh_filename_last_suggested', (int) time() );
 		update_post_meta( $image_id, '_msh_suggested_filename_context', $current_context_signature );
@@ -9747,9 +10052,29 @@ class MSH_Image_Optimizer {
 
 		update_option( 'msh_ai_mode', $mode, false );
 
+		// CRITICAL FIX: Update msh_ai_features to enable/disable 'meta' feature
+		$features = get_option( 'msh_ai_features', array() );
+		if ( ! is_array( $features ) ) {
+			$features = array();
+		}
+
+		if ( $mode === 'manual' ) {
+			// Remove 'meta' feature when AI is disabled
+			$features = array_diff( $features, array( 'meta' ) );
+			$features = array_values( $features ); // Re-index array
+		} else {
+			// Add 'meta' feature when AI is enabled
+			if ( ! in_array( 'meta', $features, true ) ) {
+				$features[] = 'meta';
+			}
+		}
+
+		update_option( 'msh_ai_features', $features, false );
+
 		wp_send_json_success(
 			array(
-				'mode' => $mode,
+				'mode'     => $mode,
+				'features' => $features,
 			)
 		);
 	}
