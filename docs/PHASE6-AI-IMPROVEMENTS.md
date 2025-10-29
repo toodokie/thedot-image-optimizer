@@ -1,7 +1,7 @@
 # Phase 6: AI Metadata Generation Improvements
 
 **Date:** 2025-10-29
-**Version:** 20251029.1
+**Version:** 20251029.4
 **Status:** ✅ Implemented
 
 ## Overview
@@ -114,17 +114,109 @@ error_log( sprintf(
 - `text_in_image_detected`
 - `decorative_image`
 
-### 5. Prompt Version Tracking
+### 5. Server-Side Context Validator (v20251029.4)
+
+**Problem:** AI might hallucinate business connections for stock/testimonial images despite prompt instructions.
+
+**Solution:** Server-side `validate_context_rules()` enforces context_type semantics before accepting AI output.
+
+**Hard Rules (REJECT immediately):**
+1. `stock`, `decorative` → NEVER include business_name
+2. `testimonial` → PROHIBITED phrases: "at {business}", "in our facility", "{business} client"
+3. `clinical`, `business` → Strict `brand_name_visible=false` enforcement
+
+**Soft Rules (WARN only):**
+4. `service-icon` → Flag if brand present but `brand_name_visible=false`
+
+**Implementation:**
+```php
+// class-msh-openai-connector.php:645-722
+private function validate_context_rules( $context, &$metadata, &$issues ) {
+    // Detect business name in all text fields
+    $all_text = strtolower( implode( ' ', array(
+        $metadata['title'] ?? '',
+        $metadata['alt_text'] ?? '',
+        $metadata['caption'] ?? '',
+        $metadata['description'] ?? '',
+    ) ) );
+
+    $brand_found = strpos( $all_text, $business_name ) !== false;
+
+    // Hard rule: stock/decorative → NEVER include business_name
+    if ( in_array( $type, array( 'stock', 'decorative' ), true ) && $brand_found ) {
+        return new WP_Error( 'context_mismatch', "Business name not allowed for {$type} images" );
+    }
+
+    // Hard rule: testimonial → PROHIBITED phrases
+    if ( $type === 'testimonial' ) {
+        foreach ( $forbidden as $phrase ) {
+            if ( strpos( $all_text, $phrase ) !== false ) {
+                return new WP_Error( 'context_mismatch', "Testimonial images cannot claim business location/ownership" );
+            }
+        }
+    }
+}
+```
+
+**New Issue Type:**
+- `context_mismatch` → Added to `issues[]` array and causes validation rejection
+
+**Anti-Hallucination:**
+- Explicit "do not invent addresses" for facility images
+- "NEVER claim business location" for testimonial images
+- "Describe ONLY what is visible" for stock/decorative
+
+### 6. Authoritative context_type Prompt (v20251029.4)
+
+**Problem:** AI ignored manually-set `context_type` values (e.g., testimonial) and generated generic metadata.
+
+**Solution:** Restructured SYSTEM prompt to emphasize `context_type` as "authoritative" and "MANDATORY".
+
+**Prompt Structure Changes:**
+```
+BUSINESS CONTEXT (use for tone & relevance, never to invent facts):
+- business_name: ...
+- industry: ...
+
+IMAGE USE CONTEXT (authoritative):
+- context_type: {value}  // chosen manually by user; this is the TRUE purpose
+- brand_name_visible: {true|false}
+
+YOU MUST RESPECT context_type AND FOLLOW THESE HANDLING RULES:
+
+CRITICAL RULES BY TYPE:
+1) brand_logo, team, facility, equipment → ALWAYS permitted to include business_name
+2) testimonial → Describe feeling/concept. PROHIBITED: "at {business}", "in our facility"
+3) clinical, business → Follow brand_name_visible strictly
+4) stock, decorative → NEVER include business_name
+5) service-icon → Only include business_name if logo/text visibly present
+```
+
+**USER Message Changes:**
+```
+Authoritative image purpose (MANDATORY):
+- context_type: {value}         // exactly as user selected
+- brand_name_visible: {value}
+
+Return exactly one JSON object matching the specified schema, nothing else.
+```
+
+**Validation Section Added:**
+- AI now self-validates before responding
+- Must add `brand_name_assumed` if violating rules + lower confidence ≤ 0.70
+- Must add `context_mismatch` if output conflicts with context_type semantics
+
+### 7. Prompt Version Tracking
 
 **Implementation:**
 ```php
 // class-msh-openai-connector.php:25
-const PROMPT_VERSION = '20251029.1'; // Phase 6: brand_name_visible + confidence + issues[]
+const PROMPT_VERSION = '20251029.4'; // Authoritative context_type + server-side validator
 ```
 
 **Logged in Every AI Call:**
 ```
-[MSH OpenAI] Prompt v20251029.1 - context_type: team, brand_name_visible: true
+[MSH OpenAI] Prompt v20251029.4 - context_type: team, brand_name_visible: true
 ```
 
 **Included in Metadata Response:**
@@ -137,7 +229,7 @@ $sanitized['prompt_version'] = self::PROMPT_VERSION;
 - Increment revision for same-day changes
 - Increment date for new-day changes
 
-### 6. Token Usage Tracking
+### 8. Token Usage Tracking
 
 **Extraction from OpenAI Response:**
 ```php
@@ -166,7 +258,7 @@ if ( isset( $response_data['usage'] ) ) {
 // }
 ```
 
-### 7. Batch Telemetry Logging
+### 9. Batch Telemetry Logging
 
 **Metrics Tracked Per Batch:**
 - `confidence_scores[]` → calculates average
