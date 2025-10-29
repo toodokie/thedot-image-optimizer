@@ -1,7 +1,8 @@
 # Next Phases Implementation Plan
 
 **Created:** October 22, 2025
-**Status:** Phase 5+9 Complete → Phase 6 → Phase 10 Stage 1
+**Updated:** October 29, 2025
+**Status:** Phase 5+9 Complete → AI Hotfix Complete → Phase 6 Prerequisites
 **Based on:** External AI review + RND-002 strategic analysis
 
 ---
@@ -12,12 +13,112 @@ Following the completion of Phase 5+9, we need to implement **prerequisite infra
 
 **Recommended Order:**
 1. ✅ **Phase 5+9** - COMPLETE
-2. 🔄 **Feature Flags System** - Track C prerequisite (1 week)
-3. 🔄 **Migration Framework** - Phase 6 prerequisite (3-4 days)
-4. 🔄 **Phase 6** - Template Intelligence (2-3 weeks)
-5. 🔄 **Phase 10 Stage 1** - AVIF + Quick Wins (2-3 weeks)
-6. ⏸️ **Phase 7** - Multilingual Admin UX (3-4 weeks)
-7. ⏸️ **Phase 8** - Analytics (4-5 weeks)
+2. ✅ **AI Prompt Hotfix (Oct 29)** - COMPLETE (see below)
+3. 🔄 **Feature Flags System** - Track C prerequisite (1 week)
+4. 🔄 **Migration Framework** - Phase 6 prerequisite (3-4 days)
+5. 🔄 **Phase 6** - Template Intelligence (2-3 weeks)
+6. 🔄 **Phase 10 Stage 1** - AVIF + Quick Wins (2-3 weeks)
+7. ⏸️ **Phase 7** - Multilingual Admin UX (3-4 weeks)
+8. ⏸️ **Phase 8** - Analytics (4-5 weeks)
+
+---
+
+## ✅ AI Prompt Architecture Hotfix (October 29, 2025)
+
+**Status:** COMPLETE
+**Commits:** `8e7a0cc`, `84223bd`
+**Documentation:** [docs/PHASE6-AI-IMPROVEMENTS.md](docs/PHASE6-AI-IMPROVEMENTS.md), [docs/TELEMETRY-INTEGRATION.md](docs/TELEMETRY-INTEGRATION.md)
+
+### Why This Was Critical
+
+Before implementing Phase 6 (Template Intelligence), we discovered a fundamental flaw in the AI metadata generation system:
+
+**The Problem:**
+- AI prompt instructed: "always include business name"
+- Validator blocked: business name for generic images
+- Result: **100% validator rejection** → all AI suggestions fell back to poor heuristic metadata
+
+**User Impact:**
+- Generic stock photos (landscapes, bridges) got nonsensical "Medical Treatment - Main Street Health" metadata
+- AI was generating accurate descriptions but validator rejected them
+- Token waste: Paying for AI calls that were always rejected
+
+### What Was Implemented
+
+**1. brand_name_visible Flag System**
+- Explicit boolean controls AI's business name usage
+- Business-related types (team, facility, equipment) → `true`
+- Generic images (landscapes, stock photos) → `false`
+- Configurable via `msh_business_related_types` filter
+
+**2. Structured SYSTEM/USER Prompt (v20251029.1)**
+- Professional prompt architecture
+- SYSTEM message: role definition + guidelines
+- USER message: context parameters (brand_name_visible, context_type, page_role)
+- Clear rules prevent AI/validator conflicts
+
+**3. Enhanced JSON Output**
+```json
+{
+  "file_name_suggestion": "...",
+  "keywords": ["...", "..."],
+  "confidence": 0.92,
+  "issues": ["text_in_image_detected"]
+}
+```
+
+**4. Quality Metadata**
+- `confidence` (0.0-1.0): AI's confidence score
+- `issues[]`: Detected problems (brand_name_assumed, low_confidence, decorative_image, text_in_image_detected)
+- Validator uses issues array to make smart decisions
+
+**5. Telemetry Integration with MSH_Telemetry**
+- ✅ Integrated with existing `MSH_Telemetry` class
+- ✅ Events stored in `wp_msh_telemetry` table
+- ✅ Sent weekly to `telemetry.thedot.com` API
+- ✅ Anonymous, GDPR-compliant
+
+**Telemetry Events:**
+- `ai_batch_complete`: confidence_avg, success/fallback counts, quality issues
+- `ai_token_usage`: per-image token costs with prompt version
+
+**6. Prompt Version Tracking**
+- `const PROMPT_VERSION = '20251029.1'`
+- Logged in every AI call
+- Enables A/B testing and quality tracking
+
+### Results
+
+**Before:**
+```
+AI: "Golden Gate Bridge at Sunset"
+Validator: REJECT (no business name)
+Fallback: "Medical Treatment - Main Street Health Ontario, Canada"
+```
+
+**After:**
+```
+AI: "Golden Gate Bridge at Sunset" (brand_name_visible=false)
+Validator: ACCEPT
+Final: "Golden Gate Bridge at Sunset"
+```
+
+**Quality Improvements:**
+- ✅ Accurate descriptions for stock photos
+- ✅ Consistent branding on business images
+- ✅ No more validator rejections
+- ✅ Token tracking per image
+- ✅ Batch quality metrics (confidence_avg, issues breakdown)
+
+### Why This Needed to Happen Before Phase 6
+
+**Phase 6 (Template Intelligence)** depends on:
+1. **Quality baseline**: Need accurate AI metadata to compare against templates
+2. **Telemetry infrastructure**: Track template hits vs AI fallbacks
+3. **Confidence scoring**: Determine when to use template vs AI
+4. **Token tracking**: Measure template ROI (30-50% AI call reduction)
+
+Without this hotfix, Phase 6 would have been built on a broken foundation.
 
 ---
 
@@ -311,18 +412,160 @@ Use pre-built templates for metadata generation BEFORE calling AI, reducing cost
 **What It Includes:**
 
 ### A. ImageKit Integration (Week 1: 5-7 days)
-1. **Day 1-2:** ImageKit adapter class
-2. **Day 3-4:** AVIF/WebP conversion pipeline
-3. **Day 5-7:** Job queue integration
+
+**IMPORTANT:** Before implementing ImageKit, we must add bandwidth optimization safeguards to prevent hosting overages and API cost bloat. See [RND-002 Idea #7](docs/RND-002-RESEARCH-IDEAS.md#idea-7-bandwidth--api-cost-optimization) for full details.
+
+#### A.1: Bandwidth Optimization (Day 1 - PREREQUISITE)
+
+**Why Critical:** Without bandwidth optimization, sending full-resolution images (6000px, 10MB+) to ImageKit will:
+- Consume 8-16GB monthly bandwidth on typical sites (16-32% of 50GB shared hosting cap)
+- Cost $150+/month in ImageKit fees (Gate 1 trigger hit immediately)
+- Cause 30-40% timeout failures on slow connections
+- Re-process unchanged images repeatedly (no caching)
+
+**Implementation:**
+1. **Day 1:** Build `MSH_Bandwidth_Optimizer` class
+   - Pre-downscale before ImageKit upload (6000px → 2000px = 80% bandwidth savings)
+   - Hash-based caching (skip unchanged images = 100% savings on duplicates)
+   - File size caps (10MB max for AI, 20MB max for AVIF)
+   - Bandwidth budgeting (500MB/day default cap)
 
 **Components:**
 ```php
+// includes/cloud/class-msh-bandwidth-optimizer.php
+class MSH_Bandwidth_Optimizer {
+    public function prepare_for_remote_processing( $attachment_id, $max_dimension, $purpose );
+    public function should_process_image( $attachment_id, $operation );
+    public function check_bandwidth_budget( $bytes_to_send, $provider );
+    public function track_bandwidth_usage( $bytes, $provider );
+    public function cleanup_working_copy( $working_copy, $original );
+}
+```
+
+**Expected Impact:**
+- ✅ **80-95% bandwidth reduction** per image
+- ✅ **90% cost savings** on ImageKit API calls
+- ✅ **<5% timeout rate** (vs 30-40% current)
+- ✅ **Fail-safe protection** against hosting overages
+
+---
+
+#### A.2: ImageKit Adapter (Day 2-3)
+
+**Integration with Bandwidth Optimizer:**
+
+```php
 // includes/cloud/class-msh-imagekit-adapter.php
 class MSH_ImageKit_Adapter {
-    public function convert_to_avif( $attachment_id );
-    public function convert_to_webp( $attachment_id );
-    public function get_delivery_url( $attachment_id, $format );
+
+    private $bandwidth_optimizer;
+
+    public function __construct() {
+        $this->bandwidth_optimizer = new MSH_Bandwidth_Optimizer();
+    }
+
+    public function convert_to_avif( $attachment_id ) {
+        // Check if already processed (hash cache)
+        if ( ! $this->bandwidth_optimizer->should_process_image( $attachment_id, 'avif_convert' ) ) {
+            return $this->get_cached_avif_url( $attachment_id );
+        }
+
+        // Pre-downscale (6000px → 2000px for quality balance)
+        $working_copy = $this->bandwidth_optimizer->prepare_for_remote_processing(
+            $attachment_id,
+            2000, // Max dimension for AVIF
+            'avif_convert'
+        );
+
+        if ( is_wp_error( $working_copy ) ) {
+            return $working_copy; // File too large or over budget
+        }
+
+        // Check bandwidth budget
+        $file_size = filesize( $working_copy );
+        $budget_check = $this->bandwidth_optimizer->check_bandwidth_budget( $file_size, 'imagekit' );
+
+        if ( is_wp_error( $budget_check ) ) {
+            $this->bandwidth_optimizer->cleanup_working_copy( $working_copy, get_attached_file( $attachment_id ) );
+            return $budget_check; // Over daily cap
+        }
+
+        // Upload to ImageKit (now 80% smaller)
+        $result = $this->upload_to_imagekit( $working_copy, $attachment_id );
+
+        // Track bandwidth
+        $this->bandwidth_optimizer->track_bandwidth_usage( $file_size, 'imagekit' );
+
+        // Cleanup
+        $this->bandwidth_optimizer->cleanup_working_copy( $working_copy, get_attached_file( $attachment_id ) );
+
+        return $result;
+    }
+
+    public function convert_to_webp( $attachment_id ) {
+        // Similar integration with bandwidth optimizer
+    }
+
+    public function get_delivery_url( $attachment_id, $format ) {
+        // Return ImageKit CDN URL
+    }
 }
+```
+
+---
+
+#### A.3: Multi-Size Processing (Day 4-5)
+
+**Why Critical:** Currently only full-size originals are converted to WebP/AVIF. Themes need ALL WordPress sizes (thumbnail, medium, large) in modern formats for responsive images. See [RND-002 Idea #8](docs/RND-002-RESEARCH-IDEAS.md#idea-8-multi-size-format-conversion).
+
+**Implementation:**
+```php
+// includes/class-msh-multi-size-converter.php
+class MSH_Multi_Size_Converter {
+    public function convert_all_sizes( $attachment_id, $format = 'webp' ) {
+        $metadata = wp_get_attachment_metadata( $attachment_id );
+        $results = array();
+
+        // Convert full-size
+        $results['full'] = $this->convert_single_size( get_attached_file( $attachment_id ), $format );
+
+        // Convert ALL WordPress sizes (thumbnail, medium, large, custom)
+        foreach ( $metadata['sizes'] as $size_name => $size_data ) {
+            $size_path = dirname( get_attached_file( $attachment_id ) ) . '/' . $size_data['file'];
+            $results[ $size_name ] = $this->convert_single_size( $size_path, $format );
+        }
+
+        return $results;
+    }
+}
+```
+
+**Expected Output:**
+```
+doctor-consultation.jpg (6000px) → doctor-consultation.webp + doctor-consultation.avif
+doctor-consultation-150x150.jpg → doctor-consultation-150x150.webp + .avif
+doctor-consultation-300x200.jpg → doctor-consultation-300x200.webp + .avif
+doctor-consultation-768x512.jpg → doctor-consultation-768x512.webp + .avif
+doctor-consultation-1024x683.jpg → doctor-consultation-1024x683.webp + .avif
+```
+
+**Result:** Complete format coverage for responsive images and `<picture>` tags.
+
+---
+
+#### A.4: Job Queue Integration (Day 6-7)
+
+**Timeline:**
+1. **Day 1:** Bandwidth optimizer class (prerequisite)
+2. **Day 2-3:** ImageKit adapter with bandwidth integration
+3. **Day 4-5:** Multi-size converter (WebP + AVIF for all sizes)
+4. **Day 6-7:** Job queue integration + testing
+
+**Components:**
+```php
+// includes/cloud/class-msh-bandwidth-optimizer.php (NEW)
+// includes/cloud/class-msh-imagekit-adapter.php
+// includes/class-msh-multi-size-converter.php (NEW)
 ```
 
 **Feature Flag:** `avif_conversion`
