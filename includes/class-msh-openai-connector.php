@@ -242,6 +242,9 @@ class MSH_OpenAI_Connector {
 		$uvp_clean           = wp_strip_all_tags( $uvp );
 
 		// Get context data
+		// DEBUG: Log entire context array to diagnose context_type issue
+		error_log( '[MSH OpenAI DEBUG] Full context array: ' . wp_json_encode( $context ) );
+
 		$context_type   = isset( $context['type'] ) ? $context['type'] : 'business';
 		$business_type  = isset( $context['business_type'] ) ? $context['business_type'] : '';
 		$ideal_customer = isset( $context['ideal_customer'] ) ? $context['ideal_customer'] : '';

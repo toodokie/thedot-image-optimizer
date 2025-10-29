@@ -357,9 +357,14 @@ class MSH_AI_Service {
 			? MSH_Image_Optimizer_Context_Helper::get_active_context()
 			: array();
 
+		// CRITICAL FIX: Merge both contexts so we get business profile data AND image-specific data (type, manual, etc.)
+		// $active_context has: business_name, industry, brand_voice, etc.
+		// $context has: type, manual, attachment_title, etc.
+		$merged_context = ! empty( $active_context ) ? array_merge( $active_context, $context ) : $context;
+
 		$payload = array(
 			'attachment_id' => $attachment_id,
-			'context'       => ! empty( $active_context ) ? $active_context : $context,
+			'context'       => $merged_context,
 			'mode'          => $state['mode'],
 			'access_mode'   => $state['access_mode'],
 			'plan_tier'     => $state['plan_tier'],
