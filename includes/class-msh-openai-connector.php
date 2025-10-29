@@ -22,7 +22,7 @@ class MSH_OpenAI_Connector {
 	 * Prompt version for tracking changes
 	 * Format: YYYYMMDD.revision
 	 */
-	const PROMPT_VERSION = '20251029.3'; // Explicit context_type respect + detailed testimonial guidance
+	const PROMPT_VERSION = '20251029.4'; // User's improved prompt: authoritative context_type + validation rules + anti-hallucination
 
 	/**
 	 * Business-related context types that allow brand name in metadata
@@ -274,8 +274,9 @@ class MSH_OpenAI_Connector {
 		$locale = ! empty( $context['locale'] ) ? $context['locale'] : 'en-US';
 
 		// Build SYSTEM message
-		$system_message = "You are an AI metadata assistant for image optimization in a WordPress/website plugin (locale: {$locale}).
-Business context (placeholders):
+		$system_message = "You are an AI metadata assistant for an image optimizer (locale: {$locale}).
+
+BUSINESS CONTEXT (use for tone & relevance, never to invent facts):
 - business_name: {$business_name_clean}
 - industry: {$industry_clean}
 - business_type: {$business_type}
@@ -284,93 +285,83 @@ Business context (placeholders):
 - brand_voice: {$brand_voice}
 - unique_value: {$uvp_clean}
 
-You will also be provided with:
-- image_url: {$image_url}
-- original_filename: {$original_filename}
-- brand_name_visible: {$brand_name_visible}     // true or false
-- context_type: {$context_type}                 // Options: brand_logo, team, facility, equipment, clinical, business, testimonial, decorative, stock
-- page_title: {$page_title}
-- focus_keyword: {$focus_keyword}
-- page_role: {$page_role}                        // e.g., header_image, article_body_image, service_page_photo
-- model_pass: {$model_pass}                       // e.g., overview, crops, high_detail
+IMAGE USE CONTEXT (authoritative):
+- context_type: {$context_type}  // chosen manually by user; this is the TRUE purpose of the image
+- brand_name_visible: {$brand_name_visible} // true|false — whether brand name/logo is visibly present
 
-CONTEXT TYPE (MANUALLY SET BY USER - RESPECT THIS):
-The context_type parameter was manually chosen by the user and indicates the TRUE purpose of this image.
-You MUST respect this categorization and tailor your metadata accordingly.
+YOU MUST RESPECT context_type AND FOLLOW THESE HANDLING RULES:
 
 Available context types and how to handle each:
-- brand_logo: Company logo/branding. Include business name, describe visual elements.
-- team: Staff photos. Include business name, describe people/setting professionally.
-- facility: Building/office/clinic showing ACTUAL business location. Include business name and location.
-- equipment: Business equipment/tools/machinery owned by business. Include business name.
-- clinical: Medical/service delivery imagery. May be stock or real. Check brand_name_visible flag.
-- business: Business operations, office scenes. May be stock or real. Check brand_name_visible flag.
-- testimonial: Client testimonial imagery. Usually stock photo representing concept (satisfaction, results, healing). Describe the CONCEPT and emotion, NOT a fake location.
-- service-icon: Icon/graphic for service category. Describe the visual/purpose, include business context.
-- decorative: Pure background/pattern with no informational value. Empty alt_text is appropriate.
-- stock: Generic stock photography unrelated to business. Describe ONLY what is visible accurately.
+- brand_logo: Company logo/branding. Include the business_name; describe visual elements of the mark. Do not add location.
+- team: Staff/team portraits. Include business_name; describe people/setting professionally.
+- facility: Actual building/office/clinic of the business. Include business_name and city/region when visible/known from context, but do not invent street addresses.
+- equipment: Business equipment/tools/machinery owned by the business. Include business_name when appropriate; describe the item accurately.
+- clinical: Medical/service delivery imagery. May be stock or real. Only include business_name if brand_name_visible = true; otherwise describe neutrally.
+- business: Business operations/office scenes. May be stock or real. Only include business_name if brand_name_visible = true; otherwise describe neutrally.
+- testimonial: Concept image representing client outcomes. Focus on emotion/concept (hope, relief, recovery, satisfaction) + what is visible; NEVER claim it's at the business or shows a business client/location.
+- service-icon: Icon/graphic for a service. Describe the icon's purpose and connect to the service category; mention business_name only if text/logo is present.
+- decorative: Pure background/pattern with no informational value. alt_text=\"\" and title=\"\" are appropriate.
+- stock: Generic stock photography unrelated to business. Describe ONLY what is visible; no business connection.
 
-CRITICAL RULES FOR EACH TYPE:
-1. brand_logo, team, facility, equipment: ALWAYS include business name - these are actual business assets
-2. testimonial: Describe the FEELING/CONCEPT (hope, recovery, satisfaction) + what is visible. NO false location claims like \'at Main Street Health\' or \'in our facility\'
-3. clinical, business: Follow brand_name_visible flag. If false, describe accurately without business connection
-4. stock, decorative: Describe ONLY what is visible. NO business connection whatsoever
-5. service-icon: Describe the icon purpose + connect to business service category
+CRITICAL RULES BY TYPE:
+1) brand_logo, team, facility, equipment → ALWAYS permitted to include business_name (do not invent addresses).
+2) testimonial → Describe feeling/concept and visible elements only. PROHIBITED: \"at {$business_name_clean}\", \"in our facility\", \"{$business_name_clean} client\".
+3) clinical, business → Follow brand_name_visible strictly. If false, do not include business_name.
+4) stock, decorative → NEVER include business_name or imply business connection.
+5) service-icon → Describe icon purpose; may reference service category. Only include business_name if logo/text is visibly present.
 
-TESTIMONIAL IMAGE RULES (MOST IMPORTANT):
-- User manually selected \'testimonial\' because this image represents a CLIENT OUTCOME or TESTIMONIAL CONCEPT
-- The image is almost certainly a STOCK PHOTO, not taken at the business
-- Focus on: emotion (hope, relief, healing, satisfaction), concept (recovery journey, positive outcome), what is visible
-- NEVER claim: \'at Main Street Health\', \'in our facility\', \'at our location\', \'Main Street Health client\'
-- Good: \'Person experiencing relief after treatment, symbolizing positive healthcare outcomes\'
-- Bad: \'Patient receiving care at Main Street Health clinic in Hamilton\'
+GENERAL CONSTRAINTS:
+- Describe only what is visible. Do not assume unseen details (e.g., exact brand of equipment, specific facility interiors) unless visible.
+- Align tone with brand_voice but keep alt text practical and concise.
+- Use page context for relevance (see USER message), but never contradict context_type rules above.
 
-TASK:
-Using the image and all the context above, suggest the following exactly in JSON format:
+OUTPUT FORMAT (one JSON object only, exact keys/order):
 {
-  \"file_name_suggestion\": \"...\",
-  \"title\": \"...\",
-  \"alt_text\": \"...\",
-  \"caption\": \"...\",
-  \"description\": \"...\",
-  \"keywords\": [\"...\",\"...\",\"...\"],
-  \"confidence\": 0.00,
-  \"issues\": [\"...\"]
+  \"file_name_suggestion\": \"...\",     // lowercase, hyphenated, ≤ 50 chars, no special chars
+  \"title\": \"...\",                    // ≈ ≤ 60 chars, reflect visible content + allowed context
+  \"alt_text\": \"...\",                 // 8–140 chars; if decorative → \"\"
+  \"caption\": \"...\",                  // one sentence, consistent with context_type rules
+  \"description\": \"...\",              // 2–3 sentences; richer detail allowed by context_type
+  \"keywords\": [\"...\", \"...\", \"...\"], // 3–5 short terms relevant to visible content + allowed context
+  \"confidence\": 0.00,                // 0.0–1.0
+  \"issues\": [\"...\"]                  // zero or more of: brand_name_assumed, low_confidence, text_in_image_detected, decorative_image, context_mismatch
 }
 
-GUIDELINES:
-- Describe only what you *see* in the image — do not assume unseen details.
-- If brand_name_visible = true, you _may_ include the business_name in file_name_suggestion, title, alt_text, and caption. If false, do **not** include the business_name.
-- File name: lowercase, hyphen-separated, no special characters, max ~50 characters. Example: \"main-street-health-clinic-hamilton-exterior.jpg\"
-- Title: aim for approx 60 characters, reflecting visible content + relevant context.
-- Alt text: descriptive, 8-140 characters, avoid leading \"image of\" or \"picture of\", focus on what's visible and page context.
-- Caption: one complete sentence, linking visible scene + business context (if visible or relevant).
-- Description: 2-3 full sentences, richer context combining visible content + business context + page focus_keyword when appropriate.
-- Keywords[]: 3-5 short phrases (singular nouns where possible), relevant to what's visible + page's focus_keyword + service_area or ideal_customer when appropriate (but keep natural, avoid stuffing).
-- If visible text or signage appears in the image (e.g., business name on building, signboard), include \"text_in_image_detected\" in issues[].
-- If you included business_name but brand_name_visible = false, include \"brand_name_assumed\" in issues[] and set confidence ≤ 0.70.
-- If confidence < 0.50: include \"low_confidence\" in issues[].
-- If context_type = \"decorative\" (pure background/pattern, no meaningful info), set alt_text = \"\" and title = \"\", and include \"decorative_image\" in issues[].
-- Use the business context (business_name, industry, service_area, ideal_customer, brand_voice, unique_value) **to guide tone, keywords, and relevance**, but **only** in so far as the image content supports it.
+VALIDATION YOU MUST PERFORM BEFORE RESPONDING:
+- If you include business_name while not permitted by the context_type rules above, add \"brand_name_assumed\" to issues and lower confidence ≤ 0.70.
+- If this is decorative → set alt_text=\"\" and title=\"\" and include \"decorative_image\".
+- If text/signage is visible → include \"text_in_image_detected\".
+- If your output conflicts with context_type semantics (e.g., claiming location for testimonial) → include \"context_mismatch\" and lower confidence.
+- If confidence < 0.50 → include \"low_confidence\".
 
 OUTPUT exactly one JSON object as indicated above.";
 
 		// Build USER message with parameters
-		$user_message = "business_name: {$business_name_clean}
-industry: {$industry_clean}
-business_type: {$business_type}
-ideal_customer: {$ideal_customer}
-service_area: {$location_clean}
-brand_voice: {$brand_voice}
-unique_value: {$uvp_clean}
-image_url: {$image_url}
-original_filename: {$original_filename}
-brand_name_visible: {$brand_name_visible}
-context_type: {$context_type}
-page_title: {$page_title}
-focus_keyword: {$focus_keyword}
-page_role: {$page_role}
-model_pass: {$model_pass}";
+		$user_message = "Image URL: {$image_url}
+Original filename: {$original_filename}
+
+Page context:
+- page_title: {$page_title}
+- focus_keyword: {$focus_keyword}
+- page_role: {$page_role}     // header_image | article_body_image | service_page_photo | product_gallery
+
+Execution context:
+- model_pass: {$model_pass}    // overview | crops | high_detail
+
+Business context (same as above):
+- business_name: {$business_name_clean}
+- industry: {$industry_clean}
+- business_type: {$business_type}
+- ideal_customer: {$ideal_customer}
+- service_area: {$location_clean}
+- brand_voice: {$brand_voice}
+- unique_value: {$uvp_clean}
+
+Authoritative image purpose (MANDATORY):
+- context_type: {$context_type}         // exactly as user selected
+- brand_name_visible: {$brand_name_visible}
+
+Return exactly one JSON object matching the specified schema, nothing else.";
 
 		return array(
 			'system' => $system_message,
@@ -643,6 +634,94 @@ model_pass: {$model_pass}";
 	}
 
 	/**
+	 * Server-side validator for context_type rules enforcement
+	 * Based on user's improved prompt structure
+	 *
+	 * @param array $context Business context with context_type
+	 * @param array $metadata AI-generated metadata (passed by reference)
+	 * @param array $issues Issues array (passed by reference)
+	 * @return true|WP_Error True if valid, WP_Error if critical violation
+	 */
+	private function validate_context_rules( $context, &$metadata, &$issues ) {
+		$type = isset( $context['context_type'] ) ? $context['context_type'] : 'stock';
+		$business_name = isset( $context['business_name'] ) ? strtolower( $context['business_name'] ) : '';
+
+		// Combine all text fields for checking
+		$all_text = strtolower( implode( ' ', array(
+			$metadata['title'] ?? '',
+			$metadata['alt_text'] ?? '',
+			$metadata['caption'] ?? '',
+			$metadata['description'] ?? '',
+		) ) );
+
+		$brand_found = ! empty( $business_name ) && strpos( $all_text, $business_name ) !== false;
+
+		// Helper function to add issue if not already present
+		$add_issue = function( $issue_name ) use ( &$issues ) {
+			if ( ! in_array( $issue_name, $issues, true ) ) {
+				$issues[] = $issue_name;
+			}
+		};
+
+		// HARD RULES (reject immediately)
+
+		// 1) stock, decorative → NEVER include business_name
+		if ( in_array( $type, array( 'stock', 'decorative' ), true ) && $brand_found ) {
+			error_log( "[MSH Validator] REJECT: context_type={$type} but business_name found in output" );
+			$add_issue( 'context_mismatch' );
+			return new WP_Error( 'context_mismatch', "Business name not allowed for {$type} images" );
+		}
+
+		// 2) testimonial → PROHIBITED phrases
+		if ( $type === 'testimonial' ) {
+			$forbidden = array(
+				'at ' . $business_name,
+				'in our facility',
+				$business_name . ' client',
+				'our clinic',
+				'our office',
+			);
+
+			foreach ( $forbidden as $phrase ) {
+				if ( strpos( $all_text, $phrase ) !== false ) {
+					error_log( "[MSH Validator] REJECT: testimonial contains forbidden phrase: '{$phrase}'" );
+					$add_issue( 'context_mismatch' );
+					return new WP_Error( 'context_mismatch', "Testimonial images cannot claim business location/ownership" );
+				}
+			}
+		}
+
+		// 3) clinical, business → Follow brand_name_visible strictly
+		if ( in_array( $type, array( 'clinical', 'business' ), true ) ) {
+			$brand_visible = isset( $context['brand_name_visible'] ) && $context['brand_name_visible'] === 'true';
+
+			if ( ! $brand_visible && $brand_found ) {
+				error_log( "[MSH Validator] REJECT: context_type={$type}, brand_name_visible=false but brand found" );
+				$add_issue( 'brand_name_assumed' );
+				return new WP_Error( 'brand_name_assumed', "Business name not permitted when brand_name_visible=false" );
+			}
+		}
+
+		// SOFT RULES (warn only)
+
+		// 4) service-icon → Should only have brand if text/logo visible
+		if ( $type === 'service-icon' && $brand_found ) {
+			$brand_visible = isset( $context['brand_name_visible'] ) && $context['brand_name_visible'] === 'true';
+
+			if ( ! $brand_visible ) {
+				error_log( "[MSH Validator] WARN: service-icon has business_name but brand_name_visible=false (soft warning)" );
+				$add_issue( 'brand_name_assumed' );
+				// Don't reject, just flag
+			}
+		}
+
+		// Update metadata with modified issues array
+		$metadata['issues'] = $issues;
+
+		return true;
+	}
+
+	/**
 	 * Validate AI response for quality and appropriateness
 	 *
 	 * @param array $metadata Sanitized metadata from AI
@@ -654,10 +733,21 @@ model_pass: {$model_pass}";
 		$issues = isset( $metadata['issues'] ) ? $metadata['issues'] : array();
 		$confidence = isset( $metadata['confidence'] ) ? $metadata['confidence'] : 0.0;
 
+		// Server-side context validation (enforces context_type rules)
+		$context_validation = $this->validate_context_rules( $context, $metadata, $issues );
+		if ( is_wp_error( $context_validation ) ) {
+			return $context_validation;
+		}
+
 		// Check for critical issues flagged by AI
 		if ( in_array( 'brand_name_assumed', $issues, true ) ) {
 			error_log( '[MSH OpenAI] CRITICAL: AI assumed brand name when brand_name_visible=false' );
 			return new WP_Error( 'brand_name_assumed', 'AI incorrectly included business name' );
+		}
+
+		if ( in_array( 'context_mismatch', $issues, true ) ) {
+			error_log( '[MSH OpenAI] CRITICAL: AI output violates context_type semantics' );
+			return new WP_Error( 'context_mismatch', 'AI output conflicts with context_type rules' );
 		}
 
 		if ( $confidence < 0.5 ) {
