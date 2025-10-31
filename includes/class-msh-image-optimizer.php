@@ -6649,6 +6649,27 @@ class MSH_Image_Optimizer {
 	 * @return array Analysis payload describing current optimisation state.
 	 */
 	public function analyze_single_image( $attachment_id, $ai_options = array() ) {
+		// Start performance profiling
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::begin( 'total' );
+			MSH_Profiler::begin( 'db_prefetch' );
+		}
+
+		// Prefetch post and meta cache
+		$post = get_post( $attachment_id );
+		if ( ! $post ) {
+			if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+				MSH_Profiler::end( 'db_prefetch' );
+				MSH_Profiler::end( 'total' );
+			}
+			return array( 'error' => 'Attachment not found' );
+		}
+		update_meta_cache( 'post', array( $attachment_id ) );
+
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::end( 'db_prefetch' );
+		}
+
 		$metadata = wp_get_attachment_metadata( $attachment_id );
 		if ( ! is_array( $metadata ) ) {
 			$metadata = array();
@@ -6660,13 +6681,25 @@ class MSH_Image_Optimizer {
 			: get_post_meta( $attachment_id, '_wp_attached_file', true );
 
 		if ( empty( $relative_file ) ) {
+			if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+				MSH_Profiler::end( 'total' );
+			}
 			return array( 'error' => 'No file metadata found' );
+		}
+
+		// Profile file system operations
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::begin( 'file_stat' );
 		}
 
 		$resolver  = MSH_File_Resolver::find_attachment_file( $attachment_id, $relative_file );
 		$file_path = $resolver['path'];
 
 		if ( ! $file_path ) {
+			if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+				MSH_Profiler::end( 'file_stat' );
+				MSH_Profiler::end( 'total' );
+			}
 			return array(
 				'error'           => 'File not found: ' . $relative_file,
 				'resolver_method' => $resolver['method'],
@@ -6709,7 +6742,15 @@ class MSH_Image_Optimizer {
 			$webp_savings = $this->estimate_webp_savings( $file_size, $image_info['mime'] );
 		}
 
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::end( 'file_stat' );
+		}
+
 		// Determine legacy resizing context and new contextual information
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::begin( 'context_detect' );
+		}
+
 		$legacy_context            = $this->determine_image_context( $attachment_id );
 		$context_info              = $this->contextual_meta_generator->detect_context( $attachment_id );
 		$current_context_signature = $this->contextual_meta_generator->get_context_signature();
@@ -6733,7 +6774,22 @@ class MSH_Image_Optimizer {
 			json_encode( $ai_options )
 		) );
 
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::end( 'context_detect' );
+			MSH_Profiler::begin( 'metadata_generate' );
+		}
+
+		// CRITICAL FIX: During analyze mode, force ai_mode='manual' to skip AI API calls
+		// Analysis should only read cached metadata, not generate new AI metadata
+		if ( empty( $ai_options['ai_regeneration'] ) ) {
+			$ai_options['ai_mode'] = 'manual';
+		}
+
 		$generated_meta            = $this->contextual_meta_generator->generate_meta_fields( $attachment_id, $context_info, $ai_options );
+
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::end( 'metadata_generate' );
+		}
 
 		// CRITICAL FIX: Check if generate_meta_fields returned WP_Error
 		if ( is_wp_error( $generated_meta ) ) {
@@ -6762,6 +6818,11 @@ class MSH_Image_Optimizer {
 		$pending_ai_fields   = array();
 		$has_pending_ai_meta = false;
 		$staged_ai_metadata  = null;
+
+		// Profile database writes
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::begin( 'db_writes' );
+		}
 
 		if ( $is_ai_regeneration ) {
 			error_log( sprintf( '[MSH DEBUG] Entering AI regeneration branch for attachment %d', $attachment_id ) );
@@ -6968,6 +7029,19 @@ class MSH_Image_Optimizer {
 			$optimization_status = 'ai_pending';
 		} elseif ( $context_mismatch && $optimization_status === 'optimized' ) {
 			$optimization_status = 'context_stale';
+		}
+
+		// End profiling and flush results
+		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+			MSH_Profiler::end( 'db_writes' );
+			MSH_Profiler::end( 'total' );
+			MSH_Profiler::flush(
+				array(
+					'attachment_id' => (int) $attachment_id,
+					'file'          => $file_path,
+					'ai_mode'       => $ai_options['ai_mode'] ?? 'analyze_only',
+				)
+			);
 		}
 
 		return array(

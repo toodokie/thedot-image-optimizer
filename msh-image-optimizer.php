@@ -140,6 +140,44 @@ require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-resolver.php';
 require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-aware-validator.php';
 require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ocr-bridge.php';
 require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-tinydot-loader.php';
+require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-profiler.php';
+
+        // Performance profiling and DB query logging when MSH_PROFILE is enabled
+        if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
+            if ( ! defined( 'SAVEQUERIES' ) ) {
+                define( 'SAVEQUERIES', true );
+            }
+            add_action(
+                'shutdown',
+                function () {
+                    global $wpdb;
+                    if ( empty( $wpdb->queries ) ) {
+                        return;
+                    }
+                    $counts = array(
+                        'total'  => count( $wpdb->queries ),
+                        'time'   => 0,
+                        'by_sql' => array(),
+                    );
+                    foreach ( $wpdb->queries as $q ) {
+                        $counts['time'] += (float) $q[1];
+                        $sql              = preg_replace( '/\s+/', ' ', trim( $q[0] ) );
+                        $key              = substr( $sql, 0, 120 );
+                        $counts['by_sql'][ $key ] = ( $counts['by_sql'][ $key ] ?? 0 ) + 1;
+                    }
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                    error_log(
+                        wp_json_encode(
+                            array(
+                                'ts'     => gmdate( 'c' ),
+                                'type'   => 'msh_db_summary',
+                                'counts' => $counts,
+                            )
+                        )
+                    );
+                }
+            );
+        }
 
         // Media format helpers (Phase 6 - AVIF compatibility)
         require_once MSH_IO_PLUGIN_DIR . 'includes/functions-media-format.php';
