@@ -61,6 +61,7 @@ class MSH_TinyDot_Loader {
 		// Hook format: {menu_slug}_page_{page_slug} where menu_slug is from menu title "TinyDot"
 		$msh_pages = array(
 			'toplevel_page_msh-optimizer',
+			'tinydot_page_msh-image-optimizer',  // Image Optimizer submenu page
 			'tinydot_page_msh-hub',
 			'tinydot_page_msh-glossary',
 			'tinydot_page_msh-locale-profiles',

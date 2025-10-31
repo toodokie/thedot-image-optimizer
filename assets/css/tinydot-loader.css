@@ -247,3 +247,64 @@
     justify-content: center;
     padding: 20px;
 }
+
+/* ========================================
+   Table Row Loading State
+   ======================================== */
+
+/* Row loading overlay */
+.result-row.is-regenerating {
+    position: relative;
+    pointer-events: none;
+}
+
+.result-row.is-regenerating::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: rgba(250, 249, 246, 0.92); /* --msh-cream with transparency */
+    backdrop-filter: blur(1px);
+    z-index: 10;
+}
+
+/* Loader container for row */
+.result-row .row-loader {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 11;
+    pointer-events: none; /* Don't block clicks when hidden */
+}
+
+.result-row.is-regenerating .row-loader {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    pointer-events: auto; /* Allow interaction when visible */
+}
+
+/* Tinydot icon in row loader */
+.result-row .row-loader__icon {
+    width: 64px;
+    height: 64px;
+}
+
+.result-row .row-loader__icon img {
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+    animation: msh-tinydot-pulse-spin 1.8s ease-in-out infinite;
+}
+
+/* Loading text in row loader */
+.result-row .row-loader__text {
+    color: #35332f; /* --msh-charcoal */
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-top: 16px;
+}

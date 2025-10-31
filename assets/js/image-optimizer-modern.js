@@ -2107,6 +2107,12 @@
                 <tr class="result-row" data-attachment-id="${image.ID}">
                     <td>
                         <input type="checkbox" class="image-select" value="${image.ID}" />
+                        <div class="row-loader">
+                            <div class="row-loader__icon">
+                                <img src="${mshImageOptimizer.pluginUrl}/assets/icons/tinydot-icon.png" alt="Loading">
+                            </div>
+                            <div class="row-loader__text">Regenerating...</div>
+                        </div>
                     </td>
                     <td class="image-cell">
                         <img src="${thumbnailUrl}" alt="${safeAlt}" class="table-thumbnail" />
@@ -2776,7 +2782,26 @@
             `);
         }
 
+        static showRowLoading(attachmentId) {
+            console.log('[MSH Loading] Showing loading for attachment:', attachmentId);
+            const $row = $(`.result-row[data-attachment-id="${attachmentId}"]`);
+            console.log('[MSH Loading] Found row:', $row.length > 0);
+            if ($row.length) {
+                $row.addClass('is-regenerating');
+                console.log('[MSH Loading] Added is-regenerating class');
+            }
+        }
+
+        static hideRowLoading(attachmentId) {
+            const $row = $(`.result-row[data-attachment-id="${attachmentId}"]`);
+            if ($row.length) {
+                $row.removeClass('is-regenerating');
+            }
+        }
+
         static async updateImageContext(attachmentId, newContext, seoMode = null) {
+            // Show loading state
+            this.showRowLoading(attachmentId);
 
             try {
                 const payload = {
@@ -2822,7 +2847,9 @@
 
                     // Re-render the specific row to show updated context
                     UI.renderResults(FilterEngine.getFilteredImages());
+                    // Note: renderResults replaces the row HTML, so loading state is automatically removed
                 } else {
+                    this.hideRowLoading(attachmentId);
                     alert('Error updating context: ' + (response.data || 'Unknown error'));
 
                     // Revert dropdown to previous value
@@ -2833,6 +2860,7 @@
                     }
                 }
             } catch (error) {
+                this.hideRowLoading(attachmentId);
                 alert('Error updating context. Please try again.');
                 console.error('Context update error:', error);
 
