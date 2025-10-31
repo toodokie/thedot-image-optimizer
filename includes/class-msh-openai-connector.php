@@ -22,7 +22,7 @@ class MSH_OpenAI_Connector {
 	 * Prompt version for tracking changes
 	 * Format: YYYYMMDD.revision
 	 */
-	const PROMPT_VERSION = '20251030.6'; // Added SEO mode toggle with location keywords, service keywords, and CTAs
+	const PROMPT_VERSION = '20251030.7'; // SEO mode overrides stock restrictions - allows location/service keywords for stock images
 
 	/**
 	 * Business-related context types that allow brand name in metadata
@@ -348,14 +348,14 @@ AI SEARCH AND SEO EXTENSION (applies when seo_mode = true):
 When seo_mode = true, enhance metadata with natural SEO elements:
 - Include ONE location keyword from service_area if known (e.g., Hamilton, Hamilton Ontario)
 - Include ONE service keyword relevant to industry/business_type (e.g., physiotherapy, rehabilitation, chiropractic care)
-- Connect description to business expertise when context allows (e.g., Main Street Health rehabilitation clinic)
-- End description with soft call-to-action when appropriate:
-  * For facility/team/equipment: Visit our clinic or Book your appointment
-  * For clinical: Learn more about our programs or Schedule your consultation
-  * For business: Contact our team or Explore our services
+- Add soft call-to-action at end of description when appropriate:
+  * For facility/team/equipment/stock wellness: Visit our clinic, Book your appointment, Explore our services
+  * For clinical: Learn more about our programs, Schedule your consultation
+  * For business: Contact our team
 - Keep language natural and conversational. Do NOT keyword-stuff.
-- Example (seo_mode=true): Rehabilitation equipment used by Main Street Health physiotherapy team in Hamilton Ontario. Book your assessment today.
-- Example (seo_mode=false): Therapy bands and exercise equipment in a rehabilitation clinic setting.
+- IMPORTANT: For stock/decorative images, you MAY include location and service keywords even when brand_name_visible = false. Do NOT include business_name, but DO include location (Hamilton Ontario) and service keywords (physiotherapy, rehabilitation, wellness).
+- Example (stock image, seo_mode=true, brand_name_visible=false): Fresh organic lettuce in a wellness-focused field at sunrise in Hamilton Ontario. Explore natural health approaches.
+- Example (stock image, seo_mode=false, brand_name_visible=false): Rows of lettuce in agricultural field at sunrise.
 
 When seo_mode = false, write pure descriptive metadata:
 - Focus only on visible content
