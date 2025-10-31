@@ -346,16 +346,16 @@ CRITICAL ENFORCEMENT:
 
 AI SEARCH AND SEO EXTENSION (applies when seo_mode = true):
 When seo_mode = true, enhance metadata with natural SEO elements:
-- Include ONE location keyword from service_area if known (e.g., "Hamilton", "Hamilton Ontario")
-- Include ONE service keyword relevant to industry/business_type (e.g., "physiotherapy", "rehabilitation", "chiropractic care")
-- Connect description to business expertise when context allows (e.g., "Main Street Health rehabilitation clinic")
+- Include ONE location keyword from service_area if known (e.g., Hamilton, Hamilton Ontario)
+- Include ONE service keyword relevant to industry/business_type (e.g., physiotherapy, rehabilitation, chiropractic care)
+- Connect description to business expertise when context allows (e.g., Main Street Health rehabilitation clinic)
 - End description with soft call-to-action when appropriate:
-  * For facility/team/equipment: "Visit our [city] clinic" or "Book your appointment today"
-  * For clinical: "Learn more about our [service] programs" or "Schedule your consultation"
-  * For business: "Contact our team in [city]" or "Explore our services"
+  * For facility/team/equipment: Visit our clinic or Book your appointment
+  * For clinical: Learn more about our programs or Schedule your consultation
+  * For business: Contact our team or Explore our services
 - Keep language natural and conversational. Do NOT keyword-stuff.
-- Example (seo_mode=true): "Rehabilitation equipment used by Main Street Health physiotherapy team in Hamilton, Ontario. Book your assessment today."
-- Example (seo_mode=false): "Therapy bands and exercise equipment in a rehabilitation clinic setting."
+- Example (seo_mode=true): Rehabilitation equipment used by Main Street Health physiotherapy team in Hamilton Ontario. Book your assessment today.
+- Example (seo_mode=false): Therapy bands and exercise equipment in a rehabilitation clinic setting.
 
 When seo_mode = false, write pure descriptive metadata:
 - Focus only on visible content
