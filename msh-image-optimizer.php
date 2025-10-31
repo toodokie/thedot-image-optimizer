@@ -135,8 +135,11 @@ final class MSH_Image_Optimizer_Plugin {
         if (!class_exists('MSH_Image_Optimizer')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
         }
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
-        require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-tinydot-loader.php';
+require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-helper.php';
+require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-resolver.php';
+require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-context-aware-validator.php';
+require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ocr-bridge.php';
+require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-tinydot-loader.php';
 
         // Media format helpers (Phase 6 - AVIF compatibility)
         require_once MSH_IO_PLUGIN_DIR . 'includes/functions-media-format.php';
@@ -379,6 +382,31 @@ function msh_image_optimizer_activate() {
     }
 }
 register_activation_hook( __FILE__, 'msh_image_optimizer_activate' );
+
+/**
+ * Manual OCR override filter - allows forcing brand detection for testing.
+ *
+ * @param bool|null $detected      Current detection result (null when not yet determined).
+ * @param int       $attachment_id Attachment ID being processed.
+ * @param array     $context       Resolved context array.
+ * @return bool|null Modified detection result.
+ */
+function msh_manual_ocr_override( $detected, $attachment_id, $context ) {
+	$overrides = get_option( 'msh_ocr_overrides', array() );
+	if ( empty( $overrides ) || ! is_array( $overrides ) ) {
+		return $detected;
+	}
+
+	$attachment_id = (int) $attachment_id;
+	$overrides     = array_map( 'intval', $overrides );
+
+	if ( in_array( $attachment_id, $overrides, true ) ) {
+		return true;
+	}
+
+	return $detected;
+}
+add_filter( 'msh_ocr_detect_brand', 'msh_manual_ocr_override', 10, 3 );
 
 /**
  * Deactivation hook - Cleanup (but keep data)

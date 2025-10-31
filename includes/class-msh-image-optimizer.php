@@ -328,15 +328,8 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function get_default_context_type() {
-		if ( empty( $this->active_context ) ) {
-			return 'clinical';
-		}
-
-		if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
-			return 'clinical';
-		}
-
-		return 'business';
+		// Safer default – treat unknown imagery as stock until context proves otherwise.
+		return 'stock';
 	}
 
 	private function get_default_service_slug( $industry ) {
@@ -1196,18 +1189,19 @@ class MSH_Contextual_Meta_Generator {
 		$this->ensure_fresh_context();
 		$this->hydrate_active_context();
 
-		$location_specific_raw      = get_post_meta( $attachment_id, '_msh_location_specific', true );
-		$location_specific_flag     = in_array( strtolower( (string) $location_specific_raw ), array( '1', 'yes', 'true' ), true );
-		$has_explicit_location_meta = $location_specific_raw !== '' && $location_specific_raw !== null;
+		$seo_mode_raw          = get_post_meta( $attachment_id, '_msh_seo_mode', true );
+		$seo_mode_flag         = $seo_mode_raw === '0' ? false : true; // Default to true if not set
+		$has_explicit_seo_meta = $seo_mode_raw !== '' && $seo_mode_raw !== null;
 
-		if ( ! $has_explicit_location_meta && $this->should_default_location_context() ) {
-			$location_specific_flag = true;
+		if ( ! $has_explicit_seo_meta ) {
+			$seo_mode_flag = true; // Default to SEO mode ON
 		}
 
 		$context = array(
 			'type'                 => $this->get_default_context_type(),
 			'page_type'            => null,
 			'page_title'           => null,
+			'default_service_slug' => $this->get_default_service_slug( $this->industry ),
 			'service'              => $this->get_default_service_slug( $this->industry ),
 			'parent_id'            => 0,
 			'tags'                 => array(),
@@ -1226,8 +1220,16 @@ class MSH_Contextual_Meta_Generator {
 			'target_audience'      => $this->target_audience,
 			'uvp'                  => $this->uvp,
 			'pain_points'          => $this->pain_points,
-			'location_specific'    => $location_specific_flag,
+			'seo_mode'             => $seo_mode_flag,
+			'post_format'          => '',
+			'downgraded_reasons'   => array(),
+			'business_name'        => $this->business_name,
+			'city'                 => $this->city,
+			'country'              => $this->country,
+			'location'             => $this->location,
+			'service_area'         => $this->service_area,
 		);
+		$context['initial_context_type'] = $context['type'];
 
 		$manual                  = get_post_meta( $attachment_id, '_msh_context', true );
 		$manual                  = is_string( $manual ) ? trim( $manual ) : '';
@@ -1305,6 +1307,8 @@ class MSH_Contextual_Meta_Generator {
 			if ( $parent_post ) {
 				$context['page_type']  = get_post_type( $parent_post );
 				$context['page_title'] = $parent_post->post_title;
+				$post_format           = get_post_format( $parent_post );
+				$context['post_format'] = $post_format ? $post_format : '';
 				$this->apply_parent_context( $context, $parent_post, $attachment_id, $file_basename );
 
 				// Micro-upgrade: Extract lightweight page context (caption, H1, first paragraph)
@@ -1416,7 +1420,19 @@ class MSH_Contextual_Meta_Generator {
 			$context['subject_name'] = $this->extract_subject_name( $context['attachment_title'] ?: str_replace( array( '-', '_' ), ' ', $file_basename ) );
 		}
 
-		$context['source'] = $context['manual'] ? 'manual' : 'auto';
+		$context['source']               = $context['manual'] ? 'manual' : 'auto';
+		$context['context_set_manually'] = (bool) $context['manual'];
+		$context['brand_name_visible_manual'] = $this->get_manual_brand_visibility( $attachment_id );
+		$context['ocr_found_brand']           = class_exists( 'MSH_OCR_Bridge' ) ? MSH_OCR_Bridge::detect_brand_presence( $attachment_id, $context ) : false;
+		$context['ai_search_friendly']        = true;
+
+		if ( class_exists( 'MSH_Context_Resolver' ) ) {
+			$context = MSH_Context_Resolver::finalize( $context );
+		}
+
+		if ( isset( $context['context_trace'] ) ) {
+			update_post_meta( $attachment_id, '_msh_context_trace', wp_json_encode( $context['context_trace'] ) );
+		}
 
 		if ( ! $context['manual'] ) {
 			update_post_meta( $attachment_id, '_msh_auto_context', $context['type'] );
@@ -1428,6 +1444,19 @@ class MSH_Contextual_Meta_Generator {
 	private function apply_parent_context( array &$context, WP_Post $parent_post, $attachment_id, $file_basename = '' ) {
 		if ( ! empty( $context['manual'] ) ) {
 			return;
+		}
+
+		if ( ! isset( $context['category_is_clinical'] ) ) {
+			$context['category_is_clinical'] = false;
+		}
+		if ( ! isset( $context['template_is_clinical'] ) ) {
+			$context['template_is_clinical'] = false;
+		}
+		if ( ! isset( $context['is_service_page'] ) ) {
+			$context['is_service_page'] = false;
+		}
+		if ( ! isset( $context['looks_like_gallery_hint'] ) ) {
+			$context['looks_like_gallery_hint'] = false;
 		}
 
 		$title     = $parent_post->post_title;
@@ -1442,6 +1471,15 @@ class MSH_Contextual_Meta_Generator {
 		$categories = wp_get_post_categories( $parent_post->ID, array( 'fields' => 'slugs' ) );
 		if ( ! is_wp_error( $categories ) && ! empty( $categories ) ) {
 			$context['tags'] = array_merge( $context['tags'], $categories );
+
+			if ( array_intersect( $categories, array( 'clinical', 'clinic', 'treatment', 'therapy', 'rehabilitation', 'rehab', 'services', 'service' ) ) ) {
+				$context['category_is_clinical'] = true;
+				$context['is_service_page']      = true;
+			}
+			if ( array_intersect( $categories, array( 'gallery', 'portfolio', 'case-study', 'case-studies', 'before-and-after' ) ) ) {
+				$context['looks_like_gallery_hint'] = true;
+			}
+
 			if ( array_intersect( $categories, array( 'team', 'staff' ) ) ) {
 				$context['type']       = 'team';
 				$context['staff_name'] = $title;
@@ -1467,6 +1505,8 @@ class MSH_Contextual_Meta_Generator {
 			if ( strpos( $template, 'team' ) !== false ) {
 				$context['type']       = 'team';
 				$context['staff_name'] = $title;
+			} elseif ( strpos( $template, 'service' ) !== false || strpos( $template, 'treatment' ) !== false || strpos( $template, 'clinical' ) !== false ) {
+				$context['template_is_clinical'] = true;
 			} elseif ( strpos( $template, 'testimonial' ) !== false ) {
 				$context['type'] = 'testimonial';
 				if ( empty( $context['subject_name'] ) ) {
@@ -1474,6 +1514,8 @@ class MSH_Contextual_Meta_Generator {
 				}
 			} elseif ( strpos( $template, 'facility' ) !== false ) {
 				$context['type'] = 'facility';
+			} elseif ( strpos( $template, 'gallery' ) !== false || strpos( $template, 'portfolio' ) !== false ) {
+				$context['looks_like_gallery_hint'] = true;
 			}
 		}
 
@@ -1488,6 +1530,21 @@ class MSH_Contextual_Meta_Generator {
 				$context['in_gallery']   = true;
 				$context['gallery_page'] = $title;
 			}
+		}
+
+		// Final safeties
+		if ( $this->looks_like_gallery( $context ) ) {
+			if ( ! in_array( 'gallery', $context['downgraded_reasons'], true ) ) {
+				$context['downgraded_reasons'][] = 'gallery';
+			}
+			$context['type'] = 'stock';
+		}
+
+		if ( $context['type'] === 'clinical' && ! $this->has_strong_clinical_signals( $context ) ) {
+			if ( ! in_array( 'no_strong_signals', $context['downgraded_reasons'], true ) ) {
+				$context['downgraded_reasons'][] = 'no_strong_signals';
+			}
+			$context['type'] = 'stock';
 		}
 	}
 
@@ -1619,6 +1676,83 @@ class MSH_Contextual_Meta_Generator {
 		}
 
 		return $this->get_default_service_slug( $this->industry );
+	}
+
+	private function get_manual_brand_visibility( $attachment_id ) {
+		$raw_values = array(
+			get_post_meta( $attachment_id, '_msh_brand_visible_manual', true ),
+			get_post_meta( $attachment_id, '_msh_brand_name_visible', true ),
+		);
+
+		foreach ( $raw_values as $raw ) {
+			if ( $raw === '' || $raw === null ) {
+				continue;
+			}
+
+			$normalized = strtolower( trim( (string) $raw ) );
+			if ( in_array( $normalized, array( '1', 'true', 'yes', 'on' ), true ) ) {
+				return true;
+			}
+		}
+
+		return false;
+	}
+
+	private function has_strong_clinical_signals( array $context ) {
+		$signals = array(
+			! empty( $context['category_is_clinical'] ),
+			! empty( $context['template_is_clinical'] ),
+			! empty( $context['is_service_page'] ),
+		);
+
+		$service          = isset( $context['service'] ) ? strtolower( (string) $context['service'] ) : '';
+		$default_service  = isset( $context['default_service_slug'] ) ? strtolower( (string) $context['default_service_slug'] ) : '';
+		$non_generic_slug = $service !== '' && ! in_array( $service, array( 'general', 'services', 'service' ), true );
+
+		if ( $non_generic_slug && $service !== $default_service ) {
+			$signals[] = true;
+		}
+
+		if ( ! empty( $context['tags'] ) ) {
+			$clinical_tags = array( 'clinical', 'clinic', 'treatment', 'therapy', 'rehabilitation', 'rehab', 'physiotherapy', 'chiropractic' );
+			if ( array_intersect( array_map( 'strtolower', (array) $context['tags'] ), $clinical_tags ) ) {
+				$signals[] = true;
+			}
+		}
+
+		return in_array( true, $signals, true );
+	}
+
+	private function looks_like_gallery( array $context ) {
+		if ( ! empty( $context['looks_like_gallery_hint'] ) ) {
+			return true;
+		}
+
+		if ( ! empty( $context['in_gallery'] ) ) {
+			return true;
+		}
+
+		$post_format = strtolower( (string) ( $context['post_format'] ?? '' ) );
+		if ( $post_format === 'gallery' ) {
+			return true;
+		}
+
+		$gallery_keywords = array( 'gallery', 'portfolio', 'lookbook', 'case study', 'case-study', 'before and after', 'before-after' );
+		$haystacks        = array(
+			strtolower( (string) ( $context['page_title'] ?? '' ) ),
+			strtolower( (string) ( $context['attachment_title'] ?? '' ) ),
+			implode( ' ', array_map( 'strtolower', (array) ( $context['tags'] ?? array() ) ) ),
+		);
+
+		foreach ( $gallery_keywords as $keyword ) {
+			foreach ( $haystacks as $haystack ) {
+				if ( $haystack !== '' && strpos( $haystack, $keyword ) !== false ) {
+					return true;
+				}
+			}
+		}
+
+		return false;
 	}
 
 	private function find_featured_usage( $attachment_id ) {
@@ -1754,6 +1888,10 @@ class MSH_Contextual_Meta_Generator {
 		$normalized = ucwords( strtolower( $text ) );
 		if ( empty( $normalized ) ) {
 			return MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ? 'Patient' : 'Client';
+		}
+
+		if ( ! preg_match( '/^[A-Z][a-z]+(?:\s[A-Z][a-z]+){1,2}$/', $normalized ) ) {
+			return '';
 		}
 
 		return $normalized;
@@ -4960,7 +5098,7 @@ class MSH_Contextual_Meta_Generator {
 
 		$is_in_person = $this->is_in_person_business();
 
-		if ( ! empty( $context['location_specific'] ) ) {
+		if ( ! empty( $context['seo_mode'] ) ) {
 			return true;
 		}
 
@@ -6844,7 +6982,7 @@ class MSH_Image_Optimizer {
 			'context_source'            => $context_source,
 			'manual_context'            => $manual_context_value,
 			'auto_context'              => $auto_context_value,
-			'location_specific'         => ! empty( $context_info['location_specific'] ),
+			'seo_mode'                  => ! empty( $context_info['seo_mode'] ),
 			'context_active_label'      => $this->format_context_label( $active_context_slug ),
 			'context_auto_label'        => $auto_context_value !== '' ? $this->format_context_label( $auto_context_value ) : '',
 			'generated_meta'            => $generated_meta,
@@ -7647,6 +7785,10 @@ class MSH_Image_Optimizer {
 				$value = '';
 			}
 
+			// Check if category actually changed
+			$old_value = get_post_meta( $post['ID'], '_msh_context', true );
+			$category_changed = ( $old_value !== $value );
+
 			if ( $value !== '' ) {
 				update_post_meta( $post['ID'], '_msh_context', $value );
 			} else {
@@ -7656,6 +7798,23 @@ class MSH_Image_Optimizer {
 			// Remove deprecated metadata keys introduced in earlier batches
 			delete_post_meta( $post['ID'], '_msh_manual_edit' );
 			delete_post_meta( $post['ID'], 'msh_context_last_manual_update' );
+
+			// If category changed, trigger automatic AI regeneration
+			if ( $category_changed ) {
+				error_log( "[MSH] Category changed from '{$old_value}' to '{$value}' for attachment {$post['ID']} - triggering AI regeneration" );
+
+				// Check if AI is enabled
+				$ai_interest = get_option( 'msh_ai_interest', '' );
+				if ( $ai_interest === 'yes' ) {
+					// Trigger AI regeneration for this single attachment
+					$this->maybe_generate_metadata( $post['ID'], array(
+						'ai_regeneration' => true,
+						'ai_mode' => 'overwrite',
+						'ai_fields' => array( 'title', 'alt_text', 'caption', 'description' ),
+						'language' => 'en',
+					) );
+				}
+			}
 		}
 
 		return $post;
@@ -8761,12 +8920,12 @@ class MSH_Image_Optimizer {
 			'auto'              => $auto_context_value,
 			'active_label'      => $active_context_label,
 			'auto_label'        => $auto_context_label,
-			'location_specific' => ! empty( $context_details['location_specific'] ),
+			'seo_mode' => ! empty( $context_details['seo_mode'] ),
 		);
 		$result['meta_preview']       = $meta_preview;
 		$result['meta_applied']       = $meta_applied;
 		$result['suggested_filename'] = $suggested_filename;
-		$result['location_specific']  = ! empty( $context_details['location_specific'] );
+		$result['seo_mode']           = ! empty( $context_details['seo_mode'] );
 		if ( $rename_feedback !== null ) {
 			$result['rename_feedback'] = $rename_feedback;
 		}
@@ -8818,24 +8977,24 @@ class MSH_Image_Optimizer {
 			delete_post_meta( $attachment_id, '_msh_context' );
 		}
 
-		$existing_location_flag_raw = get_post_meta( $attachment_id, '_msh_location_specific', true );
-		$existing_location_flag     = in_array( strtolower( (string) $existing_location_flag_raw ), array( '1', 'yes', 'true' ), true );
-		$location_specific_flag     = $existing_location_flag;
+		$existing_seo_mode_raw = get_post_meta( $attachment_id, '_msh_seo_mode', true );
+		$existing_seo_mode     = $existing_seo_mode_raw === '0' ? false : true; // Default to true if not set
+		$seo_mode_flag         = $existing_seo_mode;
 
-		if ( isset( $_POST['location_specific'] ) ) {
-			$raw_location_flag      = sanitize_text_field( wp_unslash( $_POST['location_specific'] ) );
-			$location_specific_flag = in_array( strtolower( $raw_location_flag ), array( '1', 'true', 'yes' ), true );
+		if ( isset( $_POST['seo_mode'] ) ) {
+			$raw_seo_mode  = sanitize_text_field( wp_unslash( $_POST['seo_mode'] ) );
+			$seo_mode_flag = in_array( strtolower( $raw_seo_mode ), array( '1', 'true', 'yes' ), true );
 
-			if ( $location_specific_flag ) {
-				update_post_meta( $attachment_id, '_msh_location_specific', '1' );
+			if ( $seo_mode_flag ) {
+				update_post_meta( $attachment_id, '_msh_seo_mode', '1' );
 			} else {
-				update_post_meta( $attachment_id, '_msh_location_specific', '0' );
+				update_post_meta( $attachment_id, '_msh_seo_mode', '0' );
 			}
 		}
 
-		$location_changed = ( $existing_location_flag !== $location_specific_flag );
+		$seo_mode_changed = ( $existing_seo_mode !== $seo_mode_flag );
 
-		if ( $context_changed || $location_changed ) {
+		if ( $context_changed || $seo_mode_changed ) {
 			$this->flag_attachment_for_reoptimization( $attachment_id );
 		}
 
@@ -8858,15 +9017,21 @@ class MSH_Image_Optimizer {
 		}
 
 		try {
-			// Phase 1F: Check if AI mode is enabled - use cached value during batch
-			$ai_mode    = $this->get_batch_ai_mode();
-			$ai_options = array(
-				'ai_mode' => $ai_mode, // Pass cached AI mode to avoid repeated wp_options queries
-			);
-			if ( $ai_mode !== 'manual' ) {
+			// When context changes, ALWAYS regenerate AI metadata if AI is enabled
+			$ai_interest = get_option( 'msh_ai_interest', '' );
+			$ai_options  = array();
+
+			if ( $ai_interest === 'yes' && $context_changed ) {
+				// Force AI regeneration with new context
+				$ai_options['ai_regeneration'] = true;
+				$ai_options['ai_mode']         = 'overwrite'; // OVERWRITE to reflect new context
+				$ai_options['ai_fields']       = array( 'title', 'alt_text', 'caption', 'description' );
+				error_log( "[MSH] Context changed - forcing AI regeneration for attachment {$attachment_id}" );
+			} elseif ( $ai_interest === 'yes' ) {
+				// Context didn't change, just refresh metadata preview
 				$ai_options['ai_regeneration'] = true;
 				$ai_options['ai_mode']         = 'fill-empty'; // Fill empty fields
-				$ai_options['ai_fields']       = array( 'title', 'alt_text', 'caption', 'description' ); // All fields
+				$ai_options['ai_fields']       = array( 'title', 'alt_text', 'caption', 'description' );
 			}
 
 			$image_data = $this->analyze_single_image( $attachment_id, $ai_options );

@@ -385,6 +385,134 @@ class MSH_CLI {
 			WP_CLI::line( WP_CLI::colorize( "%RFailed: {$failed}%n" ) );
 		}
 	}
+
+	/**
+	 * Manage OCR brand detection overrides for testing.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <subcommand>
+	 * : list | set | unset | clear
+	 *
+	 * [<attachment-id>]
+	 * : Attachment ID when using set/unset.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp msh ocr list
+	 *     wp msh ocr set 2049
+	 *     wp msh ocr unset 2049
+	 *     wp msh ocr clear
+	 *
+	 * @param array $args Positional arguments.
+	 * @param array $assoc_args Associative arguments.
+	 */
+	public function ocr( $args, $assoc_args ) {
+		$command   = $args[0] ?? 'list';
+		$option    = 'msh_ocr_overrides';
+		$overrides = get_option( $option, array() );
+
+		if ( ! is_array( $overrides ) ) {
+			$overrides = array();
+		}
+
+		switch ( $command ) {
+			case 'list':
+				if ( empty( $overrides ) ) {
+					WP_CLI::success( 'No OCR overrides are currently set.' );
+				} else {
+					WP_CLI::line( 'Forced brand detection for attachment IDs:' );
+					WP_CLI::line( implode( ', ', array_map( 'intval', $overrides ) ) );
+				}
+				break;
+
+			case 'set':
+				$attachment_id = isset( $args[1] ) ? (int) $args[1] : 0;
+				if ( $attachment_id <= 0 ) {
+					WP_CLI::error( 'Please provide a valid attachment ID.' );
+				}
+				if ( ! in_array( $attachment_id, $overrides, true ) ) {
+					$overrides[] = $attachment_id;
+					update_option( $option, array_values( array_unique( array_map( 'intval', $overrides ) ) ), false );
+				}
+				WP_CLI::success( "OCR override set for attachment {$attachment_id}." );
+				break;
+
+			case 'unset':
+				$attachment_id = isset( $args[1] ) ? (int) $args[1] : 0;
+				if ( $attachment_id <= 0 ) {
+					WP_CLI::error( 'Please provide a valid attachment ID.' );
+				}
+				$overrides = array_values( array_diff( array_map( 'intval', $overrides ), array( $attachment_id ) ) );
+				update_option( $option, $overrides, false );
+				WP_CLI::success( "OCR override removed for attachment {$attachment_id}." );
+				break;
+
+			case 'clear':
+				delete_option( $option );
+				WP_CLI::success( 'All OCR overrides cleared.' );
+				break;
+
+			default:
+				WP_CLI::error( 'Unknown command. Use: list, set, unset, or clear' );
+		}
+	}
+
+	/**
+	 * Display context trace and staged metadata for attachments.
+	 *
+	 * ## OPTIONS
+	 *
+	 * <attachment-id>...
+	 * : One or more attachment IDs to inspect.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp msh trace 616 1045 2049
+	 *
+	 * @param array $args Positional arguments.
+	 * @param array $assoc_args Associative arguments.
+	 */
+	public function trace( $args, $assoc_args ) {
+		if ( empty( $args ) ) {
+			WP_CLI::error( 'Please provide at least one attachment ID.' );
+		}
+
+		foreach ( $args as $raw_id ) {
+			$attachment_id = (int) $raw_id;
+			if ( $attachment_id <= 0 ) {
+				WP_CLI::warning( "Skipping invalid attachment ID: {$raw_id}" );
+				continue;
+			}
+
+			$context_trace = get_post_meta( $attachment_id, '_msh_context_trace', true );
+			$staged_meta   = get_post_meta( $attachment_id, '_msh_ai_staged_meta', true );
+			$auto_context  = get_post_meta( $attachment_id, '_msh_auto_context', true );
+
+			WP_CLI::line( '' );
+			WP_CLI::line( '=== Attachment ' . $attachment_id . ' ===' );
+			WP_CLI::line( 'Auto Context: ' . ( $auto_context ? $auto_context : '(none)' ) );
+
+			WP_CLI::line( 'Context Trace:' );
+			if ( empty( $context_trace ) ) {
+				WP_CLI::line( '  (no trace saved)' );
+			} else {
+				if ( is_string( $context_trace ) ) {
+					// Stored as JSON string.
+					WP_CLI::line( wp_json_encode( json_decode( $context_trace, true ), JSON_PRETTY_PRINT ) );
+				} else {
+					WP_CLI::line( wp_json_encode( $context_trace, JSON_PRETTY_PRINT ) );
+				}
+			}
+
+			WP_CLI::line( 'Staged Metadata:' );
+			if ( empty( $staged_meta ) ) {
+				WP_CLI::line( '  (no staged metadata)' );
+			} else {
+				WP_CLI::line( wp_json_encode( $staged_meta, JSON_PRETTY_PRINT ) );
+			}
+		}
+	}
 }
 
 WP_CLI::add_command( 'msh', 'MSH_CLI' );

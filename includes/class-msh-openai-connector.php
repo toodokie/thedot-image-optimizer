@@ -22,7 +22,7 @@ class MSH_OpenAI_Connector {
 	 * Prompt version for tracking changes
 	 * Format: YYYYMMDD.revision
 	 */
-	const PROMPT_VERSION = '20251029.5'; // AI-search optimization (SGE/Copilot/ChatGPT) + conversational phrasing
+	const PROMPT_VERSION = '20251030.6'; // Added SEO mode toggle with location keywords, service keywords, and CTAs
 
 	/**
 	 * Business-related context types that allow brand name in metadata
@@ -245,15 +245,14 @@ class MSH_OpenAI_Connector {
 		// DEBUG: Log entire context array to diagnose context_type issue
 		error_log( '[MSH OpenAI DEBUG] Full context array: ' . wp_json_encode( $context ) );
 
-		$context_type   = isset( $context['type'] ) ? $context['type'] : 'business';
+		$context_type   = isset( $context['final_context_type'] ) ? $context['final_context_type'] : ( $context['type'] ?? 'stock' );
 		$business_type  = isset( $context['business_type'] ) ? $context['business_type'] : '';
 		$ideal_customer = isset( $context['ideal_customer'] ) ? $context['ideal_customer'] : '';
 		$brand_voice    = isset( $context['brand_voice'] ) ? $context['brand_voice'] : '';
 
-		// Determine brand_name_visible based on context_type
-		// Allow filtering for multi-tenant customization
-		$business_related_types = apply_filters( 'msh_business_related_types', $this->business_related_types, $context );
-		$brand_name_visible     = in_array( $context_type, $business_related_types, true ) ? 'true' : 'false';
+		$brand_flag = isset( $context['brand_name_visible'] ) ? (bool) $context['brand_name_visible'] : false;
+		$brand_flag = (bool) apply_filters( 'msh_brand_visibility_flag', $brand_flag, $context );
+		$brand_name_visible = $brand_flag ? 'true' : 'false';
 
 		error_log( sprintf(
 			'[MSH OpenAI] Prompt v%s - context_type: %s, brand_name_visible: %s',
@@ -266,20 +265,40 @@ class MSH_OpenAI_Connector {
 		$original_filename = basename( get_attached_file( $attachment_id ) );
 
 		// Get page context (if available)
-		$page_title    = ''; // TODO: Get from post context when available
-		$focus_keyword = ''; // TODO: Get from SEO plugin when available
-		$page_role     = 'general_content_image'; // TODO: Determine based on usage context
+		$page_title    = isset( $context['page_title'] ) ? wp_strip_all_tags( (string) $context['page_title'] ) : '';
+		$focus_keyword = isset( $context['focus_keyword'] ) ? wp_strip_all_tags( (string) $context['focus_keyword'] ) : '';
+		$page_role     = isset( $context['page_role'] ) ? wp_strip_all_tags( (string) $context['page_role'] ) : 'general_content_image';
 
 		// Determine model pass type
 		$model_pass = 'high_detail'; // Using high detail for all images
 
 		// Get locale
 		$locale = ! empty( $context['locale'] ) ? $context['locale'] : 'en-US';
+		$context_set_manually = ! empty( $context['context_set_manually'] );
+		$brand_manual         = ! empty( $context['brand_name_visible_manual'] );
+		$ocr_flag             = ! empty( $context['ocr_found_brand'] );
+		$ai_search_friendly   = array_key_exists( 'ai_search_friendly', $context ) ? (bool) $context['ai_search_friendly'] : true;
+		$seo_mode             = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true; // Default ON
+		$manual_flag_str      = $context_set_manually ? 'true' : 'false';
+		$manual_brand_str     = $brand_manual ? 'true' : 'false';
+		$ocr_flag_str         = $ocr_flag ? 'true' : 'false';
+		$ai_search_flag_str   = $ai_search_friendly ? 'true' : 'false';
+		$seo_mode_str         = $seo_mode ? 'true' : 'false';
+		$downgrades           = array();
+		if ( ! empty( $context['context_trace']['downgraded_reasons'] ) && is_array( $context['context_trace']['downgraded_reasons'] ) ) {
+			$downgrades = $context['context_trace']['downgraded_reasons'];
+		}
+		$downgrade_summary = empty( $downgrades ) ? 'none' : implode( ', ', array_map( 'sanitize_key', $downgrades ) );
 
 		// Build SYSTEM message
-		$system_message = "You are an AI metadata assistant for an image optimizer (locale: {$locale}).
+		$system_message = "You are an AI metadata assistant for an image optimization plugin (locale: {$locale}).
 
-BUSINESS CONTEXT (use for tone & relevance, never to invent facts):
+PRIORITY OF TRUTH:
+1) context_type is authoritative. If the user set it manually, treat it as final. Do not override or reinterpret.
+2) Page context (page_title, focus_keyword) and business context (business_name, industry) guide tone and relevance ONLY. Never use them to invent facts or override context_type.
+3) Describe only what is visible in the image.
+
+BUSINESS CONTEXT → use for tone and relevance, never to invent facts:
 - business_name: {$business_name_clean}
 - industry: {$industry_clean}
 - business_type: {$business_type}
@@ -288,65 +307,90 @@ BUSINESS CONTEXT (use for tone & relevance, never to invent facts):
 - brand_voice: {$brand_voice}
 - unique_value: {$uvp_clean}
 
-IMAGE USE CONTEXT (authoritative):
-- context_type: {$context_type}  // chosen manually by user; this is the TRUE purpose of the image
-- brand_name_visible: {$brand_name_visible} // true|false — whether brand name/logo is visibly present
+IMAGE USE CONTEXT → authoritative, final, cannot be overridden:
+- context_type: {$context_type}  // user chosen or resolved. Treat as final
+- context_set_manually: {$manual_flag_str}  // true | false
+- brand_name_visible: {$brand_name_visible}  // true | false. Logo or brand text visibly present or permitted by rules below
+- brand_name_visible_manual: {$manual_brand_str}
+- ocr_found_brand: {$ocr_flag_str}
+- downgrade_trace: {$downgrade_summary}
 
-YOU MUST RESPECT context_type AND FOLLOW THESE HANDLING RULES:
+BRAND NAME INCLUSION RULES → When brand_name_visible = true, you MUST include {$business_name_clean} in BOTH title and description:
 
-Available context types and how to handle each:
-- brand_logo: Company logo/branding. Include the business_name; describe visual elements of the mark. Do not add location.
-- team: Staff/team portraits. Include business_name; describe people/setting professionally.
-- facility: Actual building/office/clinic of the business. Include business_name and city/region when visible/known from context, but do not invent street addresses.
-- equipment: Business equipment/tools/machinery owned by the business. Include business_name when appropriate; describe the item accurately.
-- clinical: Medical/service delivery imagery. May be stock or real. Only include business_name if brand_name_visible = true; otherwise describe neutrally.
-- business: Business operations/office scenes. May be stock or real. Only include business_name if brand_name_visible = true; otherwise describe neutrally.
-- testimonial: Concept image representing client outcomes. Focus on emotion/concept (hope, relief, recovery, satisfaction) + what is visible; NEVER claim it's at the business or shows a business client/location.
-- service-icon: Icon/graphic for a service. Describe the icon's purpose and connect to the service category; mention business_name only if text/logo is present.
-- decorative: Pure background/pattern with no informational value. alt_text=\"\" and title=\"\" are appropriate.
-- stock: Generic stock photography unrelated to business. Describe ONLY what is visible; no business connection.
+TESTIMONIAL with brand_name_visible = true:
+  ✓ CORRECT: title: \"Hope and Recovery - {$business_name_clean} Patient Success\"
+  ✗ WRONG: title: \"Sunlit Reflection Testimonial\" (missing brand)
 
-CRITICAL RULES BY TYPE:
-1) brand_logo, team, facility, equipment → ALWAYS permitted to include business_name (do not invent addresses).
-2) testimonial → Describe feeling/concept and visible elements only. PROHIBITED: \"at {$business_name_clean}\", \"in our facility\", \"{$business_name_clean} client\".
-3) clinical, business → Follow brand_name_visible strictly. If false, do not include business_name.
-4) stock, decorative → NEVER include business_name or imply business connection.
-5) service-icon → Describe icon purpose; may reference service category. Only include business_name if logo/text is visibly present.
+STOCK with brand_name_visible = true:
+  ✓ CORRECT: title: \"Fresh Lettuce Field - {$business_name_clean} Wellness Imagery\"
+  ✗ WRONG: title: \"Lettuce Field at Sunrise\" (missing brand)
 
-GENERAL CONSTRAINTS:
-- Describe only what is visible. Do not assume unseen details (e.g., exact brand of equipment, specific facility interiors) unless visible.
-- Align tone with brand_voice but keep alt text practical and concise.
-- Use page context for relevance (see USER message), but never contradict context_type rules above.
+CONTEXT TYPE RULES → respect context_type above all else, even if page context suggests otherwise:
 
-AI-SEARCH & SEO OPTIMIZATION:
-- Write metadata friendly to both classic search engines AND generative-AI search (Google SGE, Bing Copilot, ChatGPT Browse, Perplexity).
-- Use natural, factual language that answers implicit user questions (who/what/where/why).
-- Mention concrete entities (business name, city, service category) when allowed by context_type.
-- Prefer phrases people would say or ask in conversation (e.g., 'rehabilitation clinic in Hamilton for first responders').
-- Avoid keyword lists or unnatural repetition.
-- Keep descriptions coherent with the surrounding page topic; this helps AI ranking models connect the image to the right intent cluster.
-- Example: Instead of 'clinic Hamilton physiotherapy chiropractic massage' → 'Main Street Health rehabilitation clinic in Hamilton Ontario providing physiotherapy and chiropractic care for first responders.'
+- brand_logo: Real branding. Include business_name. Describe visual mark and style. No location claims.
+- team: Staff photos. Include business_name. Professional tone.
+- facility: Actual building or clinic. Include business_name and city or region if known from page context. Do not invent addresses.
+- equipment: Tools or machinery owned by the business. You MUST include {$business_name_clean} naturally in title and description. Write organically as if describing equipment belonging to or used by the business. Examples: \"Rehabilitation equipment at {$business_name_clean}\", \"Medical tools for {$business_name_clean} patient care\", \"Clinical equipment used by {$business_name_clean} practitioners\". Be specific to visible items.
+- clinical: Care or service delivery imagery. If brand_name_visible = true, you MUST include {$business_name_clean} naturally in title and description. Write organically connecting treatment to the business. Examples: \"Patient care services at {$business_name_clean}\", \"Treatment session at {$business_name_clean} clinic\", \"Rehabilitation therapy provided by {$business_name_clean}\". If brand_name_visible = false, describe neutrally without brand reference.
+- business: Operations or office scenes. If brand_name_visible = true, you MUST include {$business_name_clean} naturally in title and description. Write organically as workplace content. Examples: \"Professional workspace at {$business_name_clean}\", \"Administrative operations at {$business_name_clean} office\", \"Team collaboration at {$business_name_clean}\". If brand_name_visible = false, describe neutrally without brand reference.
+- testimonial: If brand_name_visible = true, you MUST include {$business_name_clean} naturally in title and description connecting emotion to outcomes. Write organically linking experience to the business. Examples: \"Recovery journey with {$business_name_clean}\", \"Patient success story at {$business_name_clean}\", \"Positive health outcomes from {$business_name_clean} care\". PROHIBITED: claiming specific facility location or that this is an actual client photo. If brand_name_visible = false, describe emotion and visible elements without brand reference.
+- service-icon: Icon or graphic for a service. Describe the icon purpose and connect to the service category. Mention business_name only if logo or text is visible on the icon.
+- decorative: Pure background or pattern with no informational value. alt_text = \"\" and title = \"\" are appropriate.
+- stock: Generic stock photography. If brand_name_visible = true (manual override or OCR detected), you MUST include {$business_name_clean} in title. Format: \"[Visual Description] - {$business_name_clean} [Branding/Imagery/Visual]\". If false, describe only visible content with no business connection.
 
-OUTPUT FORMAT (one JSON object only, exact keys/order):
+CRITICAL ENFORCEMENT:
+- When brand_name_visible = true for clinical, business, testimonial, or stock contexts: business_name inclusion is REQUIRED, not optional.
+- When brand_name_visible = false for these contexts: business_name inclusion is PROHIBITED.
+- When context_type = stock or decorative and brand_name_visible = false: business_name is PROHIBITED regardless of page context.
+- brand_logo, team, facility, equipment contexts ALWAYS permit business_name (do not invent addresses).
+
+AI SEARCH AND SEO EXTENSION (applies when seo_mode = true):
+When seo_mode = true, enhance metadata with natural SEO elements:
+- Include ONE location keyword from service_area if known (e.g., "Hamilton", "Hamilton Ontario")
+- Include ONE service keyword relevant to industry/business_type (e.g., "physiotherapy", "rehabilitation", "chiropractic care")
+- Connect description to business expertise when context allows (e.g., "Main Street Health rehabilitation clinic")
+- End description with soft call-to-action when appropriate:
+  * For facility/team/equipment: "Visit our [city] clinic" or "Book your appointment today"
+  * For clinical: "Learn more about our [service] programs" or "Schedule your consultation"
+  * For business: "Contact our team in [city]" or "Explore our services"
+- Keep language natural and conversational. Do NOT keyword-stuff.
+- Example (seo_mode=true): "Rehabilitation equipment used by Main Street Health physiotherapy team in Hamilton, Ontario. Book your assessment today."
+- Example (seo_mode=false): "Therapy bands and exercise equipment in a rehabilitation clinic setting."
+
+When seo_mode = false, write pure descriptive metadata:
+- Focus only on visible content
+- No location keywords, service keywords, or CTAs
+- Keep neutral and factual
+
+SPECIFICITY AND UNIQUENESS:
+- Provide subjects[] with at least 5 concrete visible nouns.
+- Provide attributes[] with at least 3 visual traits such as color, material, lighting, perspective.
+- Avoid generic phrases: 'brand imagery', 'generic image', 'stock photo', 'placeholder', 'medical treatment'.
+- Make title and alt_text specific to visible elements, not vague category labels.
+
+OUTPUT FORMAT (return exactly one JSON object with keys in this order):
 {
-  \"file_name_suggestion\": \"...\",     // lowercase, hyphenated, ≤ 50 chars, no special chars
-  \"title\": \"...\",                    // ≈ ≤ 60 chars, reflect visible content + allowed context
-  \"alt_text\": \"...\",                 // 8–140 chars; if decorative → \"\"
-  \"caption\": \"...\",                  // one sentence, consistent with context_type rules
-  \"description\": \"...\",              // 2–3 sentences; richer detail allowed by context_type
-  \"keywords\": [\"...\", \"...\", \"...\"], // 3–5 short terms relevant to visible content + allowed context
-  \"confidence\": 0.00,                // 0.0–1.0
-  \"issues\": [\"...\"]                  // zero or more of: brand_name_assumed, low_confidence, text_in_image_detected, decorative_image, context_mismatch
+  \"file_name_suggestion\": \"...\",     // lowercase, hyphenated, no special chars, length ≤ 50
+  \"title\": \"...\",                    // length ≤ 60
+  \"alt_text\": \"...\",                 // 8–140 chars. If decorative, set \"\"
+  \"caption\": \"...\",                  // one sentence
+  \"description\": \"...\",              // 2–3 sentences
+  \"keywords\": [\"...\", \"...\", \"...\"],  // 3–5 short terms relevant to visible content and allowed context
+  \"subjects\": [\"...\", \"...\", \"...\", \"...\", \"...\"],  // at least 5 concrete visible nouns
+  \"attributes\": [\"...\", \"...\", \"...\"],  // at least 3 visual traits
+  \"confidence\": 0.00,                 // 0.0–1.0
+  \"issues\": [\"...\"]                  // zero or more of: brand_name_assumed, low_confidence, text_in_image_detected, decorative_image, context_mismatch, too_generic
 }
 
-VALIDATION YOU MUST PERFORM BEFORE RESPONDING:
-- If you include business_name while not permitted by the context_type rules above, add \"brand_name_assumed\" to issues and lower confidence ≤ 0.70.
-- If this is decorative → set alt_text=\"\" and title=\"\" and include \"decorative_image\".
-- If text/signage is visible → include \"text_in_image_detected\".
-- If your output conflicts with context_type semantics (e.g., claiming location for testimonial) → include \"context_mismatch\" and lower confidence.
-- If confidence < 0.50 → include \"low_confidence\".
+SELF CHECK BEFORE RESPONDING:
+- If business_name appears where the rules forbid it for this context_type, add 'brand_name_assumed' and lower confidence to ≤ 0.70.
+- If decorative, set alt_text = \"\" and title = \"\" and add 'decorative_image'.
+- If your text conflicts with context_type semantics, add 'context_mismatch' and lower confidence.
+- If subjects fewer than 5 or you used generic phrases ('brand imagery', 'medical treatment', 'stock photo'), add 'too_generic' and rewrite with specific visible nouns and attributes.
+- If text/signage is visible, include 'text_in_image_detected'.
+- If confidence < 0.50, include 'low_confidence'.
 
-OUTPUT exactly one JSON object as indicated above.";
+OUTPUT exactly one JSON object per the schema above. No extra prose.";
 
 		// Build USER message with parameters
 		$user_message = "Image URL: {$image_url}
@@ -359,6 +403,8 @@ Page context:
 
 Execution context:
 - model_pass: {$model_pass}    // overview | crops | high_detail
+- ai_search_friendly: {$ai_search_flag_str}
+- seo_mode: {$seo_mode_str}    // true = include location/service keywords + CTAs | false = pure descriptive
 
 Business context (same as above):
 - business_name: {$business_name_clean}
@@ -372,6 +418,9 @@ Business context (same as above):
 Authoritative image purpose (MANDATORY):
 - context_type: {$context_type}         // exactly as user selected
 - brand_name_visible: {$brand_name_visible}
+- context_set_manually: {$manual_flag_str}
+- brand_name_visible_manual: {$manual_brand_str}
+- ocr_found_brand: {$ocr_flag_str}
 
 Return exactly one JSON object matching the specified schema, nothing else.";
 
@@ -742,123 +791,9 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 	 * @return true|WP_Error True if valid, WP_Error if validation fails
 	 */
 	private function validate_ai_response( $metadata, $context ) {
-		// Get issues array from metadata
-		$issues = isset( $metadata['issues'] ) ? $metadata['issues'] : array();
-		$confidence = isset( $metadata['confidence'] ) ? $metadata['confidence'] : 0.0;
+		$validator = MSH_Context_Aware_Validator::get_instance();
 
-		// Server-side context validation (enforces context_type rules)
-		$context_validation = $this->validate_context_rules( $context, $metadata, $issues );
-		if ( is_wp_error( $context_validation ) ) {
-			return $context_validation;
-		}
-
-		// Check for critical issues flagged by AI
-		if ( in_array( 'brand_name_assumed', $issues, true ) ) {
-			error_log( '[MSH OpenAI] CRITICAL: AI assumed brand name when brand_name_visible=false' );
-			return new WP_Error( 'brand_name_assumed', 'AI incorrectly included business name' );
-		}
-
-		if ( in_array( 'context_mismatch', $issues, true ) ) {
-			error_log( '[MSH OpenAI] CRITICAL: AI output violates context_type semantics' );
-			return new WP_Error( 'context_mismatch', 'AI output conflicts with context_type rules' );
-		}
-
-		if ( $confidence < 0.5 ) {
-			error_log( sprintf( '[MSH OpenAI] LOW CONFIDENCE: %.2f (threshold: 0.50)', $confidence ) );
-			return new WP_Error( 'low_confidence', "AI confidence too low: {$confidence}" );
-		}
-
-		// Log warnings for non-critical issues
-		if ( in_array( 'text_in_image_detected', $issues, true ) ) {
-			error_log( '[MSH OpenAI] INFO: Text detected in image - may need OCR or manual review' );
-		}
-
-		if ( in_array( 'decorative_image', $issues, true ) ) {
-			error_log( '[MSH OpenAI] INFO: Image classified as decorative (empty alt/title expected)' );
-			// Skip length validation for decorative images
-			return true;
-		}
-
-		// Length guards (only for non-decorative images)
-		$title_len = mb_strlen( $metadata['title'] );
-		$alt_len   = mb_strlen( $metadata['alt_text'] );
-
-		if ( $title_len < 15 || $title_len > 70 ) {
-			error_log( "[MSH OpenAI] Title length invalid: {$title_len} chars (need 15-70)" );
-			return new WP_Error( 'title_length', "Title must be 15-70 characters (got {$title_len})" );
-		}
-
-		if ( $alt_len < 8 || $alt_len > 140 ) {
-			error_log( "[MSH OpenAI] ALT text length invalid: {$alt_len} chars (need 8-140)" );
-			return new WP_Error( 'alt_length', "ALT text must be 8-140 characters (got {$alt_len})" );
-		}
-
-		// Simplified banned terms check (AI should handle business name logic via brand_name_visible)
-		$banned_terms = array(
-			'brand imagery',
-			'placeholder',
-			'stock image',
-			'generic image',
-		);
-
-		error_log( "[MSH OpenAI] Validator - checking banned terms: " . implode( ', ', $banned_terms ) );
-
-		// Check all metadata fields for banned terms
-		$fields_to_check = array( 'title', 'alt_text', 'caption', 'description' );
-		foreach ( $fields_to_check as $field ) {
-			if ( empty( $metadata[ $field ] ) ) {
-				continue;
-			}
-
-			$lower = strtolower( $metadata[ $field ] );
-			foreach ( $banned_terms as $term ) {
-				if ( strpos( $lower, $term ) !== false ) {
-					error_log( "[MSH OpenAI] Banned term '{$term}' found in {$field}: {$metadata[$field]}" );
-					return new WP_Error( 'banned_term', "Contains banned term: {$term}" );
-				}
-			}
-		}
-
-		// Sensitive content guard (medical context)
-		// If industry is healthcare and we detect medical terms, be extra strict
-		if ( ! empty( $context['industry'] ) && $context['industry'] === 'healthcare' ) {
-			$medical_terms = array( 'patient', 'treatment', 'medical', 'clinic', 'doctor', 'nurse', 'therapy' );
-			$contains_medical = false;
-
-			foreach ( $fields_to_check as $field ) {
-				$lower = strtolower( $metadata[ $field ] );
-				foreach ( $medical_terms as $term ) {
-					if ( strpos( $lower, $term ) !== false ) {
-						$contains_medical = true;
-						break 2;
-					}
-				}
-			}
-
-			// If medical content detected, ensure no location/business name unless verified
-			if ( $contains_medical ) {
-				$sensitive_terms = array();
-				if ( ! empty( $context['business_name'] ) ) {
-					$sensitive_terms[] = strtolower( $context['business_name'] );
-				}
-				if ( ! empty( $context['city'] ) ) {
-					$sensitive_terms[] = strtolower( $context['city'] );
-				}
-
-				foreach ( $fields_to_check as $field ) {
-					$lower = strtolower( $metadata[ $field ] );
-					foreach ( $sensitive_terms as $term ) {
-						if ( strpos( $lower, $term ) !== false ) {
-							error_log( "[MSH OpenAI] Medical content contains unverified location/business: {$term} in {$field}" );
-							// TODO: In Phase 2, check OCR results before rejecting
-							return new WP_Error( 'sensitive_content', "Medical content with unverified business/location reference" );
-						}
-					}
-				}
-			}
-		}
-
-		return true;
+		return $validator->validate( $context, $metadata );
 	}
 }
 

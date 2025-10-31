@@ -56,14 +56,19 @@
         'needs_attention': { label: 'Attention Required', badgeClass: 'status-warning' }
     };
 
-    function isLocationSpecific(image, contextOverride) {
+    function isSeoMode(image, contextOverride) {
         if (!image && !contextOverride) {
-            return false;
+            return true; // Default to SEO mode ON
         }
 
-        const directFlag = image && (image.location_specific === true || image.location_specific === 1 || image.location_specific === '1');
+        const directFlag = image && (image.seo_mode === true || image.seo_mode === 1 || image.seo_mode === '1');
         const contextDetails = contextOverride || (image && image.context_details) || {};
-        const contextFlag = contextDetails && (contextDetails.location_specific === true || contextDetails.location_specific === 1 || contextDetails.location_specific === '1');
+        const contextFlag = contextDetails && (contextDetails.seo_mode === true || contextDetails.seo_mode === 1 || contextDetails.seo_mode === '1');
+
+        // Default to true if not explicitly set to false
+        if (directFlag === undefined && contextFlag === undefined) {
+            return true;
+        }
 
         return !!(directFlag || contextFlag);
     }
@@ -1829,16 +1834,16 @@
             $(document).on('change', '.context-dropdown', function() {
                 const attachmentId = $(this).data('attachment-id');
                 const newContext = $(this).val();
-                const locationSpecific = UI.getLocationSpecificState(attachmentId);
-                UI.updateImageContext(attachmentId, newContext, locationSpecific);
+                const seoMode = UI.getSeoModeState(attachmentId);
+                UI.updateImageContext(attachmentId, newContext, seoMode);
             });
 
-            $(document).on('change', '.context-location-checkbox', function() {
+            $(document).on('change', '.context-seo-checkbox', function() {
                 const attachmentId = $(this).data('attachment-id');
-                const locationSpecific = $(this).is(':checked');
+                const seoMode = $(this).is(':checked');
                 const $dropdown = $(`.context-dropdown[data-attachment-id="${attachmentId}"]`);
                 const currentContext = $dropdown.length ? $dropdown.val() : '';
-                UI.updateImageContext(attachmentId, currentContext, locationSpecific);
+                UI.updateImageContext(attachmentId, currentContext, seoMode);
             });
 
             // Selection detection working - force update interval removed
@@ -2348,8 +2353,8 @@
                 || 'Auto-detect (default)';
             const autoLabel = image.context_auto_label
                 || (detectedType && contextChoiceMap[detectedType] ? contextChoiceMap[detectedType] : '');
-            const locationSpecific = isLocationSpecific(image, context);
-            const locationChip = locationSpecific ? '<span class="context-location-chip">Location anchored</span>' : '';
+            const seoMode = isSeoMode(image, context);
+            const seoChip = seoMode ? '<span class="context-seo-chip">SEO mode</span>' : '<span class="context-seo-chip context-seo-off">SEO off</span>';
 
             let optionsHTML = '';
             choiceList.forEach(choice => {
@@ -2368,14 +2373,14 @@
                     <div class="context-header">
                         <span class="context-label">${this.escapeHtml(activeLabel)}</span>
                         ${statusBadge}
-                        ${locationChip}
+                        ${seoChip}
                     </div>
                     <select class="context-dropdown" data-attachment-id="${image.ID}">
                         ${optionsHTML}
                     </select>
-                    <label class="context-location-toggle">
-                        <input type="checkbox" class="context-location-checkbox" data-attachment-id="${image.ID}" ${locationSpecific ? 'checked' : ''}>
-                        <span>Use business location context</span>
+                    <label class="context-seo-toggle">
+                        <input type="checkbox" class="context-seo-checkbox" data-attachment-id="${image.ID}" ${seoMode ? 'checked' : ''}>
+                        <span>SEO-optimized metadata</span>
                     </label>
                     ${autoLabel ? `<div class="context-auto-label">Auto: ${this.escapeHtml(autoLabel)}</div>` : ''}
                 </div>
@@ -2388,18 +2393,18 @@
             return div.innerHTML;
         }
 
-        static getLocationSpecificState(attachmentId) {
-            const $checkbox = $(`.context-location-checkbox[data-attachment-id="${attachmentId}"]`);
+        static getSeoModeState(attachmentId) {
+            const $checkbox = $(`.context-seo-checkbox[data-attachment-id="${attachmentId}"]`);
             if ($checkbox.length) {
                 return $checkbox.is(':checked');
             }
 
             const image = AppState.images.find(img => img.ID == attachmentId);
             if (!image) {
-                return false;
+                return true; // Default to SEO mode ON
             }
 
-            return isLocationSpecific(image);
+            return isSeoMode(image);
         }
 
         static showMetaEditModal(attachmentId) {
@@ -2771,7 +2776,7 @@
             `);
         }
 
-        static async updateImageContext(attachmentId, newContext, locationSpecific = null) {
+        static async updateImageContext(attachmentId, newContext, seoMode = null) {
 
             try {
                 const payload = {
@@ -2781,8 +2786,8 @@
                     context: newContext
                 };
 
-                if (locationSpecific !== null) {
-                    payload.location_specific = locationSpecific ? '1' : '0';
+                if (seoMode !== null) {
+                    payload.seo_mode = seoMode ? '1' : '0';
                 }
 
                 const response = await $.post(mshImageOptimizer.ajaxurl, payload);
@@ -2802,7 +2807,7 @@
                         image.context_active_label = updatedImage.context_active_label || 'Auto-detect';
                         image.context_auto_label = updatedImage.context_auto_label || '';
                         image.context_details = updatedImage.context_details || {};
-                        image.location_specific = isLocationSpecific(updatedImage);
+                        image.seo_mode = isSeoMode(updatedImage);
 
                         // Refresh metadata + filename preview so UI reflects the new context immediately
                         image.generated_meta = updatedImage.generated_meta || {};
