@@ -857,7 +857,10 @@ class MSH_Image_Optimizer_Admin {
 				<!-- Step 1: Image Optimization -->
 				<div class="msh-actions-section">
 					<h2 style="color: #35332f;"><?php esc_html_e( 'Step 1: Optimize Images', 'msh-image-optimizer' ); ?></h2>
-					<div class="msh-ai-toggle-section">
+
+					<!-- Two Toggles Side by Side -->
+					<div class="msh-toggles-row" style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 20px;">
+						<!-- AI Metadata Toggle -->
 						<div class="msh-rename-settings-section ai-toggle-panel">
 							<div class="rename-setting-card">
 								<div class="rename-setting-content">
@@ -884,64 +887,35 @@ class MSH_Image_Optimizer_Admin {
 								</div>
 							</div>
 						</div>
-					</div>
-					<div class="msh-notification-section">
-						<div class="msh-rename-settings-section notification-panel">
+
+						<!-- File Renaming Toggle -->
+						<div class="msh-rename-settings-section ai-toggle-panel">
 							<div class="rename-setting-card">
-								<div class="notification-setting-content">
-									<div class="notification-copy">
-										<strong><?php esc_html_e( 'Desktop Notifications', 'msh-image-optimizer' ); ?></strong>
-										<p><?php esc_html_e( 'Get an OS notification when optimization finishes so you can work in other tabs.', 'msh-image-optimizer' ); ?></p>
-									</div>
-									<div class="notification-actions">
-										<button type="button" class="button button-dot-secondary" id="enable-desktop-notifications">
-											<?php esc_html_e( 'Enable Notifications', 'msh-image-optimizer' ); ?>
-										</button>
-										<span class="notification-status-text" id="notification-status-text"></span>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-					<p style="margin-bottom: 15px; color: #35332f; font-size: 14px; background: #faf9f6; padding: 10px; border-radius: 4px;">
-						<strong>RECOMMENDED FIRST:</strong> Optimize your images with WebP conversion, proper ALT text, and SEO improvements before cleaning duplicates.
-					</p>
-					<p class="msh-inline-note" style="margin-top: 4px;"><em><?php esc_html_e( 'We scan content (pages, posts, widgets) and include images that are in use, plus auto-include newer SVG icons so they never get missed.', 'msh-image-optimizer' ); ?></em></p>
-					<p class="msh-inline-note"><em><?php esc_html_e( 'Smart Indexing: Files are indexed automatically when renamed for optimal performance', 'msh-image-optimizer' ); ?></em></p>
-					<div class="msh-rename-settings-section step-rename-settings">
-						<div class="rename-important-callout">
-							<strong><?php esc_html_e( 'File renaming powers Step 1', 'msh-image-optimizer' ); ?></strong>
-							<p><?php esc_html_e( 'Turn this on when you want Analyze & Apply to generate clean, SEO-friendly filenames. Leave it off for audit-only runs where URLs must stay untouched.', 'msh-image-optimizer' ); ?></p>
-							<p><?php esc_html_e( 'We check this toggle before every optimization task, so you are always in control of when filename updates happen.', 'msh-image-optimizer' ); ?></p>
-						</div>
-						<div class="rename-setting-card">
-							<div class="rename-setting-content">
-								<label class="rename-toggle-wrapper">
-									<input type="checkbox" id="enable-file-rename" class="rename-toggle-checkbox"
-											<?php checked( get_option( 'msh_enable_file_rename', '0' ), '1' ); ?>>
-									<span class="rename-toggle-slider"></span>
-									<div class="rename-toggle-text">
-										<strong><?php esc_html_e( 'Enable File Renaming', 'msh-image-optimizer' ); ?></strong>
-										<span class="rename-toggle-description">
-											<?php esc_html_e( 'Provides optimized filenames when Apply Suggestions runs. Requires usage index to prevent broken links.', 'msh-image-optimizer' ); ?>
+								<div class="rename-setting-content">
+									<label class="rename-toggle-wrapper ai-toggle-wrapper">
+										<input type="checkbox" id="enable-file-rename" class="rename-toggle-checkbox"
+												<?php checked( get_option( 'msh_enable_file_rename', '0' ), '1' ); ?>>
+										<span class="rename-toggle-slider"></span>
+										<div class="rename-toggle-text">
+											<strong><?php esc_html_e( 'Enable File Renaming', 'msh-image-optimizer' ); ?></strong>
+										</div>
+									</label>
+									<div id="rename-status-indicator" class="rename-status ai-mode-status">
+										<span class="rename-status-text">
+											<?php
+											$rename_enabled = get_option( 'msh_enable_file_rename', '0' ) === '1';
+											$index_built    = get_option( 'msh_usage_index_last_build' ) !== false;
+
+											if ( $rename_enabled && $index_built ) {
+												echo '<span class="status-ready">' . esc_html__( '✓ Ready for renaming', 'msh-image-optimizer' ) . '</span>';
+											} elseif ( $rename_enabled && ! $index_built ) {
+												echo '<span class="status-pending">' . esc_html__( '⚠ Index required', 'msh-image-optimizer' ) . '</span>';
+											} else {
+												echo '<span class="status-disabled">' . esc_html__( 'Renaming disabled', 'msh-image-optimizer' ) . '</span>';
+											}
+											?>
 										</span>
 									</div>
-								</label>
-								<div id="rename-status-indicator" class="rename-status">
-									<span class="rename-status-text">
-										<?php
-										$rename_enabled = get_option( 'msh_enable_file_rename', '0' ) === '1';
-										$index_built    = get_option( 'msh_usage_index_last_build' ) !== false;
-
-										if ( $rename_enabled && $index_built ) {
-											echo '<span class="status-ready">' . esc_html__( '✓ Ready for renaming', 'msh-image-optimizer' ) . '</span>';
-										} elseif ( $rename_enabled && ! $index_built ) {
-											echo '<span class="status-pending">' . esc_html__( '⚠ Index required', 'msh-image-optimizer' ) . '</span>';
-										} else {
-											echo '<span class="status-disabled">' . esc_html__( 'Renaming disabled', 'msh-image-optimizer' ) . '</span>';
-										}
-										?>
-									</span>
 								</div>
 							</div>
 						</div>

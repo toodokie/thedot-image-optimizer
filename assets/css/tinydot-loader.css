@@ -299,6 +299,10 @@
     height: 100%;
     object-fit: contain;
     animation: msh-tinydot-pulse-spin 1.8s ease-in-out infinite;
+    /* Hardware acceleration for smoother animation */
+    will-change: transform, opacity;
+    transform: translateZ(0);
+    backface-visibility: hidden;
 }
 
 /* Loading text in row loader */

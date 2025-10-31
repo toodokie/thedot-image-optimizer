@@ -6781,7 +6781,9 @@ class MSH_Image_Optimizer {
 
 		// CRITICAL FIX: During analyze mode, force ai_mode='manual' to skip AI API calls
 		// Analysis should only read cached metadata, not generate new AI metadata
-		if ( empty( $ai_options['ai_regeneration'] ) ) {
+		// BUT: Allow AI regeneration when explicitly requested (category/SEO changes)
+		$is_ai_regeneration = ! empty( $ai_options['ai_regeneration'] );
+		if ( ! $is_ai_regeneration ) {
 			$ai_options['ai_mode'] = 'manual';
 		}
 
@@ -9092,16 +9094,17 @@ class MSH_Image_Optimizer {
 
 		try {
 			// When context changes, ALWAYS regenerate AI metadata if AI is enabled
-			$ai_interest = get_option( 'msh_ai_interest', '' );
-			$ai_options  = array();
+			$ai_mode_setting = get_option( 'msh_ai_mode', 'manual' );
+			$ai_enabled      = ( $ai_mode_setting !== 'manual' );
+			$ai_options      = array();
 
-			if ( $ai_interest === 'yes' && $context_changed ) {
+			if ( $ai_enabled && $context_changed ) {
 				// Force AI regeneration with new context
 				$ai_options['ai_regeneration'] = true;
 				$ai_options['ai_mode']         = 'overwrite'; // OVERWRITE to reflect new context
 				$ai_options['ai_fields']       = array( 'title', 'alt_text', 'caption', 'description' );
 				error_log( "[MSH] Context changed - forcing AI regeneration for attachment {$attachment_id}" );
-			} elseif ( $ai_interest === 'yes' ) {
+			} elseif ( $ai_enabled ) {
 				// Context didn't change, just refresh metadata preview
 				$ai_options['ai_regeneration'] = true;
 				$ai_options['ai_mode']         = 'fill-empty'; // Fill empty fields
