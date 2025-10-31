@@ -696,6 +696,10 @@ class MSH_Safe_Rename_System {
 			}
 		}
 
+		// CRITICAL FIX: Ensure _wp_attached_file meta points to the renamed file
+		// wp_generate_attachment_metadata() may have reset this to the old path
+		update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+
 		$new_slug = sanitize_title( pathinfo( $new_relative, PATHINFO_FILENAME ) );
 		wp_update_post(
 			array(
