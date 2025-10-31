@@ -2788,6 +2788,17 @@
             console.log('[MSH Loading] Found row:', $row.length > 0);
             if ($row.length) {
                 $row.addClass('is-regenerating');
+
+                // Position the loader over the row
+                const $loader = $row.find('.row-loader');
+                if ($loader.length) {
+                    const rowRect = $row[0].getBoundingClientRect();
+                    $loader.css({
+                        top: rowRect.top + rowRect.height / 2 + 'px',
+                        left: rowRect.left + rowRect.width / 2 + 'px',
+                        transform: 'translate(-50%, -50%)'
+                    });
+                }
                 console.log('[MSH Loading] Added is-regenerating class');
             }
         }

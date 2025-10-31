@@ -254,11 +254,15 @@
 
 /* Row loading overlay */
 .result-row.is-regenerating {
-    position: relative;
     pointer-events: none;
 }
 
-.result-row.is-regenerating::after {
+/* Create overlay using a pseudo-element on each td */
+.result-row.is-regenerating > td {
+    position: relative;
+}
+
+.result-row.is-regenerating > td::after {
     content: '';
     position: absolute;
     inset: 0;
@@ -270,19 +274,17 @@
 /* Loader container for row */
 .result-row .row-loader {
     display: none;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 11;
-    pointer-events: none; /* Don't block clicks when hidden */
+    position: fixed; /* Use fixed to avoid table layout issues */
+    z-index: 999;
+    pointer-events: none;
 }
 
+/* Calculate position dynamically when visible */
 .result-row.is-regenerating .row-loader {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 8px;
+    justify-content: center;
     pointer-events: auto; /* Allow interaction when visible */
 }
 
