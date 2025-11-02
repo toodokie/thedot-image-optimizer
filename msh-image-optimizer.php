@@ -3,7 +3,7 @@
  * Plugin Name: MSH Image Optimizer
  * Plugin URI: https://github.com/toodokie/thedot-image-optimizer
  * Description: Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking.
- * Version: 1.2.7
+ * Version: 1.2.16
  * Author: Main Street Health
  * Author URI: https://github.com/toodokie
  * Text Domain: msh-image-optimizer
@@ -33,7 +33,7 @@ if (!defined('MSH_IO_ASSETS_URL')) {
 }
 
 final class MSH_Image_Optimizer_Plugin {
-    const VERSION = '1.2.7';
+    const VERSION = '1.2.16';
 
     private static $instance = null;
 
@@ -102,7 +102,7 @@ final class MSH_Image_Optimizer_Plugin {
         if (!class_exists('MSH_Perceptual_Hash')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-perceptual-hash.php';
         }
-        if (!class_exists('MSH_Safe_Rename_CLI')) {
+        if (!class_exists('MSH_Safe_Rename_CLI_Helper')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-safe-rename-cli.php';
         }
         if (!class_exists('MSH_QA_CLI')) {
@@ -116,6 +116,9 @@ final class MSH_Image_Optimizer_Plugin {
         }
         if (!class_exists('MSH_AI_Service')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-ai-service.php';
+        }
+        if (!class_exists('MSH_Concurrent_Queue')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-concurrent-queue.php';
         }
         if (!class_exists('MSH_OpenAI_Connector')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
@@ -285,7 +288,7 @@ require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-profiler.php';
     }
 
     public function init() {
-        if (function_exists('MSH_Safe_Rename_System::get_instance')) {
+        if (class_exists('MSH_Safe_Rename_System') && method_exists('MSH_Safe_Rename_System', 'get_instance')) {
             MSH_Safe_Rename_System::get_instance();
         }
         if (class_exists('MSH_Image_Usage_Index')) {

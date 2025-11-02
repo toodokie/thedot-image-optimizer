@@ -26,6 +26,309 @@ class MSH_Safe_Rename_System {
 		add_action( 'init', array( $this, 'maybe_create_log_table' ) );
 		add_action( 'template_redirect', array( $this, 'handle_old_urls' ), 1 );
 		add_action( 'msh_cleanup_rename_backup', array( $this, 'cleanup_backup' ), 10, 1 );
+
+		// GUARD #0: Intercept update_attached_file() filter (earliest possible point)
+		add_filter( 'update_attached_file', array( $this, 'guard_update_attached_file_filter' ), 1, 2 );
+
+		// GUARD #1: Prevent corrupted _wp_attached_file writes (normalize all updates)
+		// Priority 1 to match manual rename lock wrapper
+		add_filter( 'pre_update_post_metadata', array( $this, 'guard_attached_file_corruption' ), 1, 4 );
+
+		// GUARD #2: Normalize attachment metadata structure (file + sizes)
+		add_filter( 'wp_update_attachment_metadata', array( $this, 'guard_attachment_metadata_corruption' ), 9, 2 );
+
+		// FORENSICS: Track suspicious corruption attempts with call stack
+		add_filter( 'update_post_metadata', array( $this, 'forensic_track_corruption' ), 99, 5 );
+		add_filter( 'wp_update_attachment_metadata', array( $this, 'forensic_track_metadata_corruption' ), 99, 2 );
+
+		error_log( '[MSH Safe Rename System] Initialized with corruption guards active' );
+	}
+
+	/**
+	 * GUARD #0: Intercept WordPress update_attached_file() filter
+	 * This catches the value BEFORE it reaches update_post_meta()
+	 */
+	public function guard_update_attached_file_filter( $file, $attachment_id ) {
+		$normalized = $this->normalize_attached_file( $file );
+		if ( $normalized !== $file ) {
+			error_log( "[MSH GUARD #0] Blocked corrupted filename in update_attached_file filter for #{$attachment_id}" );
+			error_log( "[MSH GUARD #0]   Attempted: {$file}" );
+			error_log( "[MSH GUARD #0]   Normalized: {$normalized}" );
+			return $normalized;
+		}
+		return $file;
+	}
+
+	/**
+	 * GUARD #1: Prevent corrupted _wp_attached_file writes
+	 * Normalizes any attempt to write a tripled/duplicated filename
+	 */
+	public function guard_attached_file_corruption( $check, $object_id, $meta_key, $meta_value ) {
+		if ( $meta_key !== '_wp_attached_file' ) {
+			return $check;
+		}
+
+		// ALWAYS log every _wp_attached_file write attempt during rename
+		if ( ! empty( $GLOBALS['_msh_guard'] ) ) {
+			error_log( "[MSH GUARD CHECK] _wp_attached_file write for #{$object_id}: {$meta_value}" );
+		}
+
+		$normalized = $this->normalize_attached_file( $meta_value );
+		if ( $normalized !== $meta_value ) {
+			error_log( "[MSH GUARD BLOCK] Corrupted write detected for #{$object_id}" );
+			error_log( "[MSH GUARD BLOCK]   Attempted: {$meta_value}" );
+			error_log( "[MSH GUARD BLOCK]   Normalized: {$normalized}" );
+
+			// Temporarily remove filter to prevent recursion, then force update with normalized value
+			// Use priority 1 to match the manual rename lock wrapper
+			remove_filter( 'pre_update_post_metadata', array( $this, 'guard_attached_file_corruption' ), 1 );
+			update_post_meta( $object_id, '_wp_attached_file', $normalized );
+			add_filter( 'pre_update_post_metadata', array( $this, 'guard_attached_file_corruption' ), 1, 4 );
+
+			return true; // Prevent the original corrupted write
+		}
+
+		return $check; // Allow normal update to proceed
+	}
+
+	/**
+	 * GUARD #2: Normalize attachment metadata structure
+	 */
+	public function guard_attachment_metadata_corruption( $data, $post_id ) {
+		if ( ! is_array( $data ) || empty( $data['file'] ) ) {
+			return $data;
+		}
+
+		$original_file = $data['file'];
+		$data['file']  = $this->normalize_attached_file( $data['file'] );
+
+		if ( ! empty( $data['sizes'] ) && is_array( $data['sizes'] ) ) {
+			foreach ( $data['sizes'] as $k => $s ) {
+				if ( ! empty( $s['file'] ) ) {
+					$data['sizes'][ $k ]['file'] = $this->normalize_basename( $s['file'] );
+				}
+			}
+		}
+
+		if ( $original_file !== $data['file'] ) {
+			error_log( "[MSH GUARD] Normalized attachment_metadata[file] for #{$post_id}" );
+			error_log( "[MSH GUARD]   From: {$original_file}" );
+			error_log( "[MSH GUARD]   To: {$data['file']}" );
+		}
+
+		return $data;
+	}
+
+	/**
+	 * FORENSICS: Track suspicious corruption attempts
+	 */
+	public function forensic_track_corruption( $check, $object_id, $meta_key, $meta_value, $prev_value ) {
+		if ( $meta_key !== '_wp_attached_file' ) {
+			return $check;
+		}
+
+		// Detect pattern like "TEST-TEST-TEST-" or any repeated prefix
+		if ( preg_match( '/^(.+?)\/([A-Z0-9]+-)\2+/i', $meta_value ) ) {
+			$bt = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 12 );
+			$functions = array_column( $bt, 'function' );
+			error_log( '[MSH CORRUPTOR] Detected corrupted _wp_attached_file write attempt!' );
+			error_log( "[MSH CORRUPTOR]   Post ID: {$object_id}" );
+			error_log( "[MSH CORRUPTOR]   Value: {$meta_value}" );
+			error_log( '[MSH CORRUPTOR]   Stack: ' . json_encode( $functions ) );
+		}
+
+		return $check;
+	}
+
+	/**
+	 * FORENSICS: Track suspicious metadata corruption
+	 */
+	public function forensic_track_metadata_corruption( $data, $post_id ) {
+		if ( ! empty( $data['file'] ) && preg_match( '/^(.+?)\/([A-Z0-9]+-)\2+/i', $data['file'] ) ) {
+			$bt = debug_backtrace( DEBUG_BACKTRACE_IGNORE_ARGS, 12 );
+			$functions = array_column( $bt, 'function' );
+			error_log( '[MSH CORRUPTOR META] Detected corrupted attachment_metadata[file]!' );
+			error_log( "[MSH CORRUPTOR META]   Post ID: {$post_id}" );
+			error_log( "[MSH CORRUPTOR META]   File: {$data['file']}" );
+			error_log( '[MSH CORRUPTOR META]   Stack: ' . json_encode( $functions ) );
+		}
+
+		return $data;
+	}
+
+	/**
+	 * Normalize a relative file path (e.g., "2008/06/TEST-TEST-TEST-file.jpg" → "2008/06/TEST-file.jpg")
+	 */
+	private function normalize_attached_file( $rel ) {
+		if ( empty( $rel ) ) {
+			return $rel;
+		}
+
+		$rel   = ltrim( $rel, '/' );
+		$parts = explode( '/', $rel );
+		$file  = array_pop( $parts );
+		$file  = $this->normalize_basename( $file );
+		$parts[] = $file;
+
+		return implode( '/', $parts );
+	}
+
+	/**
+	 * Normalize a filename basename (e.g., "TEST-TEST-TEST-file.jpg" → "TEST-file.jpg")
+	 */
+	private function normalize_basename( $basename ) {
+		if ( empty( $basename ) ) {
+			return $basename;
+		}
+
+		// If we have an expected basename set globally, use it (absolute override)
+		if ( ! empty( $GLOBALS['_msh_expected_basename'] ) ) {
+			return $GLOBALS['_msh_expected_basename'];
+		}
+
+		// Collapse repeated identical prefix patterns like "TEST-TEST-TEST-" to single "TEST-"
+		// Pattern: if hyphen-delimited segments at start repeat ≥2, collapse to one
+		if ( preg_match( '/^(([A-Z0-9]+)-)\1+(.+)$/i', $basename, $m ) ) {
+			// $m[1] = "TEST-", $m[3] = rest of filename
+			$normalized = $m[1] . $m[3];
+			return $normalized;
+		}
+
+		return $basename;
+	}
+
+	/**
+	 * Repair attachment metadata that contains repeated filename prefixes.
+	 *
+	 * @param int  $attachment_id Attachment post ID.
+	 * @param bool $dry_run       When true, calculate changes without persisting them.
+	 * @return array|WP_Error Report of changes or WP_Error on invalid input.
+	 */
+	public function repair_corrupted_attachment( $attachment_id, $dry_run = false ) {
+		$attachment_id = (int) $attachment_id;
+
+		if ( $attachment_id <= 0 ) {
+			return new WP_Error( 'invalid_attachment', 'Invalid attachment ID supplied.' );
+		}
+
+		$result = array(
+			'attachment_id'     => $attachment_id,
+			'dry_run'           => (bool) $dry_run,
+			'meta_before'       => null,
+			'meta_after'        => null,
+			'meta_changed'      => false,
+			'metadata_changed'  => false,
+			'post_name_before'  => null,
+			'post_name_after'   => null,
+			'post_name_changed' => false,
+			'notes'             => array(),
+			'status'            => 'clean',
+		);
+
+		$current_relative = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		$result['meta_before'] = $current_relative;
+
+		if ( empty( $current_relative ) ) {
+			$result['notes'][] = 'Attachment has no stored _wp_attached_file meta.';
+			return $result;
+		}
+
+		$normalized_relative = $this->normalize_attached_file( $current_relative );
+		$result['meta_after'] = $normalized_relative;
+
+		if ( $normalized_relative !== $current_relative ) {
+			$result['meta_changed'] = true;
+			$result['notes'][]      = sprintf(
+				'Normalized _wp_attached_file from "%s" to "%s".',
+				$current_relative,
+				$normalized_relative
+			);
+
+			if ( ! $dry_run ) {
+				update_post_meta( $attachment_id, '_wp_attached_file', $normalized_relative );
+			}
+		}
+
+		$metadata          = wp_get_attachment_metadata( $attachment_id );
+		$metadata_modified = false;
+
+		if ( is_array( $metadata ) && ! empty( $metadata ) ) {
+			if ( ! empty( $metadata['file'] ) ) {
+				$original_file    = $metadata['file'];
+				$normalized_file = $this->normalize_attached_file( $metadata['file'] );
+				if ( $normalized_file !== $original_file ) {
+					$metadata['file'] = $normalized_file;
+					$metadata_modified = true;
+					$result['notes'][] = sprintf(
+						'Normalized attachment metadata[file] from "%s" to "%s".',
+						$original_file,
+						$normalized_file
+					);
+				}
+			}
+
+			if ( ! empty( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ) {
+				foreach ( $metadata['sizes'] as $size_key => $size_data ) {
+					if ( empty( $size_data['file'] ) ) {
+						continue;
+					}
+
+					$original_size = $size_data['file'];
+					$normalized_size = $this->normalize_basename( $size_data['file'] );
+					if ( $normalized_size !== $original_size ) {
+						$metadata['sizes'][ $size_key ]['file'] = $normalized_size;
+						$metadata_modified = true;
+						$result['notes'][] = sprintf(
+							'Normalized metadata size "%s" from "%s" to "%s".',
+							$size_key,
+							$original_size,
+							$normalized_size
+						);
+					}
+				}
+			}
+
+			if ( $metadata_modified ) {
+				$result['metadata_changed'] = true;
+				if ( ! $dry_run ) {
+					wp_update_attachment_metadata( $attachment_id, $metadata );
+				}
+			}
+		}
+
+		if ( $normalized_relative ) {
+			$new_slug = sanitize_title( pathinfo( $normalized_relative, PATHINFO_FILENAME ) );
+			$post     = get_post( $attachment_id );
+
+			if ( $post ) {
+				$result['post_name_before'] = $post->post_name;
+				$result['post_name_after']  = $new_slug;
+
+				if ( $post->post_name !== $new_slug && $new_slug !== '' ) {
+					$result['post_name_changed'] = true;
+					$result['notes'][]           = sprintf(
+						'Updated attachment slug from "%s" to "%s".',
+						$post->post_name,
+						$new_slug
+					);
+
+					if ( ! $dry_run ) {
+						wp_update_post(
+							array(
+								'ID'        => $attachment_id,
+								'post_name' => $new_slug,
+							)
+						);
+					}
+				}
+			}
+		}
+
+		if ( $result['meta_changed'] || $result['metadata_changed'] || $result['post_name_changed'] ) {
+			$result['status'] = $dry_run ? 'needs_repair' : 'repaired';
+		}
+
+		return $result;
 	}
 
 	public static function get_instance() {
@@ -193,6 +496,13 @@ class MSH_Safe_Rename_System {
 	}
 
 	public function rename_attachment( $attachment_id, $new_filename, $test_mode = false ) {
+		// DEBUG: Log every call to rename_attachment to detect multiple invocations
+		error_log( '[MSH Rename DEBUG] ========== rename_attachment() CALLED ==========' );
+		error_log( '[MSH Rename DEBUG] Attachment ID: ' . $attachment_id );
+		error_log( '[MSH Rename DEBUG] Requested filename: ' . $new_filename );
+		error_log( '[MSH Rename DEBUG] Test mode: ' . ( $test_mode ? 'YES' : 'NO' ) );
+		error_log( '[MSH Rename DEBUG] Call stack: ' . wp_debug_backtrace_summary() );
+
 		$this->test_mode         = (bool) $test_mode;
 		$this->last_replacements = 0;
 		if ( ! $this->test_mode ) {
@@ -200,13 +510,18 @@ class MSH_Safe_Rename_System {
 		}
 
 		$current_path = get_attached_file( $attachment_id );
+		error_log( '[MSH Rename DEBUG] Current file path: ' . $current_path );
+
 		if ( ! $current_path || ! file_exists( $current_path ) ) {
 			return new WP_Error( 'missing_file', __( 'Original file not found for attachment.', 'msh-image-optimizer' ) );
 		}
 
 		$new_filename     = sanitize_file_name( $new_filename );
+		error_log( '[MSH Rename DEBUG] Sanitized filename: ' . $new_filename );
+
 		$current_basename = basename( $current_path );
 		if ( $new_filename === '' || strcasecmp( $current_basename, $new_filename ) === 0 ) {
+			error_log( '[MSH Rename DEBUG] SKIPPING - filename unchanged' );
 			return array(
 				'old_url'  => wp_get_attachment_url( $attachment_id ),
 				'new_url'  => wp_get_attachment_url( $attachment_id ),
@@ -218,10 +533,16 @@ class MSH_Safe_Rename_System {
 		$upload_dir   = wp_upload_dir();
 		$old_url      = wp_get_attachment_url( $attachment_id );
 		$old_relative = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		error_log( '[MSH Rename DEBUG] Old relative path from meta: ' . $old_relative );
 
 		$new_filename = $this->ensure_unique_filename( $new_filename, dirname( $current_path ) );
+		error_log( '[MSH Rename DEBUG] Unique filename after collision check: ' . $new_filename );
+
 		$new_relative = str_replace( basename( $old_relative ), $new_filename, $old_relative );
+		error_log( '[MSH Rename DEBUG] New relative path calculated: ' . $new_relative );
+
 		$new_url      = trailingslashit( $upload_dir['baseurl'] ) . ltrim( $new_relative, '/' );
+		error_log( '[MSH Rename DEBUG] New URL: ' . $new_url );
 
 		$log_id = $this->log_intent( $attachment_id, $current_basename, $new_filename, $old_url, $new_url, $old_relative, $new_relative );
 
@@ -270,6 +591,34 @@ class MSH_Safe_Rename_System {
 		if ( ! $this->test_mode ) {
 			$this->clear_usage_lookup_cache();
 		}
+
+		// ====== POST-RENAME VALIDATION & HEAL ======
+		// Belt-and-suspenders: verify DB is in correct state after rename completes
+		$final_rel = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		if ( $final_rel !== $new_relative ) {
+			error_log( "[MSH HEAL] Final _wp_attached_file mismatch for #{$attachment_id}! Expected: {$new_relative}, Got: {$final_rel}" );
+			update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+			error_log( "[MSH HEAL] Corrected _wp_attached_file to: {$new_relative}" );
+		}
+
+		$final_meta = wp_get_attachment_metadata( $attachment_id );
+		if ( ! empty( $final_meta['file'] ) && $final_meta['file'] !== $new_relative ) {
+			error_log( "[MSH HEAL] Final metadata[file] mismatch for #{$attachment_id}! Expected: {$new_relative}, Got: {$final_meta['file']}" );
+			$final_meta['file'] = $new_relative;
+
+			// Also normalize sizes basenames if needed
+			if ( ! empty( $final_meta['sizes'] ) && is_array( $final_meta['sizes'] ) ) {
+				foreach ( $final_meta['sizes'] as $k => $s ) {
+					if ( ! empty( $s['file'] ) ) {
+						$final_meta['sizes'][ $k ]['file'] = $this->normalize_basename( $s['file'] );
+					}
+				}
+			}
+
+			wp_update_attachment_metadata( $attachment_id, $final_meta );
+			error_log( "[MSH HEAL] Corrected metadata[file] and sizes to use new basename" );
+		}
+		// ====== END POST-RENAME VALIDATION & HEAL ======
 
 		return array(
 			'old_url'  => $old_url,
@@ -670,7 +1019,20 @@ class MSH_Safe_Rename_System {
 	}
 
 	private function update_wordpress_metadata( $attachment_id, $new_path, $old_metadata, $new_relative ) {
-		update_attached_file( $attachment_id, $new_path );
+		// DEBUG LOGGING: Track all metadata updates
+		error_log( '[MSH Rename DEBUG] update_wordpress_metadata() called for attachment ' . $attachment_id );
+		error_log( '[MSH Rename DEBUG] Parameters: new_path=' . $new_path . ', new_relative=' . $new_relative );
+
+		// Read current value BEFORE any updates
+		$before_value = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		error_log( '[MSH Rename DEBUG] _wp_attached_file BEFORE updates: ' . $before_value );
+
+		// CRITICAL FIX: Use relative path, not full filesystem path
+		error_log( '[MSH Rename DEBUG] Calling update_attached_file() with: ' . $new_relative );
+		update_attached_file( $attachment_id, $new_relative );
+
+		$after_update_attached = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER update_attached_file(): ' . $after_update_attached );
 
 		if ( is_array( $old_metadata ) ) {
 			$metadata         = $old_metadata;
@@ -683,22 +1045,50 @@ class MSH_Safe_Rename_System {
 				}
 			}
 
+			error_log( '[MSH Rename DEBUG] Calling wp_update_attachment_metadata() with file: ' . $metadata['file'] );
 			wp_update_attachment_metadata( $attachment_id, $metadata );
+
+			$after_wp_update = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER wp_update_attachment_metadata(): ' . $after_wp_update );
 		}
+
+		// Detect if this is a manual rename (guard is set)
+		$is_manual_rename = ! empty( $GLOBALS['_msh_guard'] );
 
 		$mime = get_post_mime_type( $attachment_id );
-		if ( $mime && strpos( $mime, 'image/' ) === 0 ) {
+		if ( $mime && strpos( $mime, 'image/' ) === 0 && ! $is_manual_rename ) {
+			// Only regenerate thumbnails if NOT a manual rename
+			// Manual renames only change the filename - thumbnails already exist with correct dimensions
 			require_once ABSPATH . 'wp-admin/includes/image.php';
+			error_log( '[MSH Rename DEBUG] Calling wp_generate_attachment_metadata() with: ' . $new_path );
 			$regen = wp_generate_attachment_metadata( $attachment_id, $new_path );
+
+			$after_generate = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER wp_generate_attachment_metadata(): ' . $after_generate );
+
 			if ( ! is_wp_error( $regen ) && ! empty( $regen ) ) {
+				error_log( '[MSH Rename DEBUG] Generated metadata file key: ' . ( $regen['file'] ?? 'NOT SET' ) );
 				$regen['file'] = $new_relative;
+				error_log( '[MSH Rename DEBUG] Calling wp_update_attachment_metadata() (2nd time) with file: ' . $regen['file'] );
 				wp_update_attachment_metadata( $attachment_id, $regen );
+
+				$after_second_update = get_post_meta( $attachment_id, '_wp_attached_file', true );
+				error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER 2nd wp_update_attachment_metadata(): ' . $after_second_update );
+
+				// CRITICAL FIX: Ensure _wp_attached_file meta points to the renamed file
+				// wp_generate_attachment_metadata() may have reset this to the old path
+				error_log( '[MSH Rename DEBUG] Calling update_post_meta() directly with: ' . $new_relative );
+				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+
+				$after_final_fix = get_post_meta( $attachment_id, '_wp_attached_file', true );
+				error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER final update_post_meta(): ' . $after_final_fix );
 			}
+		} elseif ( $is_manual_rename ) {
+			error_log( '[MSH Rename DEBUG] Skipping wp_generate_attachment_metadata() for manual rename - thumbnails already exist' );
 		}
 
-		// CRITICAL FIX: Ensure _wp_attached_file meta points to the renamed file
-		// wp_generate_attachment_metadata() may have reset this to the old path
-		update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+		$final_value = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		error_log( '[MSH Rename DEBUG] _wp_attached_file FINAL VALUE at end of method: ' . $final_value );
 
 		$new_slug = sanitize_title( pathinfo( $new_relative, PATHINFO_FILENAME ) );
 		wp_update_post(

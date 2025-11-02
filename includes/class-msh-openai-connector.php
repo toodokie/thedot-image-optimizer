@@ -50,6 +50,133 @@ class MSH_OpenAI_Connector {
 	}
 
 	/**
+	 * Batch generate metadata for multiple images in parallel.
+	 *
+	 * Uses curl_multi for concurrent API requests. Significantly faster than sequential processing.
+	 *
+	 * @param array $payloads Array of payloads, keyed by attachment_id.
+	 * @param int   $concurrency Maximum concurrent requests (default: 3).
+	 * @return array Results keyed by attachment_id.
+	 */
+	public function batch_generate_metadata_parallel( $payloads, $concurrency = 3 ) {
+		if ( empty( $payloads ) || ! class_exists( 'MSH_Concurrent_Queue' ) ) {
+			return array();
+		}
+
+		$t_start = microtime( true );
+		$queue   = new MSH_Concurrent_Queue( $concurrency );
+		$results = array();
+
+		// Get API key (same for all requests in batch)
+		$first_payload = reset( $payloads );
+		$api_key       = ! empty( $first_payload['api_key'] ) ? $first_payload['api_key'] : get_option( 'msh_ai_api_key', '' );
+
+		// For bundled access mode, use platform key
+		if ( empty( $api_key ) && ! empty( $first_payload['access_mode'] ) && $first_payload['access_mode'] === 'bundled' ) {
+			$api_key = defined( 'MSH_PLATFORM_OPENAI_KEY' ) ? MSH_PLATFORM_OPENAI_KEY : '';
+		}
+
+		if ( empty( $api_key ) ) {
+			error_log( '[MSH OpenAI Batch] No API key available' );
+			return array();
+		}
+
+		// Queue all requests
+		foreach ( $payloads as $attachment_id => $payload ) {
+			$image_url = wp_get_attachment_url( $attachment_id );
+			if ( ! $image_url ) {
+				continue;
+			}
+
+			// Build prompt messages
+			$context       = $payload['context'];
+			$business_name = ! empty( $context['business_name'] ) ? $context['business_name'] : 'this business';
+			$industry      = ! empty( $context['industry_label'] ) ? $context['industry_label'] : 'professional services';
+
+			$location_parts = array();
+			if ( ! empty( $context['city'] ) ) {
+				$location_parts[] = $context['city'];
+			}
+			if ( ! empty( $context['country'] ) ) {
+				$location_parts[] = $context['country'];
+			}
+			$location = implode( ', ', $location_parts );
+			$uvp      = ! empty( $context['uvp'] ) ? $context['uvp'] : '';
+
+			$features          = ! empty( $payload['features'] ) ? $payload['features'] : array();
+			$ai_options        = ! empty( $payload['ai_options'] ) ? $payload['ai_options'] : array();
+			$language_choice   = isset( $ai_options['language'] ) ? strtolower( (string) $ai_options['language'] ) : 'auto';
+			$resolved_language = $this->normalize_language_choice( $language_choice, $ai_options, $context );
+
+			$messages = $this->build_prompt_messages(
+				$attachment_id,
+				$image_url,
+				$business_name,
+				$industry,
+				$location,
+				$uvp,
+				$context,
+				$features,
+				$resolved_language
+			);
+
+			// Build request body
+			$body = array(
+				'model'       => 'gpt-4o',
+				'messages'    => $messages,
+				'max_tokens'  => 500,
+				'temperature' => 0,
+			);
+
+			// Add to queue
+			$queue->add(
+				(string) $attachment_id,
+				self::API_ENDPOINT,
+				array(
+					'Authorization' => 'Bearer ' . $api_key,
+					'Content-Type'  => 'application/json',
+				),
+				wp_json_encode( $body ),
+				15 // 15 second timeout per request
+			);
+		}
+
+		error_log( sprintf( '[MSH OpenAI Batch] Queued %d requests with concurrency=%d', count( $payloads ), $concurrency ) );
+
+		// Execute all requests in parallel
+		$raw_results = $queue->execute();
+
+		// Process results
+		foreach ( $raw_results as $attachment_id => $result ) {
+			if ( ! $result['success'] ) {
+				error_log( sprintf( '[MSH OpenAI Batch] Failed for attachment %d: %s', $attachment_id, $result['error'] ) );
+				$results[ $attachment_id ] = null;
+				continue;
+			}
+
+			// Parse response
+			$payload          = $payloads[ $attachment_id ];
+			$parsed_metadata = $this->parse_openai_response( $result['response'], $payload['context'] );
+
+			if ( $parsed_metadata ) {
+				$results[ $attachment_id ] = $parsed_metadata;
+			} else {
+				$results[ $attachment_id ] = null;
+			}
+		}
+
+		$duration = microtime( true ) - $t_start;
+		error_log( sprintf(
+			'[MSH OpenAI Batch] Completed %d images in %.2fs (%.2fs/image)',
+			count( $results ),
+			$duration,
+			count( $results ) > 0 ? $duration / count( $results ) : 0
+		) );
+
+		return $results;
+	}
+
+	/**
 	 * Generate metadata using the OpenAI Vision API.
 	 *
 	 * @since 1.0.0
@@ -228,6 +355,38 @@ class MSH_OpenAI_Connector {
 		}
 
 		error_log( '[MSH OpenAI] Successfully generated metadata for attachment ' . $attachment_id );
+		error_log( '[MSH OpenAI] Generated title: ' . ( $parsed_metadata['title'] ?? 'N/A' ) );
+		error_log( '[MSH OpenAI] Generated description: ' . ( $parsed_metadata['description'] ?? 'N/A' ) );
+
+		// CRITICAL: Strip business branding from titles when seo_mode=false
+		// This is a safety net to ensure AI-generated titles don't include business name
+		// when SEO mode is disabled, regardless of what the AI model returns
+		$seo_mode = isset( $context['seo_mode'] ) ? (bool) $context['seo_mode'] : true;
+		if ( ! $seo_mode && isset( $parsed_metadata['title'] ) ) {
+			$business_name = $context['business_name'] ?? '';
+			if ( $business_name ) {
+				$original_title = $parsed_metadata['title'];
+				// Strip common branding suffix patterns
+				$patterns = array(
+					'/\s*-\s*' . preg_quote( $business_name, '/' ) . '\s*Imagery\s*$/i',
+					'/\s*-\s*' . preg_quote( $business_name, '/' ) . '\s*Wellness Imagery\s*$/i',
+					'/\s*-\s*' . preg_quote( $business_name, '/' ) . '\s*$/i',
+					'/\s*\|\s*' . preg_quote( $business_name, '/' ) . '\s*$/i',
+				);
+				$clean_title = preg_replace( $patterns, '', $parsed_metadata['title'] );
+				// Normalize leftover whitespace/hyphens
+				$clean_title = preg_replace( '/\s{2,}/', ' ', trim( $clean_title ) );
+				$clean_title = preg_replace( '/\s*-\s*$/', '', $clean_title );
+
+				if ( $clean_title !== $original_title ) {
+					error_log( '[MSH OpenAI] seo_mode=false: Stripped business name from title' );
+					error_log( '[MSH OpenAI] Original: ' . $original_title );
+					error_log( '[MSH OpenAI] Sanitized: ' . $clean_title );
+					$parsed_metadata['title'] = $clean_title;
+				}
+			}
+		}
+
 		return $parsed_metadata;
 	}
 
@@ -291,8 +450,27 @@ class MSH_OpenAI_Connector {
 		$downgrade_summary = empty( $downgrades ) ? 'none' : implode( ', ', array_map( 'sanitize_key', $downgrades ) );
 
 		// Build SYSTEM message
-		$system_message = "You are an AI metadata assistant for an image optimization plugin (locale: {$locale}).
+		$seo_critical_instruction = '';
+		if ( ! $seo_mode ) {
+			$seo_critical_instruction = "
+⚠️ CRITICAL OVERRIDE - SEO MODE IS DISABLED (seo_mode = false):
+- You MUST write ONLY pure descriptive metadata
+- DO NOT use business_name ({$business_name_clean}) in ANY field - including title, alt_text, caption, and description
+- DO NOT add business branding suffixes to the title like '- Main Street Health' or '- Main Street Health Imagery'
+- DO NOT reference the business or its services in any way
+- DO NOT include location keywords (Hamilton, Ontario, Canada, etc.)
+- DO NOT include service keywords (wellness, physiotherapy, rehabilitation, clinic, imagery, branding, etc.)
+- DO NOT include calls-to-action (Visit, Book, Explore, Discover, Learn, etc.)
+- Write as if you have NO knowledge of the business
+- Describe ONLY what is literally visible in the image
+- This restriction applies to ALL context types, even when brand_name_visible = true
+- EXAMPLE CORRECT TITLE when seo_mode=false: 'Lettuce Field at Sunrise' (NOT 'Lettuce Field at Sunrise - Main Street Health Imagery')
 
+";
+		}
+
+		$system_message = "You are an AI metadata assistant for an image optimization plugin (locale: {$locale}).
+{$seo_critical_instruction}
 PRIORITY OF TRUTH:
 1) context_type is authoritative. If the user set it manually, treat it as final. Do not override or reinterpret.
 2) Page context (page_title, focus_keyword) and business context (business_name, industry) guide tone and relevance ONLY. Never use them to invent facts or override context_type.
@@ -358,9 +536,14 @@ When seo_mode = true, enhance metadata with natural SEO elements:
 - Example (stock image, seo_mode=false, brand_name_visible=false): Rows of lettuce in agricultural field at sunrise.
 
 When seo_mode = false, write pure descriptive metadata:
-- Focus only on visible content
-- No location keywords, service keywords, or CTAs
-- Keep neutral and factual
+- Focus ONLY on visible content in the image
+- Do NOT include business_name under ANY circumstances (even if brand_name_visible = true)
+- Do NOT include location keywords (Hamilton, Ontario, Canada, etc.)
+- Do NOT include service keywords (wellness, physiotherapy, rehabilitation, clinic, etc.)
+- Do NOT include calls-to-action (Visit, Book, Explore, Discover, etc.)
+- Do NOT reference the business or its services in any way
+- Write as if describing the image to someone who has no knowledge of the business
+- Keep neutral and factual, describing only what is literally visible in the image
 
 SPECIFICITY AND UNIQUENESS:
 - Provide subjects[] with at least 5 concrete visible nouns.
@@ -393,9 +576,18 @@ SELF CHECK BEFORE RESPONDING:
 OUTPUT exactly one JSON object per the schema above. No extra prose.";
 
 		// Build USER message with parameters
+		$seo_mode_reminder = '';
+		if ( ! $seo_mode ) {
+			$seo_mode_reminder = "
+⚠️ CRITICAL: seo_mode is FALSE - Do NOT include '{$business_name_clean}' in title, alt_text, caption, or description!
+Example CORRECT title: 'Lettuce Field at Sunrise'
+Example WRONG title: 'Lettuce Field at Sunrise - Main Street Health Imagery'
+";
+		}
+
 		$user_message = "Image URL: {$image_url}
 Original filename: {$original_filename}
-
+{$seo_mode_reminder}
 Page context:
 - page_title: {$page_title}
 - focus_keyword: {$focus_keyword}
@@ -521,7 +713,7 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 				),
 			),
 			'max_tokens'  => 500,
-			'temperature' => 0.7,
+			'temperature' => 0, // Deterministic outputs, no variance in retries
 		);
 
 		$response = wp_remote_post(
@@ -596,11 +788,19 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 				$absolute_path = trailingslashit( $uploads['basedir'] ) . $relative;
 
 				if ( file_exists( $absolute_path ) ) {
-					$image_data = file_get_contents( $absolute_path );
-					$base64     = base64_encode( $image_data );
-					$mime_type  = mime_content_type( $absolute_path );
+					// PERFORMANCE: Resize image before base64 encoding to reduce payload
+					$resized_path = $this->resize_for_ai( $absolute_path );
+					$image_data   = file_get_contents( $resized_path );
+					$base64       = base64_encode( $image_data );
+					$mime_type    = 'image/jpeg'; // Always JPEG after resize
 
-					error_log( '[MSH OpenAI] Converted to base64: ' . $absolute_path );
+					error_log( '[MSH OpenAI] Converted to base64: ' . $resized_path );
+
+					// Clean up temp file if different from original
+					if ( $resized_path !== $absolute_path && file_exists( $resized_path ) ) {
+						@unlink( $resized_path );
+					}
+
 					return "data:{$mime_type};base64,{$base64}";
 				}
 
@@ -612,6 +812,79 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 
 		// Return URL as-is for public URLs
 		return $image_url;
+	}
+
+	/**
+	 * Resize image for AI processing to reduce base64 payload and token costs.
+	 * Targets ~1600px long edge, JPEG 80% quality, <200KB file size.
+	 *
+	 * @param string $image_path Absolute path to original image.
+	 * @return string Path to resized image (or original if resize fails).
+	 */
+	private function resize_for_ai( $image_path ) {
+		// Check if GD or Imagick is available
+		if ( ! function_exists( 'wp_get_image_editor' ) ) {
+			error_log( '[MSH OpenAI] wp_get_image_editor not available, using original image' );
+			return $image_path;
+		}
+
+		// Create temp file path
+		$path_info = pathinfo( $image_path );
+		$temp_path = $path_info['dirname'] . '/' . $path_info['filename'] . '-ai-temp.' . $path_info['extension'];
+
+		// Get image editor
+		$editor = wp_get_image_editor( $image_path );
+		if ( is_wp_error( $editor ) ) {
+			error_log( '[MSH OpenAI] Image editor error: ' . $editor->get_error_message() );
+			return $image_path;
+		}
+
+		// Get current size
+		$size = $editor->get_size();
+		if ( ! $size ) {
+			return $image_path;
+		}
+
+		$width  = $size['width'];
+		$height = $size['height'];
+
+		// Calculate new dimensions (max 1600px on long edge)
+		$max_dimension = 1600;
+		if ( $width > $max_dimension || $height > $max_dimension ) {
+			if ( $width > $height ) {
+				$new_width  = $max_dimension;
+				$new_height = intval( ( $height / $width ) * $max_dimension );
+			} else {
+				$new_height = $max_dimension;
+				$new_width  = intval( ( $width / $height ) * $max_dimension );
+			}
+
+			$editor->resize( $new_width, $new_height, false );
+		}
+
+		// Set JPEG quality to 80%
+		$editor->set_quality( 80 );
+
+		// Save to temp file
+		$saved = $editor->save( $temp_path, 'image/jpeg' );
+		if ( is_wp_error( $saved ) ) {
+			error_log( '[MSH OpenAI] Image save error: ' . $saved->get_error_message() );
+			return $image_path;
+		}
+
+		// Check file size
+		$file_size = filesize( $temp_path );
+		error_log( sprintf(
+			'[MSH OpenAI] Resized image: %dx%d → %dx%d, %s → %s',
+			$width,
+			$height,
+			$new_width ?? $width,
+			$new_height ?? $height,
+			size_format( filesize( $image_path ), 2 ),
+			size_format( $file_size, 2 )
+		) );
+
+		return $temp_path;
 	}
 
 	/**

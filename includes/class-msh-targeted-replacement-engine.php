@@ -99,15 +99,26 @@ class MSH_Targeted_Replacement_Engine {
 
 			// Perform verification if not in test mode
 			if ( ! $test_mode && $results['error_count'] === 0 ) {
-				// Pass the targeted updates list to verification for precise checking
-				$verification            = $this->backup_system->verify_replacement( $operation_id, $attachment_id, $replacement_map, $targeted_updates );
-				$results['verification'] = $verification;
+				// Skip verification if there were NO targeted updates
+				// This handles manual filename edits where the file has no content usage
+				if ( empty( $targeted_updates ) ) {
+					error_log( "[MSH Rename] Skipping verification - no content replacements for attachment #{$attachment_id} (manual rename or unused file)" );
+					$results['verification'] = array(
+						'overall_status' => 'skipped',
+						'reason'         => 'no_content_usage',
+						'message'        => 'File has no content usage, verification not applicable',
+					);
+				} else {
+					// Pass the targeted updates list to verification for precise checking
+					$verification            = $this->backup_system->verify_replacement( $operation_id, $attachment_id, $replacement_map, $targeted_updates );
+					$results['verification'] = $verification;
 
-				// If verification failed, restore backup
-				if ( $verification['overall_status'] === 'failed' ) {
-					$restored                   = $this->backup_system->restore_backup( $operation_id );
-					$results['backup_restored'] = $restored;
-					return new WP_Error( 'verification_failed', 'Replacement verification failed, backup restored', $results );
+					// If verification failed, restore backup
+					if ( $verification['overall_status'] === 'failed' ) {
+						$restored                   = $this->backup_system->restore_backup( $operation_id );
+						$results['backup_restored'] = $restored;
+						return new WP_Error( 'verification_failed', 'Replacement verification failed, backup restored', $results );
+					}
 				}
 			}
 		} catch ( Exception $e ) {

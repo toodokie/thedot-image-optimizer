@@ -2245,11 +2245,20 @@ class MSH_Contextual_Meta_Generator {
 
 		$ai_meta = null;
 		if ( $ai_mode !== 'manual' ) {
-			error_log( sprintf( '[MSH DEBUG] AI mode is not manual, calling maybe_generate_metadata for attachment %d', $attachment_id ) );
+			error_log( sprintf( '[ANALYZE] AI_CALL - Requesting AI metadata for attachment #%d (mode: %s)', $attachment_id, $ai_mode ) );
 			$ai_meta = MSH_AI_Service::get_instance()->maybe_generate_metadata( $attachment_id, $context, $this, $ai_options );
-			error_log( sprintf( '[MSH DEBUG] maybe_generate_metadata returned: %s', json_encode( $ai_meta ) ) );
+
+			if ( is_wp_error( $ai_meta ) ) {
+				error_log( sprintf( '[ANALYZE] AI_ERROR - Attachment #%d failed: %s', $attachment_id, $ai_meta->get_error_message() ) );
+				$ai_meta = null; // Reset to null so heuristics can take over
+			} elseif ( is_array( $ai_meta ) && ! empty( $ai_meta ) ) {
+				$filename_preview = ! empty( $ai_meta['filename_slug'] ) ? $ai_meta['filename_slug'] : 'NO FILENAME';
+				error_log( sprintf( '[ANALYZE] AI_RESP - Attachment #%d received metadata (filename: %s)', $attachment_id, $filename_preview ) );
+			} else {
+				error_log( sprintf( '[ANALYZE] AI_SKIP - Attachment #%d returned empty/null response', $attachment_id ) );
+			}
 		} else {
-			error_log( sprintf( '[MSH DEBUG] AI mode is manual, skipping AI metadata generation for attachment %d', $attachment_id ) );
+			error_log( sprintf( '[ANALYZE] AI_SKIP - Attachment #%d skipped (manual mode)', $attachment_id ) );
 		}
 
 		if ( is_array( $ai_meta ) && ! empty( $ai_meta ) ) {
@@ -5664,7 +5673,7 @@ class MSH_Contextual_Meta_Generator {
 class MSH_Image_Optimizer {
 	private static $instance = null;
 
-	const ANALYSIS_CACHE_VERSION = '2';
+	const ANALYSIS_CACHE_VERSION = '4';
 
 	private $batch_size            = 10;
 	private $processed_count       = 0;
@@ -5865,8 +5874,107 @@ class MSH_Image_Optimizer {
 			);
 		}
 
-		$renamer       = MSH_Safe_Rename_System::get_instance();
+		$renamer = MSH_Safe_Rename_System::get_instance();
+
+		// ====== BEGIN: MSH MANUAL RENAME GUARDS ======
+		// Calculate expected paths before rename
+		$old_relative       = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		$new_relative       = str_replace( basename( $old_relative ), $suggested_basename, $old_relative );
+		$expected_basename  = basename( $new_relative );
+		$expected_dir       = trim( dirname( $new_relative ), '/' );
+
+		// Set global guard to lock this rename operation
+		$GLOBALS['_msh_guard'] = array(
+			'post_id'          => (int) $attachment_id,
+			'expected_rel'     => $new_relative,
+			'expected_dir'     => $expected_dir,
+			'expected_basename' => $expected_basename,
+			'ts'               => microtime( true ),
+		);
+
+		// Store expected basename for normalize_basename() to use
+		$GLOBALS['_msh_expected_basename'] = $expected_basename;
+
+		error_log( '[MSH MANUAL RENAME LOCK] Enabled for attachment #' . $attachment_id . ' -> ' . $new_relative );
+
+		// Temporarily remove ALL third-party filters on wp_update_attachment_metadata
+		global $wp_filter;
+		$removed_filters = array();
+		if ( isset( $wp_filter['wp_update_attachment_metadata'] ) ) {
+			$removed_filters = $wp_filter['wp_update_attachment_metadata'];
+			remove_all_filters( 'wp_update_attachment_metadata' );
+		}
+
+		// CRITICAL: Also remove all pre_update_post_metadata filters except our guard
+		$removed_pre_filters = array();
+		if ( isset( $wp_filter['pre_update_post_metadata'] ) ) {
+			$removed_pre_filters = $wp_filter['pre_update_post_metadata'];
+			remove_all_filters( 'pre_update_post_metadata' );
+		}
+
+		// Re-add ONLY our guards at specific priorities
+		// These guards will normalize any corruption attempts during the rename
+		add_filter( 'pre_update_post_metadata', array( $renamer, 'guard_attached_file_corruption' ), 1, 4 );
+		add_filter( 'wp_update_attachment_metadata', array( $renamer, 'guard_attachment_metadata_corruption' ), 9, 2 );
+		add_filter( 'wp_update_attachment_metadata', array( $renamer, 'forensic_track_metadata_corruption' ), 99, 2 );
+
+		// Perform the rename
 		$rename_result = $renamer->rename_attachment( $attachment_id, $suggested_basename, false );
+
+		// CRITICAL: Perform final validation BEFORE restoring filters
+		// This ensures no late writers can corrupt after the rename completes
+		if ( ! is_wp_error( $rename_result ) && ! isset( $rename_result['skipped'] ) ) {
+			$final_rel = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			if ( $final_rel !== $new_relative ) {
+				error_log( "[MSH HEAL AJAX] Final _wp_attached_file mismatch! Expected: {$new_relative}, Got: {$final_rel}" );
+				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+				error_log( "[MSH HEAL AJAX] Corrected _wp_attached_file" );
+			}
+
+			$final_meta = wp_get_attachment_metadata( $attachment_id );
+			if ( ! empty( $final_meta['file'] ) && $final_meta['file'] !== $new_relative ) {
+				error_log( "[MSH HEAL AJAX] Final metadata[file] mismatch! Expected: {$new_relative}, Got: {$final_meta['file']}" );
+				$final_meta['file'] = $new_relative;
+
+				// Normalize sizes basenames
+				if ( ! empty( $final_meta['sizes'] ) && is_array( $final_meta['sizes'] ) ) {
+					foreach ( $final_meta['sizes'] as $k => $s ) {
+						if ( ! empty( $s['file'] ) ) {
+							$old_size_file = $s['file'];
+							// Collapse repeated prefixes: TEST-TEST-TEST-foo.jpg -> TEST-foo.jpg
+							$final_meta['sizes'][ $k ]['file'] = preg_replace( '/^(([A-Z0-9]+)-)\1+/i', '$1', $old_size_file );
+						}
+					}
+				}
+
+				wp_update_attachment_metadata( $attachment_id, $final_meta );
+				error_log( "[MSH HEAL AJAX] Corrected metadata" );
+			}
+		}
+
+		// NOW restore all removed filters
+		if ( ! empty( $removed_pre_filters ) ) {
+			foreach ( $removed_pre_filters as $priority => $callbacks ) {
+				foreach ( $callbacks as $callback_data ) {
+					add_filter( 'pre_update_post_metadata', $callback_data['function'], $priority, $callback_data['accepted_args'] );
+				}
+			}
+		}
+
+		if ( ! empty( $removed_filters ) ) {
+			foreach ( $removed_filters as $priority => $callbacks ) {
+				foreach ( $callbacks as $callback_data ) {
+					add_filter( 'wp_update_attachment_metadata', $callback_data['function'], $priority, $callback_data['accepted_args'] );
+				}
+			}
+		}
+
+		// Clean up guards
+		unset( $GLOBALS['_msh_guard'] );
+		unset( $GLOBALS['_msh_expected_basename'] );
+
+		error_log( '[MSH MANUAL RENAME LOCK] Disabled for attachment #' . $attachment_id );
+		// ====== END: MSH MANUAL RENAME GUARDS ======
 
 		if ( is_wp_error( $rename_result ) ) {
 			$error_data = $rename_result->get_error_data();
@@ -6649,6 +6757,10 @@ class MSH_Image_Optimizer {
 	 * @return array Analysis payload describing current optimisation state.
 	 */
 	public function analyze_single_image( $attachment_id, $ai_options = array() ) {
+		// PHASE 3: Micro-timing instrumentation for performance diagnostics
+		$t_total = microtime( true );
+		$t_prep  = microtime( true );
+
 		// Start performance profiling
 		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
 			MSH_Profiler::begin( 'total' );
@@ -6665,6 +6777,15 @@ class MSH_Image_Optimizer {
 			return array( 'error' => 'Attachment not found' );
 		}
 		update_meta_cache( 'post', array( $attachment_id ) );
+
+		// Read ACTUAL current metadata from WordPress database
+		// This is what's ACTUALLY stored, not what we think should be there
+		$current_meta = array(
+			'title'       => $post->post_title ?? '',
+			'caption'     => $post->post_excerpt ?? '',
+			'description' => $post->post_content ?? '',
+			'alt_text'    => get_post_meta( $attachment_id, '_wp_attachment_image_alt', true ),
+		);
 
 		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
 			MSH_Profiler::end( 'db_prefetch' );
@@ -6779,15 +6900,26 @@ class MSH_Image_Optimizer {
 			MSH_Profiler::begin( 'metadata_generate' );
 		}
 
-		// CRITICAL FIX: During analyze mode, force ai_mode='manual' to skip AI API calls
-		// Analysis should only read cached metadata, not generate new AI metadata
-		// BUT: Allow AI regeneration when explicitly requested (category/SEO changes)
+		// PHASE 3: End prep timing, start AI timing
+		$prep_time = microtime( true ) - $t_prep;
+		$t_ai      = microtime( true );
+
+		// PERFORMANCE FIX: Skip AI for already-optimized images during analyze
+		// Only generate AI metadata for unoptimized images or explicit regeneration
 		$is_ai_regeneration = ! empty( $ai_options['ai_regeneration'] );
-		if ( ! $is_ai_regeneration ) {
+		$optimized_date = get_post_meta( $attachment_id, 'msh_optimized_date', true );
+		$is_already_optimized = ! empty( $optimized_date );
+
+		if ( ! $is_ai_regeneration && $is_already_optimized ) {
+			// Image already optimized - skip AI, use existing metadata
 			$ai_options['ai_mode'] = 'manual';
 		}
+		// For unoptimized images, AI mode will be determined by global setting
 
 		$generated_meta            = $this->contextual_meta_generator->generate_meta_fields( $attachment_id, $context_info, $ai_options );
+
+		// PHASE 3: End AI timing
+		$ai_time = microtime( true ) - $t_ai;
 
 		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
 			MSH_Profiler::end( 'metadata_generate' );
@@ -6820,6 +6952,9 @@ class MSH_Image_Optimizer {
 		$pending_ai_fields   = array();
 		$has_pending_ai_meta = false;
 		$staged_ai_metadata  = null;
+
+		// PHASE 3: Start DB timing
+		$t_db = microtime( true );
 
 		// Profile database writes
 		if ( defined( 'MSH_PROFILE' ) && MSH_PROFILE ) {
@@ -7046,6 +7181,19 @@ class MSH_Image_Optimizer {
 			);
 		}
 
+		// PHASE 3: Calculate timings and output performance log
+		$db_time    = microtime( true ) - $t_db;
+		$total_time = microtime( true ) - $t_total;
+
+		error_log( sprintf(
+			'[MSH TIMING] Image #%d: prep=%.3fs ai=%.3fs db=%.3fs total=%.3fs',
+			$attachment_id,
+			$prep_time,
+			$ai_time,
+			$db_time,
+			$total_time
+		) );
+
 		return array(
 			'current_size_bytes'        => $file_size,
 			'current_size_mb'           => round( $file_size / 1048576, 2 ),
@@ -7062,6 +7210,7 @@ class MSH_Image_Optimizer {
 			'context_active_label'      => $this->format_context_label( $active_context_slug ),
 			'context_auto_label'        => $auto_context_value !== '' ? $this->format_context_label( $auto_context_value ) : '',
 			'generated_meta'            => $generated_meta,
+			'current_meta'              => $current_meta,
 			'optimization_potential'    => $optimization_potential,
 			'suggested_filename'        => $suggested_filename,
 			'confidence_score'          => $confidence_score,
@@ -9093,19 +9242,25 @@ class MSH_Image_Optimizer {
 		}
 
 		try {
-			// When context changes, ALWAYS regenerate AI metadata if AI is enabled
+			// When context OR SEO mode changes, ALWAYS regenerate AI metadata if AI is enabled
 			$ai_mode_setting = get_option( 'msh_ai_mode', 'manual' );
 			$ai_enabled      = ( $ai_mode_setting !== 'manual' );
 			$ai_options      = array();
 
-			if ( $ai_enabled && $context_changed ) {
-				// Force AI regeneration with new context
+			if ( $ai_enabled && ( $context_changed || $seo_mode_changed ) ) {
+				// Force AI regeneration with new context or SEO mode
 				$ai_options['ai_regeneration'] = true;
-				$ai_options['ai_mode']         = 'overwrite'; // OVERWRITE to reflect new context
+				$ai_options['ai_mode']         = 'overwrite'; // OVERWRITE to reflect changes
 				$ai_options['ai_fields']       = array( 'title', 'alt_text', 'caption', 'description' );
-				error_log( "[MSH] Context changed - forcing AI regeneration for attachment {$attachment_id}" );
+				if ( $context_changed ) {
+					error_log( "[MSH] Context changed - forcing AI regeneration for attachment {$attachment_id}" );
+				}
+				if ( $seo_mode_changed ) {
+					$seo_status = $seo_mode_flag ? 'TRUE (checked)' : 'FALSE (unchecked)';
+					error_log( "[MSH] SEO mode changed to {$seo_status} - forcing AI regeneration for attachment {$attachment_id}" );
+				}
 			} elseif ( $ai_enabled ) {
-				// Context didn't change, just refresh metadata preview
+				// Nothing changed, just refresh metadata preview
 				$ai_options['ai_regeneration'] = true;
 				$ai_options['ai_mode']         = 'fill-empty'; // Fill empty fields
 				$ai_options['ai_fields']       = array( 'title', 'alt_text', 'caption', 'description' );
@@ -9188,26 +9343,65 @@ class MSH_Image_Optimizer {
 	 * @return void
 	 */
 	public function ajax_reset_optimization() {
+		error_log( '[MSH DEBUG] ajax_reset_optimization handler called' );
+		error_log( '[MSH DEBUG] POST data: ' . print_r( $_POST, true ) );
+
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
+		error_log( '[MSH DEBUG] Nonce check passed' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
+			error_log( '[MSH DEBUG] User lacks manage_options capability' );
 			wp_die( 'Unauthorized' );
 		}
+
+		error_log( '[MSH DEBUG] User authorization passed' );
 
 		global $wpdb;
 
 		// Remove optimization flags to allow re-processing with improved metadata preservation
 		$reset_count = $wpdb->query(
 			"
-            DELETE FROM {$wpdb->postmeta} 
+            DELETE FROM {$wpdb->postmeta}
             WHERE meta_key IN ('msh_optimized_date', '_msh_suggested_filename', '_msh_suggested_filename_context', 'msh_metadata_context_hash')
         "
 		);
 
+		error_log( '[MSH DEBUG] Reset count: ' . $reset_count );
+
+		// Also remove AI-generated metadata to force fresh AI regeneration on next analyze
+		$ai_reset_count = $wpdb->query(
+			"
+            DELETE FROM {$wpdb->postmeta}
+            WHERE meta_key IN (
+                '_msh_ai_staged_meta',
+                '_msh_ai_filename_slug',
+                '_msh_title_source',
+                '_msh_alt_source',
+                '_msh_caption_source',
+                '_msh_description_source',
+                '_msh_confidence_level',
+                '_msh_confidence_score',
+                'msh_metadata_last_updated',
+                'msh_metadata_source'
+            )
+        "
+		);
+
+		error_log( '[MSH DEBUG] AI reset count: ' . $ai_reset_count );
+
+		$total_reset = $reset_count + $ai_reset_count;
+
+		// Clear the analysis cache to force fresh analysis on next run
+		$cache_key = 'msh_analysis_cache_v' . self::ANALYSIS_CACHE_VERSION . '_' . md5( 'latest_analysis' );
+		delete_transient( $cache_key );
+
+		error_log( '[MSH DEBUG] Cache cleared. Sending JSON success response' );
+
 		wp_send_json_success(
 			array(
-				'reset_count' => $reset_count,
-				'message'     => "Reset {$reset_count} optimization flags. Images can now be re-optimized with improved metadata preservation.",
+				'reset_count'    => $total_reset,
+				'ai_reset_count' => $ai_reset_count,
+				'message'        => "Reset {$total_reset} flags. Analysis cache cleared. Images will be re-analyzed with fresh AI metadata generation on next analyze run.",
 			)
 		);
 	}
@@ -9422,7 +9616,108 @@ class MSH_Image_Optimizer {
 				$start_time = microtime( true );
 				$this->log_debug( 'MSH Safe Rename: [Stage 2/4] 🚀 Calling rename_attachment() with mode: ' . ( $mode === 'test' ? 'TEST' : 'LIVE' ) );
 
-				$result = $renamer->rename_attachment( $attachment_id, basename( $suggested_filename ), $mode === 'test' );
+					// ====== BEGIN: MSH RENAME LOCK (BATCH MODE) ======
+					$old_relative       = get_post_meta( $attachment_id, '_wp_attached_file', true );
+					$suggested_basename = basename( $suggested_filename );
+					$new_relative       = str_replace( basename( $old_relative ), $suggested_basename, $old_relative );
+
+					error_log( "[MSH BATCH RENAME LOCK] 🔒 Protecting attachment #{$attachment_id}: {$old_relative} → {$new_relative}" );
+
+					global $wp_filter, $merged_filters;
+
+					$pre_meta_snapshot  = null;
+					$meta_snapshot      = null;
+
+					if ( isset( $wp_filter['pre_update_post_metadata'] ) ) {
+						$pre_hook = $wp_filter['pre_update_post_metadata'];
+						if ( is_object( $pre_hook ) && isset( $pre_hook->callbacks ) ) {
+							$pre_meta_snapshot = clone $pre_hook;
+						} else {
+							$pre_meta_snapshot = $pre_hook;
+						}
+					}
+
+					if ( isset( $wp_filter['wp_update_attachment_metadata'] ) ) {
+						$meta_hook = $wp_filter['wp_update_attachment_metadata'];
+						if ( is_object( $meta_hook ) && isset( $meta_hook->callbacks ) ) {
+							$meta_snapshot = clone $meta_hook;
+						} else {
+							$meta_snapshot = $meta_hook;
+						}
+					}
+
+					// Set global guard
+					$GLOBALS['_msh_guard'] = array(
+						'post_id'           => (int) $attachment_id,
+						'expected_rel'      => $new_relative,
+						'expected_basename' => $suggested_basename,
+						'ts'                => microtime( true ),
+					);
+					$GLOBALS['_msh_expected_basename'] = $suggested_basename;
+
+					// Remove ALL filters and re-add only guards
+					remove_all_filters( 'wp_update_attachment_metadata' );
+					remove_all_filters( 'pre_update_post_metadata' );
+					add_filter( 'pre_update_post_metadata', array( $renamer, 'guard_attached_file_corruption' ), 1, 4 );
+					add_filter( 'wp_update_attachment_metadata', array( $renamer, 'guard_attachment_metadata_corruption' ), 9, 2 );
+
+					$result = null;
+
+					try {
+						$result = $renamer->rename_attachment( $attachment_id, $suggested_basename, $mode === 'test' );
+
+						// ====== VALIDATE & HEAL BEFORE RESTORING FILTERS ======
+						if ( ! is_wp_error( $result ) && ! isset( $result['skipped'] ) ) {
+							$final_rel = get_post_meta( $attachment_id, '_wp_attached_file', true );
+							if ( $final_rel !== $new_relative ) {
+								error_log( "[MSH BATCH HEAL] ⚠️ Final _wp_attached_file mismatch for #{$attachment_id}! Expected: {$new_relative}, Got: {$final_rel}" );
+								update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+								error_log( "[MSH BATCH HEAL] ✅ Corrected _wp_attached_file to: {$new_relative}" );
+							} else {
+								error_log( "[MSH BATCH HEAL] ✅ Validation passed for #{$attachment_id}: {$final_rel}" );
+							}
+						}
+					} finally {
+						// Remove temporary guards
+						remove_filter( 'pre_update_post_metadata', array( $renamer, 'guard_attached_file_corruption' ), 1 );
+						remove_filter( 'wp_update_attachment_metadata', array( $renamer, 'guard_attachment_metadata_corruption' ), 9 );
+
+						// Reset filters back to their original state
+						remove_all_filters( 'pre_update_post_metadata' );
+						remove_all_filters( 'wp_update_attachment_metadata' );
+
+						if ( is_object( $pre_meta_snapshot ) && isset( $pre_meta_snapshot->callbacks ) ) {
+							$wp_filter['pre_update_post_metadata'] = $pre_meta_snapshot;
+						} elseif ( is_array( $pre_meta_snapshot ) && ! empty( $pre_meta_snapshot ) ) {
+							foreach ( $pre_meta_snapshot as $priority => $callbacks ) {
+								foreach ( $callbacks as $cb ) {
+									add_filter( 'pre_update_post_metadata', $cb['function'], $priority, $cb['accepted_args'] );
+								}
+							}
+						} else {
+							unset( $wp_filter['pre_update_post_metadata'] );
+						}
+
+						if ( is_object( $meta_snapshot ) && isset( $meta_snapshot->callbacks ) ) {
+							$wp_filter['wp_update_attachment_metadata'] = $meta_snapshot;
+						} elseif ( is_array( $meta_snapshot ) && ! empty( $meta_snapshot ) ) {
+							foreach ( $meta_snapshot as $priority => $callbacks ) {
+								foreach ( $callbacks as $cb ) {
+									add_filter( 'wp_update_attachment_metadata', $cb['function'], $priority, $cb['accepted_args'] );
+								}
+							}
+						} else {
+							unset( $wp_filter['wp_update_attachment_metadata'] );
+						}
+
+						if ( isset( $merged_filters ) && is_array( $merged_filters ) ) {
+							unset( $merged_filters['pre_update_post_metadata'], $merged_filters['wp_update_attachment_metadata'] );
+						}
+
+						unset( $GLOBALS['_msh_guard'], $GLOBALS['_msh_expected_basename'] );
+						error_log( "[MSH BATCH RENAME LOCK] 🔓 Lock released for attachment #{$attachment_id}" );
+					}
+					// ====== END: MSH RENAME LOCK (BATCH MODE) ======
 
 				$end_time = microtime( true );
 				$duration = round( ( $end_time - $start_time ), 2 );
@@ -9606,7 +9901,13 @@ class MSH_Image_Optimizer {
 		}
 
 		$image_id           = intval( $_POST['image_id'] ?? 0 );
-		$suggested_filename = sanitize_file_name( $_POST['suggested_filename'] ?? '' );
+		$raw_filename       = $_POST['suggested_filename'] ?? '';
+		$suggested_filename = sanitize_file_name( $raw_filename );
+
+		// DEBUG: Log what we received from JavaScript
+		error_log( '[MSH Filename DEBUG] ajax_save_filename_suggestion() called for attachment ' . $image_id );
+		error_log( '[MSH Filename DEBUG] Raw filename from POST: ' . $raw_filename );
+		error_log( '[MSH Filename DEBUG] After sanitize_file_name(): ' . $suggested_filename );
 
 		if ( ! $image_id || ! $suggested_filename ) {
 			wp_send_json_error( 'Missing image ID or filename suggestion' );
