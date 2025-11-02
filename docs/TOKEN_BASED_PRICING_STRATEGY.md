@@ -974,8 +974,267 @@ Token-based pricing benefits:
 
 ---
 
-**Document Status**: ✅ Corrected & Production-Ready
-**Revision**: v3.1 (Pricing Math Fixed)
-**Next Steps**: Implement Week 1-4 development phases
+## Part 10: Smart Mode Implementation Plan (November 2024)
+
+### Background: Current vs Target Token Usage
+
+**Discovery (v1.2.16)**:
+- Current production: 3,358 tokens/image (15x over budget)
+- Target per pricing model: 210 tokens/image
+- Impact: 46 images hit 30k/min rate limit → HTTP 429 → stalled batches
+
+**Root Causes**:
+1. System prompt: ~2,000 tokens (dense ruleset repeated per image)
+2. User prompt: ~400 tokens (business context repeated per image)
+3. Vision detail:high: ~900 tokens (full resolution analysis)
+4. Response JSON: ~150 tokens (verbose output)
+
+### Three Quality Modes Strategy
+
+| Mode | Vision Detail | Context | Use Case | Tokens/Image | Quality | Cost/Image |
+|------|---------------|---------|----------|--------------|---------|------------|
+| **Quick** | detail:low | Basic | Batch analysis, stock images | ~85 | 70% | $0.0004 |
+| **Smart** (default) | detail:low | Full context | Most images | ~210 | 95% | $0.0011 |
+| **High Detail** | detail:high | Full context | Hero images, portraits, logos | ~400 | 100% | $0.0020 |
+
+### Smart Mode Design (Target: 210 tokens)
+
+**Approach**: Context-aware low-detail processing
+
+**Two-Pass Implementation**:
+
+**Pass A - Vision Analysis (85 tokens)**:
+```
+SYSTEM: "Analyze image. Context: {ctx_id}. Output: subjects[], attributes[], context_match"
+
+USER: {
+  "image_ref": "msh://attachment/12345@640w",
+  "ctx_id": "ctx_9f11db7",
+  "mode": "smart"
+}
+
+RESPONSE: {
+  "subjects": ["lettuce", "field", "sunrise", "rows", "agriculture"],
+  "attributes": ["green", "golden-light", "organized-rows"],
+  "context_match": "stock"
+}
+```
+
+**Pass B - Text Refinement (60 tokens, gpt-4o-mini)**:
+```
+SYSTEM: "Generate metadata using subjects from vision. Context rules: v21"
+
+USER: {
+  "subjects": ["lettuce", "field", "sunrise", "rows", "agriculture"],
+  "ctx_id": "ctx_9f11db7",
+  "limits": {"title": 60, "alt": 140, "description": 280}
+}
+
+RESPONSE: {
+  "title": "Fresh Lettuce Field at Sunrise - Hamilton Wellness",
+  "alt": "Organic lettuce rows in agricultural field at golden sunrise",
+  "description": "Fresh organic lettuce field at sunrise in Hamilton Ontario..."
+}
+```
+
+**Total**: ~145 tokens (30% under budget with headroom)
+
+### Context ID System
+
+**Purpose**: Replace repeated business context with fingerprint lookup
+
+**Generation**:
+```php
+$ctx_id = 'ctx_' . substr(sha1(
+    $site_id . '|' .
+    $locale . '|' .
+    $business_name . '|' .
+    $industry . '|' .
+    $seo_mode . '|' .
+    $brand_visibility_rules
+), 0, 7);
+```
+
+**Example**: `ctx_9f11db7` maps to:
+- business_name: "Main Street Health"
+- industry: "Healthcare"
+- location: "Hamilton, Ontario"
+- seo_mode: true
+- brand_voice: "Professional"
+
+**Benefits**:
+- Reduces prompt from 400 → 15 tokens (~96% reduction)
+- Server-side lookup (cached in memory)
+- Versioned rules (stable per deployment)
+
+### Auto-Detect High Detail Promotion
+
+**Use high detail automatically for**:
+```php
+function should_use_high_detail( $context, $attachment_id ) {
+    return (
+        $context['type'] === 'team' ||           // Staff portraits
+        $context['type'] === 'brand_logo' ||     // Logos with text
+        $context['ocr_found_brand'] ||           // Text detected
+        has_faces( $attachment_id ) ||           // Human faces
+        $context['page_role'] === 'header_image' // Hero banners
+    );
+}
+```
+
+**Token Impact**:
+- Auto-promoted images: ~400 tokens (100% quality)
+- Remaining images: ~210 tokens (95% quality, 50% cost)
+- Average across batch: ~250 tokens (still under 30k TPM limit)
+
+### Test Plan Before Full Rollout
+
+**Phase 0A: Side-by-Side Comparison (5-10 images)**
+
+Test harness runs both modes on same images:
+
+| Image | Context Type | Current (high) | Smart (low+ctx) | Quality Score | Token Savings |
+|-------|--------------|----------------|-----------------|---------------|---------------|
+| #616 | Stock | "Lettuce field..." | "Fresh lettuce..." | 92% | 3,100 → 195 |
+| #617 | Workspace | "Office space..." | "Professional workspace..." | 95% | 3,250 → 205 |
+| #754 | Testimonial | "Patient success..." | "Recovery journey..." | 97% | 3,400 → 210 |
+
+**Success Criteria**:
+- Average quality ≥ 90% (compared to current high-detail)
+- Token usage ≤ 230 tokens/image (10% buffer)
+- SEO keywords present in 95%+ of outputs
+- Business context correctly applied in 100% of outputs
+
+**Quality Metrics**:
+1. **Accuracy**: Does description match visible content?
+2. **Context**: Does it incorporate business/location correctly?
+3. **SEO**: Are location/service keywords present?
+4. **Specificity**: Avoids generic phrases like "stock photo"
+5. **Length**: Meets field length requirements (title ≤60, etc.)
+
+**Test Script**:
+```php
+// WP-CLI: wp msh test-smart-mode --ids=616,617,754 --compare
+//
+// Outputs:
+// Image #616: Quality 92%, Tokens 195 (saved 3,105), PASS
+// Image #617: Quality 95%, Tokens 205 (saved 3,045), PASS
+// Image #754: Quality 97%, Tokens 210 (saved 3,190), PASS
+//
+// Average: Quality 95%, Tokens 203, Total savings: 9,340 tokens
+// Recommendation: PROCEED with Smart Mode as default
+```
+
+**Decision Gate**:
+- If quality ≥ 90%: Proceed to Phase 0B (batch test)
+- If quality < 90%: Iterate on context enrichment or add Pass B text refinement
+
+### Phase 0B: Batch Test (46 images)
+
+**Objective**: Validate no rate limits with Smart Mode
+
+**Test Conditions**:
+- 46 images (same batch that failed in v1.2.16)
+- Smart Mode enabled (210 tokens/image)
+- Concurrency: 3 (from Phase 2 infrastructure)
+
+**Expected Results**:
+```
+Token Budget Check:
+- 46 images × 210 tokens = 9,660 tokens total
+- 30k TPM limit / 210 tokens = 142 images/minute theoretical max
+- With concurrency 3: ~15 images/minute actual
+- 46 images / 15 = ~3 minutes completion time
+
+Rate Limit Check:
+- No HTTP 429 errors
+- All images complete successfully
+- Timing logs show consistent performance
+```
+
+**Success Criteria**:
+- Zero 429 errors
+- Completion time < 5 minutes
+- All images receive AI metadata
+- Quality spot-check on 10 random images ≥ 90%
+
+### Rollout Strategy (Option B - Aggressive)
+
+**v1.2.17 Changes**:
+
+1. **Replace current prompts with Smart Mode globally**
+   - Files: `class-msh-openai-connector.php` (build_prompt_messages)
+   - Default detail:low for all images
+   - Compress system prompt to rules reference
+   - Use ctx_id instead of inline business context
+
+2. **Auto-detect high detail promotion**
+   - Files: `class-msh-ai-service.php` (should_use_high_detail)
+   - Check context type, OCR, faces, page role
+   - Promote ~5-10% of images automatically
+
+3. **Remove "High Detail" as user-selectable option**
+   - It becomes an automatic optimization
+   - Users don't need to understand token economics
+   - Simplifies UX
+
+4. **Add token usage logging**
+   - Log actual tokens from OpenAI response
+   - Track: `[MSH AI] Tokens: 195 (target: 210, saved: 3,105)`
+   - Monitor for outliers exceeding budget
+
+**Risks & Mitigations**:
+
+| Risk | Mitigation |
+|------|------------|
+| Quality regression on complex images | Auto-promote to high detail by type |
+| Generic descriptions | Enrich ctx_id with page/category context |
+| SEO keywords missing | Validate in tests, add to ctx rules |
+| User confusion about quality | Show "Smart Mode (recommended)" in UI |
+
+**Rollback Plan**:
+- Keep current high-detail prompts as fallback
+- Feature flag: `MSH_USE_SMART_MODE` (default: true)
+- If issues arise: Set flag to false, revert to v1.2.16 behavior
+- Test window: 1 week with 10-20 beta sites
+
+### Expected Business Impact
+
+**Token Cost Reduction**:
+```
+Before (v1.2.16):
+- 46 images × 3,358 tokens = 154,468 tokens
+- Cost: $0.77 (conservative rate)
+- Time: Stalled at 85% (rate limits)
+
+After (v1.2.17 Smart Mode):
+- 46 images × 210 tokens (avg) = 9,660 tokens
+- Cost: $0.05 (16× cheaper)
+- Time: ~3 minutes (completes reliably)
+```
+
+**Pricing Model Alignment**:
+- ✅ Matches budgeted 210 tokens/image from pricing doc
+- ✅ Free tier (1,000 tokens) = 4-5 images (as designed)
+- ✅ Pro tier (50k tokens/month) = 238 images/month (as designed)
+- ✅ No rate limit surprises for users
+
+**User Experience**:
+- Faster batch processing (no stalls)
+- Consistent completion (no 429 errors)
+- Same perceived quality (95% vs 100%)
+- Lower costs enable more features
+
+---
+
+**Document Status**: ✅ Corrected & Production-Ready + Smart Mode Plan
+**Revision**: v3.2 (Added Smart Mode Implementation)
+**Next Steps**:
+1. Build test harness (Phase 0A)
+2. Run side-by-side comparison on 10 images
+3. If quality ≥90%, run batch test (Phase 0B) with 46 images
+4. If batch test passes, implement v1.2.17 with Smart Mode default
+
 **Owner**: Product & Engineering Teams
 **Review Date**: December 2025 (after beta feedback)
+**Updated**: November 2, 2025 (Smart Mode plan added)

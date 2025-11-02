@@ -360,6 +360,12 @@ Added timing markers in `analyze_single_image()`:
 
 **Next Step**: Prompt compression (Phase 0) required before Phase 2 integration makes sense.
 
+**Smart Mode Implementation Plan**:
+- Detailed test-first approach documented in `docs/TOKEN_BASED_PRICING_STRATEGY.md` Part 10
+- Phase 0A: Side-by-side quality comparison (10 images)
+- Phase 0B: Batch test without rate limits (46 images)
+- Target: 210 tokens/image, 95% quality, Option B (aggressive rollout)
+
 ---
 
 ### Changes Made (v1.2.16)
@@ -462,6 +468,15 @@ Added timing markers in `analyze_single_image()`:
 
 ## Next Steps
 
+### Immediate (v1.2.17 - Smart Mode)
+1. Build test harness for side-by-side comparison
+2. Run Phase 0A: Quality test on 10 images (current vs Smart Mode)
+3. If quality ≥90%, run Phase 0B: Batch test on 46 images
+4. If tests pass, implement Option B (aggressive rollout with Smart Mode default)
+
+See: `docs/TOKEN_BASED_PRICING_STRATEGY.md` Part 10 for complete implementation plan
+
+### Ongoing Testing
 1. Test metadata display fix with real data
 2. Verify analyze results match Media Library values
 3. Test after context/SEO mode changes
