@@ -68,12 +68,7 @@
     }
 }
 
-/* Match optimizer page background */
-#wpcontent,
-#wpbody,
-#wpbody-content {
-    background-color: #FAF9F6;
-}
+/* Page background now in global-admin.css */
 
 /* Tab Navigation - Match Hub Styling */
 .msh-settings-wrap .nav-tab-wrapper {
@@ -102,12 +97,23 @@
     background: transparent;
 }
 
+.msh-settings-wrap .nav-tab:focus,
+.msh-settings-wrap .nav-tab:focus-visible {
+    outline: none;  /* Remove blue WordPress outline */
+    box-shadow: none;  /* Remove blue box-shadow */
+    color: #35332f;
+    border-bottom: 2px solid #35332f;
+}
+
 .msh-settings-wrap .nav-tab-active,
-.msh-settings-wrap .nav-tab-active:hover {
+.msh-settings-wrap .nav-tab-active:hover,
+.msh-settings-wrap .nav-tab-active:focus {
     color: #35332f;
     border-bottom: 2px solid #35332f;
     background: transparent;
     font-weight: 600;
+    outline: none;  /* Remove blue WordPress outline */
+    box-shadow: none;  /* Remove blue box-shadow */
 }
 
 /* Override ALL WordPress core blue colors */
@@ -188,57 +194,7 @@
     color: #4a4945;
 }
 
-/* Match optimizer page header styling */
-.msh-settings-wrap .msh-page-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 2.5rem;
-    margin-bottom: 2.5rem;
-    padding-bottom: 2rem;
-    border-bottom: 1px solid #35332F;
-}
-
-.msh-settings-wrap .msh-logo-container {
-    flex: 0 0 auto;
-}
-
-.msh-settings-wrap .msh-logo {
-    height: clamp(28px, 3vw, 37px);
-    width: auto;
-    display: block;
-}
-
-.msh-settings-wrap .msh-header-links {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    gap: 8px;
-}
-
-.msh-settings-wrap .msh-support-link,
-.msh-settings-wrap .msh-website-link {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    text-decoration: none;
-    color: #35332F;
-    font-family: var(--font-secondary);
-    font-weight: var(--weight-normal);
-    font-size: var(--text-xs);
-    line-height: 24px;
-    transition: color 0.2s ease;
-}
-
-.msh-settings-wrap .msh-support-link:hover,
-.msh-settings-wrap .msh-website-link:hover {
-    color: #8B8883;
-}
-
-.msh-settings-wrap .msh-support-link:hover .msh-mail-icon path,
-.msh-settings-wrap .msh-website-link:hover .msh-website-icon path {
-    fill: #8B8883;
-}
+/* Page header now in global-admin.css */
 
 /* Global heading styles for settings page - match admin dashboard */
 .msh-settings-wrap h1,
@@ -1022,6 +978,16 @@ select[name*="context"] option:checked,
 }
 
 
+/* Responsive: Tablet and below */
+@media (max-width: 782px) {
+    /* Settings tabs - reduce padding */
+    .msh-settings-wrap .nav-tab {
+        padding: 10px 16px;
+        font-size: 12px;
+        margin: 0 2px;
+    }
+}
+
 @media (max-width: 768px) {
     /* The Dot standard mobile breakpoint */
     .msh-settings-card {
@@ -1035,5 +1001,32 @@ select[name*="context"] option:checked,
 
     .msh-settings-card--profiles .msh-profile {
         padding: 24px 20px;
+    }
+}
+
+/* Responsive: Mobile */
+@media (max-width: 600px) {
+    /* Settings tabs - compact for mobile */
+    .msh-settings-wrap .nav-tab-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .msh-settings-wrap .nav-tab {
+        padding: 8px 12px;
+        font-size: 11px;
+        margin: 0;
+        flex: 0 1 auto;
+    }
+
+    /* Settings cards - more compact */
+    .msh-settings-card {
+        padding: 16px;
+    }
+
+    .msh-settings-actions {
+        padding: 16px;
+        margin: 24px -16px -16px;
     }
 }

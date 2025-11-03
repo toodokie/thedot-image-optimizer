@@ -14,66 +14,71 @@
 }
 
 .msh-stat-box {
-	background: #f9f9f9;
-	border: 1px solid #dcdcde;
-	border-radius: 4px;
-	padding: 16px;
+	background: #FAF9F6;  /* Brand cream */
+	border: 1px solid #ddd;  /* Light border */
+	border-radius: 8px;
+	padding: 20px;
 	text-align: center;
 }
 
 .msh-stat-label {
-	font-size: 12px;
-	color: #646970;
+	font-size: 11px;
+	color: #8B8883;  /* Brand warm gray */
 	text-transform: uppercase;
-	letter-spacing: 0.5px;
-	margin-bottom: 8px;
+	letter-spacing: 0.08em;
+	margin-bottom: 12px;
 	font-weight: 600;
+	font-family: var(--font-primary);
 }
 
 .msh-stat-value {
-	font-size: 32px;
-	font-weight: 700;
-	color: #1d2327;
+	font-size: 20px;  /* Smaller, brand-compliant size */
+	font-weight: 600;
+	color: #35332F;  /* Brand charcoal */
 	margin: 8px 0;
+	font-family: var(--font-primary);
+	text-transform: uppercase;
+	letter-spacing: 0.08em;
 }
 
 .msh-stat-note {
-	font-size: 13px;
-	color: #787c82;
+	font-size: 12px;
+	color: #8B8883;  /* Brand warm gray */
 	margin-top: 8px;
+	font-family: var(--font-secondary);
 }
 
-/* Health Status Colors */
+/* Health Status Colors - Brand Compliant */
 .msh-stat-healthy {
-	border-left: 4px solid #46b450;
+	border-left: 4px solid #35332F;  /* Brand charcoal */
 }
 
 .msh-stat-healthy .msh-stat-value {
-	color: #46b450;
+	color: #35332F;  /* Brand charcoal */
 }
 
 .msh-stat-warming_up {
-	border-left: 4px solid #f0b849;
+	border-left: 4px solid #8B8883;  /* Brand warm gray */
 }
 
 .msh-stat-warming_up .msh-stat-value {
-	color: #f0b849;
+	color: #8B8883;  /* Brand warm gray */
 }
 
 .msh-stat-warning {
-	border-left: 4px solid #ffb900;
+	border-left: 4px solid #8B8883;  /* Brand warm gray */
 }
 
 .msh-stat-warning .msh-stat-value {
-	color: #d63638;
+	color: #8B8883;  /* Brand warm gray */
 }
 
 .msh-stat-disabled {
-	border-left: 4px solid #d63638;
+	border-left: 4px solid #35332F;  /* Brand charcoal, NOT red */
 }
 
 .msh-stat-disabled .msh-stat-value {
-	color: #d63638;
+	color: #35332F;  /* Brand charcoal, NOT red */
 }
 
 /* Templates Table */

@@ -31,7 +31,7 @@
 /* Active/selected state - keep logo visible */
 #adminmenu #toplevel_page_msh-optimizer.wp-has-current-submenu > a,
 #adminmenu #toplevel_page_msh-optimizer.current > a {
-    background-color: #135e96; /* WordPress active blue */
+    background-color: #35332F; /* The Dot charcoal */
 }
 
 /* Submenu items - remove icons */

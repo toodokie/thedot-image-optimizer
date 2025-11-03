@@ -77,8 +77,19 @@
 1. **Library Scan** → `wp_ajax_msh_analyze_images` batches through attachments, computes score/context, caches metadata suggestions.  
 2. **Batch Optimize** → UI enqueues selected IDs; job queue processes WebP conversion, metadata application, rename hints, and logging.  
 3. **Duplicate Review** → Quick scan fetches perceptual hash buckets + usage badges; optional Deep Scan re-checks Elementor/ACF JSON just-in-time.  
-4. **Metadata Lifecycle** → Versioning cache stores active metadata; write-once history keeps manual overrides, AI output, and approval states.  
+4. **Metadata Lifecycle** → Versioning cache stores active metadata; write-once history keeps manual overrides, AI output, and approval states.
 5. **Telemetry & Diagnostics** → Job queue status, last usage index rebuild, and analyzer stats surface in the diagnostics panel and CLI.
+
+### 3.3 CSS Architecture & Branding System
+- **4-Layer cascade** (`assets/css/brand-guidelines.css` → `global-admin.css` → page-specific → components)
+  - Layer 1 (Foundation): CSS variables for The Dot brand (colors, spacing, typography) in `brand-guidelines.css` and `typography-variables.css`.
+  - Layer 2 (Global): Shared admin patterns (`global-admin.css`) including page backgrounds (#FAF9F6 cream), section cards, page headers (logo + support links), form elements, tables, and typography defaults.
+  - Layer 3 (Page-Specific): Individual page styles (`dashboard.css`, `hub.css`, `image-optimizer-admin.css`, etc.) containing only unique layouts and features.
+  - Layer 4 (Components): Standalone widgets (`confidence-indicators.css`, `tinydot-loader.css`, `admin-menu-branding.css`, `wp-list-table-branding.css`).
+- **Standardized page header** (`admin/partials/page-header.php`) – Reusable template with The Dot logo, support links, and mail/website icons; automatically included on all admin pages (Dashboard, Hub, Settings, Analytics, Localization, Review Center, Help & Documentation).
+- **Brand consistency** – Monochrome, minimalistic design with charcoal (#35332F) text, cream (#FAF9F6) backgrounds, light grey (#ddd) borders, and lime accent (#DAFF00).
+- **Loading order** – Main plugin file (`msh-image-optimizer.php::enqueue_global_admin_styles()`) loads foundation and global CSS at priority 1 via `admin_enqueue_scripts` hook.
+- **Reference docs** – Complete architecture documentation in `docs/CSS_ARCHITECTURE.md`, standardization summary in `docs/CSS_STANDARDIZATION_SUMMARY.md`.
 
 ---
 
@@ -186,8 +197,70 @@
 ## 8. Roadmap Themes
 
 ### 8.1 AI Automation
-- Three-phase plan: **Foundation** (OpenAI wrapper, credit ledger, BYOK, error handling), **Core Features** (metadata generation, vision analysis, embeddings-based duplicate detection, hybrid review UI), and **Polish** (batch management, learning system, automated tests, tutorials).  
+
+#### Foundation & Architecture
+- Three-phase plan: **Foundation** (OpenAI wrapper, credit ledger, BYOK, error handling), **Core Features** (metadata generation, vision analysis, embeddings-based duplicate detection, hybrid review UI), and **Polish** (batch management, learning system, automated tests, tutorials).
 - AI module draws from R&D insights: use GPT‑4 Vision for subject analysis, GPT‑3.5 for metadata, embeddings for similarity, and capture human edits to refine prompts over time.
+
+#### Smart Mode Implementation (v1.2.17 - November 2025)
+**Status**: ✅ Production-ready, validated in Phase 0A/0B testing
+
+**Background**: Initial production usage revealed rate limiting issues (HTTP 429 errors) due to token consumption 15× over budget (3,217 tokens/image vs 210 target). Batches of 46 images stalled at 85% completion.
+
+**Solution**: Smart Mode with ultra-compressed prompts and adaptive detail levels achieved 90.4% token reduction while maintaining 95% quality.
+
+**Key Optimizations**:
+1. **Schema v4 Short Keys**: Compressed JSON response format
+   - Example: `file_name_suggestion` → `fn`, `title` → `t`, `alt_text` → `a`
+   - Token savings: ~90 tokens per response
+   - Backward compatibility via `expand_short_keys()` method
+
+2. **Ultra-Compressed Prompts**: Removed redundancy, used pipe-delimited context
+   - System prompt: 2,000 → 20 tokens (99% reduction)
+   - User prompt: 400 → 40 tokens (90% reduction)
+   - Context ID system (`ctx_9f11db7`) replaces inline business context
+
+3. **Adaptive Vision Detail**: Switched from detail:high to detail:low with 640px resize
+   - Vision tokens: 900 → 85 tokens (91% reduction)
+   - File size: ~150KB → ~40KB
+   - Quality maintained through context enrichment
+
+**Performance Results** (Phase 0B Testing):
+```
+Before Smart Mode:
+- 3,217 tokens/image
+- 46 images → 148,000 tokens → Rate limit exceeded → HTTP 429
+- Cost: $0.74 per 46-image batch
+- Result: Stalls at 85%
+
+After Smart Mode:
+- 307 tokens/image (90.4% reduction)
+- 46 images → 14,122 tokens → Well under rate limit
+- Cost: $0.07 per 46-image batch (10.5× cheaper)
+- Result: Completes in ~3 minutes with zero errors
+- Speed: 1.12x faster (5.49s → 4.90s per image)
+```
+
+**Quality Validation**:
+- Side-by-side comparison on 10 diverse images
+- Average quality score: ~95% vs current high-detail mode
+- Titles accurate and SEO-friendly
+- Alt text accessible and descriptive
+- Subjects/attributes relevant
+
+**Implementation Files**:
+- Test harness: `includes/class-msh-smart-mode-test-cli.php`
+- Integration target: `includes/class-msh-openai-connector.php`
+- Documentation: `docs/TOKEN_BASED_PRICING_STRATEGY.md` Part 10-11
+- Results: `PHASE-0B-RESULTS.md`
+
+**Rollout Plan (v1.2.17)**:
+1. Replace current prompts with Smart Mode defaults
+2. Change detail:high → detail:low globally
+3. Add Schema v4 short-key parsing
+4. Integrate `expand_short_keys()` for compatibility
+5. Reduce image resize from 1600px → 640px
+6. Optional Phase 0C: Further optimize to 230 tokens (current: 307)
 
 ### 8.2 Tokenized Pricing & Commercial Model
 - Replace ambiguous “AI credits” with transparent OpenAI-aligned tokens.  
@@ -240,15 +313,22 @@
 ---
 
 ## 11. Reference Library
-- `docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md` – Operator workflow, UI screenshots, duplicate cleanup instructions.  
-- `docs/MSH_IMAGE_OPTIMIZER_DEV_NOTES.md` – Architecture history, QA playbooks, security posture, regression checklists.  
-- `docs/MSH_IMAGE_OPTIMIZER_RND.md` – Research spikes, AI strategy, filename/SEO findings.  
-- `docs/RND-002-RESEARCH-IDEAS.md` – Living backlog of migration patterns, imaging experiments, and cost levers.  
-- `docs/MSH_STANDALONE_MIGRATION_PLAN.md` – Extraction checklist, file map, activation tasks.  
-- `docs/MSH_IMAGE_OPTIMIZER_MULTILANGUAGE_GUIDE.md` – Two-layer multilingual implementation path.  
-- `docs/TOKEN_BASED_PRICING_STRATEGY.md` – Token economics, tier definitions, trial flow.  
-- `PROJECT-STATUS-ALL-PHASES.md` – Phase-by-phase status, timelines, and owners.  
-- `NEXT-PHASES-PLAN.md`, `PROJECT-STATUS-ALL-PHASES.md`, `INFRASTRUCTURE-WEEK-1-COMPLETE.md` – Supporting schedule detail.  
+- `docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md` – Operator workflow, UI screenshots, duplicate cleanup instructions.
+- `docs/MSH_IMAGE_OPTIMIZER_DEV_NOTES.md` – Architecture history, QA playbooks, security posture, regression checklists.
+- `docs/MSH_IMAGE_OPTIMIZER_RND.md` – Research spikes, AI strategy, filename/SEO findings.
+- `docs/RND-002-RESEARCH-IDEAS.md` – Living backlog of migration patterns, imaging experiments, and cost levers.
+- `docs/MSH_STANDALONE_MIGRATION_PLAN.md` – Extraction checklist, file map, activation tasks.
+- `docs/MSH_IMAGE_OPTIMIZER_MULTILANGUAGE_GUIDE.md` – Two-layer multilingual implementation path.
+- `docs/TOKEN_BASED_PRICING_STRATEGY.md` – Token economics, tier definitions, trial flow, Smart Mode implementation (Parts 10-12), compliance audit.
+- `TOKEN-SYSTEM-COMPLIANCE-FIXES.md` – 9 compliance gaps identified in audit, implementation checklist with priorities.
+- `TOKEN-MODEL-VERIFICATION-PLAN.md` – Complete test plan for Phase 0B + token system verification (v1.3.0).
+- `.github/ISSUE_TEMPLATE/token-verification.md` – GitHub Issue template for tracking verification progress.
+- `PHASE-0A-TEST-HARNESS.md` – Smart Mode test harness usage guide, test command documentation.
+- `PHASE-0B-RESULTS.md` – Smart Mode production readiness validation, Phase 0B test results.
+- `V1-2-17-IMPLEMENTATION-PLAN.md` – Step-by-step Smart Mode integration plan for production rollout.
+- `AI-PERFORMANCE-OPTIMIZATION-PLAN.md` – Performance analysis, token optimization strategy, concurrent queue design.
+- `PROJECT-STATUS-ALL-PHASES.md` – Phase-by-phase status, timelines, and owners.
+- `NEXT-PHASES-PLAN.md`, `PROJECT-STATUS-ALL-PHASES.md`, `INFRASTRUCTURE-WEEK-1-COMPLETE.md` – Supporting schedule detail.
 - Additional operator/QA checklists in `/docs/testing/` and release summaries across root-level reports.
 
-**Last Reviewed:** 2025-10-30 (Codex system synthesis)
+**Last Reviewed:** 2025-11-02 (Smart Mode implementation documented)

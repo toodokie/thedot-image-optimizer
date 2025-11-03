@@ -203,6 +203,7 @@ class MSH_Hub_Page {
 		}
 		?>
 		<div class="wrap msh-hub-page">
+			<?php include dirname( __FILE__ ) . '/partials/page-header.php'; ?>
 			<h1><?php esc_html_e( 'Optimizer Hub', 'msh-image-optimizer' ); ?></h1>
 			<?php $this->render_nav_tabs( $current_tab, $tabs ); ?>
 			<div class="msh-tab-content">

@@ -5297,10 +5297,10 @@
                     .duplicate-review-usage li{margin:0 0 4px;}
                     .duplicate-plan-indicator{margin-top:6px;font-size:11px;color:#666;}
                     .duplicate-plan-indicator.status-ready{color:#155724;font-weight:600;}
-                    .duplicate-plan-indicator.status-keep{color:#0a4b78;font-weight:600;}
+                    .duplicate-plan-indicator.status-keep{color:#35332F;font-weight:600;}
                     .duplicate-plan-indicator.status-warning{color:#d63638;font-weight:600;}
                     .duplicate-plan-indicator.status-pending{color:#666;}
-                    .duplicate-review-summary{margin-top:12px;font-size:12px;color:#1d2327;background:#f1f5f9;border-left:3px solid #2271b1;padding:8px 12px;border-radius:4px;}
+                    .duplicate-review-summary{margin-top:12px;font-size:12px;color:#1d2327;background:#f1f5f9;border-left:3px solid #35332F;padding:8px 12px;border-radius:4px;}
                     .duplicate-review-instructions{margin:12px 0 4px;font-size:12px;color:#444;}
                     .duplicate-review-actions{text-align:right;margin-top:20px;}
                     .duplicate-review-choice{margin-top:8px;font-size:11px;color:#333;display:flex;flex-direction:column;gap:4px;}

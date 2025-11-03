@@ -233,8 +233,8 @@ class MSH_Optimizer_Menu {
 
 		?>
 		<div class="wrap msh-insights-page">
+			<?php include dirname( __FILE__ ) . '/partials/page-header.php'; ?>
 			<h1><?php esc_html_e( 'Insights & Analytics', 'msh-image-optimizer' ); ?></h1>
-			<p class="description"><?php esc_html_e( 'Monitor context data, A/B test results, and performance metrics.', 'msh-image-optimizer' ); ?></p>
 
 			<nav class="nav-tab-wrapper">
 				<a href="?page=msh-insights&tab=context" class="nav-tab <?php echo 'context' === $current_tab ? 'nav-tab-active' : ''; ?>">
@@ -284,8 +284,8 @@ class MSH_Optimizer_Menu {
 
 		?>
 		<div class="wrap msh-localization-page">
+			<?php include dirname( __FILE__ ) . '/partials/page-header.php'; ?>
 			<h1><?php esc_html_e( 'Localization', 'msh-image-optimizer' ); ?></h1>
-			<p class="description"><?php esc_html_e( 'Configure locale-specific settings and terminology.', 'msh-image-optimizer' ); ?></p>
 
 			<nav class="nav-tab-wrapper">
 				<a href="?page=msh-localization&tab=profiles" class="nav-tab <?php echo 'profiles' === $current_tab ? 'nav-tab-active' : ''; ?>">
@@ -331,8 +331,8 @@ class MSH_Optimizer_Menu {
 
 		?>
 		<div class="wrap msh-review-center-page">
+			<?php include dirname( __FILE__ ) . '/partials/page-header.php'; ?>
 			<h1><?php esc_html_e( 'Review Center', 'msh-image-optimizer' ); ?></h1>
-			<p class="description"><?php esc_html_e( 'Review pending metadata changes and track version history.', 'msh-image-optimizer' ); ?></p>
 
 			<nav class="nav-tab-wrapper">
 				<a href="?page=msh-review-center&tab=approvals" class="nav-tab <?php echo 'approvals' === $current_tab ? 'nav-tab-active' : ''; ?>">
@@ -426,6 +426,7 @@ class MSH_Optimizer_Menu {
 	public function render_help_page() {
 		?>
 		<div class="wrap msh-help-page">
+			<?php include dirname( __FILE__ ) . '/partials/page-header.php'; ?>
 			<h1><?php esc_html_e( 'Help & Documentation', 'msh-image-optimizer' ); ?></h1>
 			<p class="description"><?php esc_html_e( 'Get help, check system health, and access documentation.', 'msh-image-optimizer' ); ?></p>
 

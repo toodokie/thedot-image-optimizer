@@ -5,13 +5,8 @@
  * Brand Guidelines: https://www.figma.com/design/Wo0x0N3aJYTVKhGbcVxGbu/The-Dot-Brand-Guidelines?node-id=0-1&t=rU35uHEYCbMRjMqf-1
  */
 
-:root {
-    --msh-charcoal: #35332f;
-    --msh-warm-gray: #8b8883;
-    --msh-cream: #FAF9F6;
-    --msh-font-heading: 'futura-pt', sans-serif;
-    --msh-font-body: 'ff-real-text-pro', sans-serif;
-}
+/* Variables moved to brand-guidelines.css */
+/* Page background now in global-admin.css */
 
 /* Main Hub Container */
 .msh-hub-page {

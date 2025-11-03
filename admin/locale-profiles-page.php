@@ -303,18 +303,6 @@ class MSH_Locale_Profiles_Page {
 			wp_die( esc_html__( 'You do not have permission to access this page.', 'msh-image-optimizer' ) );
 		}
 
-		// Display messages from form submissions
-		if ( $messages = get_transient( 'msh_locale_messages' ) ) {
-			delete_transient( 'msh_locale_messages' );
-			foreach ( $messages as $message ) {
-				printf(
-					'<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
-					esc_attr( $message['type'] ),
-					esc_html( $message['message'] )
-				);
-			}
-		}
-
 		// Get all profiles from database
 		$profiles = $this->profile_manager->get_all_profiles();
 		$editing_locale = isset( $_GET['edit'] ) ? sanitize_text_field( wp_unslash( $_GET['edit'] ) ) : '';
@@ -327,6 +315,19 @@ class MSH_Locale_Profiles_Page {
 
 		?>
 		<div class="wrap msh-locale-page">
+			<?php
+			// Display messages from form submissions
+			if ( $messages = get_transient( 'msh_locale_messages' ) ) {
+				delete_transient( 'msh_locale_messages' );
+				foreach ( $messages as $message ) {
+					printf(
+						'<div class="notice notice-%s is-dismissible"><p>%s</p></div>',
+						esc_attr( $message['type'] ),
+						esc_html( $message['message'] )
+					);
+				}
+			}
+			?>
 			<h1 class="msh-page-title"><?php esc_html_e( 'Locale Profiles', 'msh-image-optimizer' ); ?></h1>
 			<p class="msh-page-subtitle"><?php esc_html_e( 'Configure locale-specific optimization settings and cultural adaptation rules.', 'msh-image-optimizer' ); ?></p>
 

@@ -387,7 +387,9 @@ class MSH_Glossary_Page {
 			border-radius: 8px;
 			padding: 16px;
 			margin-bottom: 20px;
-			display: inline-block;
+			display: flex;
+			align-items: center;
+			gap: 12px;
 		}
 
 		.msh-glossary-locale-selector label {
@@ -395,15 +397,37 @@ class MSH_Glossary_Page {
 			color: #35332f;
 			font-size: 14px;
 			font-weight: 600;
-			margin-right: 12px;
+			margin: 0;
 		}
 
 		.msh-glossary-locale-selector select {
-			padding: 8px 12px;
+			padding: 8px 32px 8px 12px;
 			border: 1px solid #ddd;
 			border-radius: 6px;
 			font-family: 'ff-real-text-pro', sans-serif;
 			font-size: 14px;
+			color: #35332f;
+			background-color: #fff;
+			background-image: url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="%2335332f" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"%3e%3cpolyline points="6 9 12 15 18 9"%3e%3c/polyline%3e%3c/svg%3e');
+			background-repeat: no-repeat;
+			background-position: right 8px center;
+			background-size: 16px;
+			-webkit-appearance: none;
+			-moz-appearance: none;
+			appearance: none;
+			cursor: pointer;
+			min-width: 150px;
+			transition: border-color 0.15s ease;
+		}
+
+		.msh-glossary-locale-selector select:hover {
+			border-color: #35332f;
+		}
+
+		.msh-glossary-locale-selector select:focus {
+			outline: none;
+			border-color: #daff00;
+			box-shadow: 0 0 0 1px #daff00;
 		}
 
 		.msh-glossary-container {

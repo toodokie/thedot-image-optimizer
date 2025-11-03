@@ -3,7 +3,7 @@
  * Plugin Name: MSH Image Optimizer
  * Plugin URI: https://github.com/toodokie/thedot-image-optimizer
  * Description: Standalone WordPress image optimization plugin with duplicate detection, SEO-friendly renaming, WebP delivery, and comprehensive usage tracking.
- * Version: 1.2.16
+ * Version: 1.3.0-0B
  * Author: Main Street Health
  * Author URI: https://github.com/toodokie
  * Text Domain: msh-image-optimizer
@@ -31,9 +31,12 @@ if (!defined('MSH_IO_PLUGIN_URL')) {
 if (!defined('MSH_IO_ASSETS_URL')) {
     define('MSH_IO_ASSETS_URL', trailingslashit(plugin_dir_url(__FILE__) . 'assets'));
 }
+if (!defined('MSH_IO_VERSION')) {
+    define('MSH_IO_VERSION', '1.3.0-0B');
+}
 
 final class MSH_Image_Optimizer_Plugin {
-    const VERSION = '1.2.16';
+    const VERSION = '1.3.0-0B';
 
     private static $instance = null;
 
@@ -48,6 +51,9 @@ final class MSH_Image_Optimizer_Plugin {
         $this->define_constants();
         $this->includes();
         add_action('plugins_loaded', [$this, 'init']);
+
+        // Enqueue global admin styles on all MSH plugin pages (priority 1 - load early)
+        add_action('admin_enqueue_scripts', [$this, 'enqueue_global_admin_styles'], 1);
 
         // Phase 1A: Register tokenized backup cleanup handler
         add_action('msh_cleanup_rename_backup', [$this, 'cleanup_backup_by_token'], 10, 1);
@@ -108,6 +114,9 @@ final class MSH_Image_Optimizer_Plugin {
         if (!class_exists('MSH_QA_CLI')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-qa-cli.php';
         }
+        if (!class_exists('MSH_Smart_Mode_Test_CLI_Command')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-smart-mode-test-cli.php';
+        }
         if (!class_exists('MSH_Media_Cleanup')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-media-cleanup.php';
         }
@@ -122,6 +131,15 @@ final class MSH_Image_Optimizer_Plugin {
         }
         if (!class_exists('MSH_OpenAI_Connector')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
+        }
+        if (!class_exists('MSH_Token_Manager')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-token-manager.php';
+        }
+        if (!class_exists('MSH_Token_Balance_Widget')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-token-balance-widget.php';
+        }
+        if (!class_exists('MSH_Precision_Nudge')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-precision-nudge.php';
         }
         if (!class_exists('MSH_Metadata_Regeneration_Background')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-metadata-regeneration-background.php';
@@ -371,6 +389,37 @@ require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-profiler.php';
      *
      * @param string $token MD5 token or legacy path
      */
+    /**
+     * Enqueue global admin styles on all MSH plugin pages
+     * Provides consistent page background, section styling, and typography
+     *
+     * @param string $hook Current admin page hook
+     */
+    public function enqueue_global_admin_styles($hook) {
+        // Only load on MSH plugin pages
+        if (strpos($hook, 'msh-') === false &&
+            strpos($hook, 'image-optimizer') === false &&
+            strpos($hook, 'msh_') === false) {
+            return;
+        }
+
+        // Enqueue brand guidelines (CSS variables) - load first
+        wp_enqueue_style(
+            'msh-brand-guidelines',
+            MSH_IO_ASSETS_URL . 'css/brand-guidelines.css',
+            array(),
+            filemtime(MSH_IO_PLUGIN_DIR . 'assets/css/brand-guidelines.css')
+        );
+
+        // Enqueue global admin CSS - consistent styling across all pages
+        wp_enqueue_style(
+            'msh-global-admin',
+            MSH_IO_ASSETS_URL . 'css/global-admin.css',
+            array('msh-brand-guidelines'),
+            filemtime(MSH_IO_PLUGIN_DIR . 'assets/css/global-admin.css')
+        );
+    }
+
     public function cleanup_backup_by_token($token) {
         if (class_exists('MSH_Safe_Rename_System')) {
             $system = MSH_Safe_Rename_System::get_instance();

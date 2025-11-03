@@ -75,7 +75,26 @@ class MSH_Context_Analytics_Page {
 	}
 
 	/**
-	 * Render analytics page
+	 * Static render method for tab embedding (no wrap div, no header).
+	 *
+	 * @return void
+	 */
+	public static function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have sufficient permissions to access this page.', 'msh-image-optimizer' ) );
+		}
+
+		$analytics = new MSH_Context_Analytics();
+		$overview = $analytics->get_overview();
+		$keyword_stats = $analytics->get_keyword_stats( array( 'limit' => 15 ) );
+		$post_type_stats = $analytics->get_post_type_stats();
+		$quality_dist = $analytics->get_quality_distribution();
+
+		self::render_content( $overview, $keyword_stats, $post_type_stats, $quality_dist );
+	}
+
+	/**
+	 * Render analytics page (full page with wrap and header).
 	 */
 	public function render_page() {
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -90,8 +109,27 @@ class MSH_Context_Analytics_Page {
 
 		?>
 		<div class="wrap msh-analytics-page">
+			<?php include dirname( __FILE__ ) . '/partials/page-header.php'; ?>
 			<h1><?php esc_html_e( 'Context Analytics Dashboard', 'msh-image-optimizer' ); ?></h1>
 
+			<?php
+			self::render_content( $overview, $keyword_stats, $post_type_stats, $quality_dist );
+			?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the analytics content (shared between full page and tab embedding).
+	 *
+	 * @param array $overview Overview stats.
+	 * @param array $keyword_stats Keyword statistics.
+	 * @param array $post_type_stats Post type statistics.
+	 * @param array $quality_dist Quality distribution.
+	 * @return void
+	 */
+	private static function render_content( $overview, $keyword_stats, $post_type_stats, $quality_dist ) {
+		?>
 			<!-- Overview Cards -->
 			<div class="msh-analytics-cards">
 				<div class="msh-card">
@@ -382,7 +420,6 @@ class MSH_Context_Analytics_Page {
 					</div>
 				</div>
 			</div>
-		</div>
 		<?php
 	}
 }

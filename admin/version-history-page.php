@@ -49,7 +49,8 @@ class MSH_Version_History_Page {
 	 * @return void
 	 */
 	public function enqueue_assets( $hook ) {
-		if ( 'msh-optimizer_page_' . self::PAGE_SLUG !== $hook ) {
+		// Version History is now accessed via Review Center tabs (msh-review-center)
+		if ( 'msh-optimizer_page_msh-review-center' !== $hook ) {
 			return;
 		}
 
@@ -136,6 +137,16 @@ class MSH_Version_History_Page {
 	}
 
 	/**
+	 * Static render method for tab embedding (no wrap div).
+	 *
+	 * @return void
+	 */
+	public static function render() {
+		$page = new self();
+		$page->render_page();
+	}
+
+	/**
 	 * Render admin page.
 	 *
 	 * @return void
@@ -161,7 +172,8 @@ class MSH_Version_History_Page {
 			<h1><?php esc_html_e( 'Metadata Version History', 'msh-image-optimizer' ); ?></h1>
 
 			<form method="get" class="msh-phase4-filter">
-				<input type="hidden" name="page" value="<?php echo esc_attr( self::PAGE_SLUG ); ?>">
+				<input type="hidden" name="page" value="msh-review-center">
+				<input type="hidden" name="tab" value="history">
 				<label for="msh-media-id">
 					<span><?php esc_html_e( 'Attachment ID', 'msh-image-optimizer' ); ?></span>
 					<input type="number" name="media_id" id="msh-media-id" value="<?php echo $media_id ? esc_attr( $media_id ) : ''; ?>" min="1" required>
@@ -170,7 +182,7 @@ class MSH_Version_History_Page {
 					<span><?php esc_html_e( 'Locale', 'msh-image-optimizer' ); ?></span>
 					<input type="text" name="locale" id="msh-locale" value="<?php echo esc_attr( $locale ); ?>" placeholder="en_US">
 				</label>
-				<button class="button button-dot-primary"><?php esc_html_e( 'Load History', 'msh-image-optimizer' ); ?></button>
+				<button class="button button-primary"><?php esc_html_e( 'Load History', 'msh-image-optimizer' ); ?></button>
 			</form>
 
 			<?php if ( isset( $_GET['msh_rollback'] ) ) : ?>
@@ -194,10 +206,11 @@ class MSH_Version_History_Page {
 						</header>
 
 						<div class="msh-phase4-table-wrap">
-							<table class="msh-phase4-table">
+							<table class="msh-phase4-table msh-phase4-table--with-value">
 								<thead>
 									<tr>
 										<th><?php esc_html_e( 'Version', 'msh-image-optimizer' ); ?></th>
+										<th style="width: 40%;"><?php esc_html_e( 'Value', 'msh-image-optimizer' ); ?></th>
 										<th><?php esc_html_e( 'Source', 'msh-image-optimizer' ); ?></th>
 										<th><?php esc_html_e( 'Created', 'msh-image-optimizer' ); ?></th>
 										<th><?php esc_html_e( 'Approved', 'msh-image-optimizer' ); ?></th>
@@ -213,6 +226,16 @@ class MSH_Version_History_Page {
 													<span class="msh-phase4-badge"><?php esc_html_e( 'Active', 'msh-image-optimizer' ); ?></span>
 												<?php endif; ?>
 											</td>
+											<td class="msh-phase4-value-cell">
+												<?php
+												// Display the actual metadata value (truncate if too long)
+												$value         = isset( $version['value'] ) ? $version['value'] : '';
+												$value_display = strlen( $value ) > 120 ? substr( $value, 0, 120 ) . '…' : $value;
+												?>
+												<span class="msh-phase4-value-text" title="<?php echo esc_attr( $value ); ?>">
+													<?php echo esc_html( $value_display ); ?>
+												</span>
+											</td>
 											<td><?php echo esc_html( ucfirst( $version['source'] ) ); ?></td>
 											<td><?php echo esc_html( $version['created_at'] ); ?></td>
 											<td><?php echo $version['approved_at'] ? esc_html( $version['approved_at'] ) : '&mdash;'; ?></td>
@@ -222,7 +245,8 @@ class MSH_Version_History_Page {
 												if ( $compare_target ) :
 													$compare_url = add_query_arg(
 														array(
-															'page'      => self::PAGE_SLUG,
+															'page'      => 'msh-review-center',
+														'tab'       => 'history',
 															'media_id'  => $media_id,
 															'locale'    => $locale,
 															'version_a' => $compare_target['id'],
@@ -238,8 +262,8 @@ class MSH_Version_History_Page {
 													<?php wp_nonce_field( self::ROLLBACK_NONCE ); ?>
 													<input type="hidden" name="action" value="msh_version_rollback">
 													<input type="hidden" name="version_id" value="<?php echo esc_attr( $version['id'] ); ?>">
-													<input type="hidden" name="redirect" value="<?php echo esc_url( add_query_arg( array( 'media_id' => $media_id, 'locale' => $locale ), admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ) ); ?>">
-													<button type="submit" class="button button-dot-primary"><?php esc_html_e( 'Rollback', 'msh-image-optimizer' ); ?></button>
+													<input type="hidden" name="redirect" value="<?php echo esc_url( add_query_arg( array( 'page' => 'msh-review-center', 'tab' => 'history', 'media_id' => $media_id, 'locale' => $locale ), admin_url( 'admin.php' ) ) ); ?>">
+													<button type="submit" class="button button-primary"><?php esc_html_e( 'Rollback', 'msh-image-optimizer' ); ?></button>
 												</form>
 
 												<button type="button" class="button button-link msh-phase4-note-toggle" data-target="msh-note-<?php echo esc_attr( $version['id'] ); ?>">
@@ -248,12 +272,12 @@ class MSH_Version_History_Page {
 											</td>
 										</tr>
 										<tr id="msh-note-<?php echo esc_attr( $version['id'] ); ?>" class="msh-phase4-note-row">
-											<td colspan="5">
+											<td colspan="6">
 												<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>" class="msh-phase4-note-form">
 													<?php wp_nonce_field( self::NOTE_NONCE ); ?>
 													<input type="hidden" name="action" value="msh_version_note">
 													<input type="hidden" name="version_id" value="<?php echo esc_attr( $version['id'] ); ?>">
-													<input type="hidden" name="redirect" value="<?php echo esc_url( add_query_arg( array( 'media_id' => $media_id, 'locale' => $locale ), admin_url( 'admin.php?page=' . self::PAGE_SLUG ) ) ); ?>">
+													<input type="hidden" name="redirect" value="<?php echo esc_url( add_query_arg( array( 'page' => 'msh-review-center', 'tab' => 'history', 'media_id' => $media_id, 'locale' => $locale ), admin_url( 'admin.php' ) ) ); ?>">
 													<label>
 														<span class="screen-reader-text"><?php esc_html_e( 'Version note', 'msh-image-optimizer' ); ?></span>
 														<textarea name="version_note" rows="3" placeholder="<?php esc_attr_e( 'Document why this change matters…', 'msh-image-optimizer' ); ?>"></textarea>

@@ -122,7 +122,38 @@ class MSH_Approval_Queue_Page {
 	}
 
 	/**
-	 * Render admin UI.
+	 * Static render method for tab embedding (no wrap div).
+	 *
+	 * @return void
+	 */
+	public static function render() {
+		if ( ! current_user_can( 'manage_options' ) ) {
+			wp_die( esc_html__( 'You do not have permission to access this page.', 'msh-image-optimizer' ) );
+		}
+
+		$workflow = MSH_Approval_Workflow::get_instance();
+		$queue    = $workflow->get_queue( isset( $_GET['status'] ) ? sanitize_text_field( $_GET['status'] ) : '' );
+		$action   = isset( $_GET['msh_action'] ) ? sanitize_text_field( $_GET['msh_action'] ) : '';
+
+		$versioning = MSH_Metadata_Versioning::get_instance();
+
+		// Render notifications
+		if ( 'approve' === $action ) : ?>
+			<div class="notice notice-success is-dismissible">
+				<p><?php esc_html_e( 'Metadata approved and published to version history.', 'msh-image-optimizer' ); ?></p>
+			</div>
+		<?php elseif ( 'request_changes' === $action ) : ?>
+			<div class="notice notice-warning is-dismissible">
+				<p><?php esc_html_e( 'Feedback shared with the author. They will revise and resubmit.', 'msh-image-optimizer' ); ?></p>
+			</div>
+		<?php endif;
+
+		// Render the rest of the content
+		self::render_content( $queue, $versioning );
+	}
+
+	/**
+	 * Render admin UI (full page with wrap).
 	 *
 	 * @return void
 	 */
@@ -150,8 +181,23 @@ class MSH_Approval_Queue_Page {
 				<div class="notice notice-warning is-dismissible">
 					<p><?php esc_html_e( 'Feedback shared with the author. They will revise and resubmit.', 'msh-image-optimizer' ); ?></p>
 				</div>
-			<?php endif; ?>
+			<?php endif;
 
+			self::render_content( $queue, $versioning );
+			?>
+		</div>
+		<?php
+	}
+
+	/**
+	 * Render the approval queue content (shared between full page and tab embedding).
+	 *
+	 * @param array $queue Queue items.
+	 * @param MSH_Metadata_Versioning $versioning Versioning instance.
+	 * @return void
+	 */
+	private static function render_content( $queue, $versioning ) {
+		?>
 			<section class="msh-phase4-card">
 				<header class="msh-phase4-card__header">
 					<h2><?php esc_html_e( 'Pending Reviews', 'msh-image-optimizer' ); ?></h2>
@@ -248,7 +294,6 @@ class MSH_Approval_Queue_Page {
 					<?php endforeach; ?>
 				<?php endif; ?>
 			</section>
-		</div>
 		<?php
 	}
 }

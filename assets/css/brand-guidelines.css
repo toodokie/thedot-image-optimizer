@@ -25,7 +25,7 @@
     --msh-success: #46b450;       /* Success states, completed actions */
     --msh-warning: #ffb900;       /* Warning states, attention needed */
     --msh-error: #d63638;         /* Error states, destructive actions */
-    --msh-info: #00a0d2;          /* Info states, helpful tips */
+    --msh-info: #8B8883;          /* Info states, helpful tips - brand warm gray */
 
     /* Neutral Colors */
     --msh-white: #ffffff;
@@ -111,6 +111,76 @@
     --msh-z-modal: 1000;          /* Modals, overlays */
     --msh-z-toast: 1100;          /* Toast notifications */
     --msh-z-tooltip: 1200;        /* Tooltips (highest) */
+
+    /* ============================================
+       LEGACY TOKEN ALIASES
+       Map older admin CSS variables to brand tokens
+       ============================================ */
+    --font-primary: var(--msh-font-heading);
+    --font-secondary: var(--msh-font-body);
+    --font-mono: var(--msh-font-mono);
+
+    --weight-light: var(--msh-weight-light);
+    --weight-normal: var(--msh-weight-normal);
+    --weight-medium: var(--msh-weight-medium);
+    --weight-bold: var(--msh-weight-bold);
+
+    /* ============================================
+       TEXT SCALE & LAYOUT TOKENS
+       Supplementary sizes used in legacy stylesheets
+       ============================================ */
+    --text-xxs: 0.6875rem;  /* 11px */
+    --text-xs: 0.875rem;    /* 14px */
+    --text-sm: 0.9375rem;   /* 15px */
+    --text-md: 1rem;        /* 16px */
+    --text-lg: 1.125rem;    /* 18px */
+    --text-h2: clamp(1.5rem, 4vw, 2.2rem); /* mirror typography vars */
+
+    --section-padding-sm: 20px;
+    --section-padding-md: 24px;
+    --section-padding-lg: 32px;
+    --section-padding-x-sm: 20px;
+    --section-padding-y-sm: 16px;
+
+    --section-gap-xs: 8px;
+    --section-gap-sm: 12px;
+    --section-gap-md: 16px;
+    --section-gap-lg: 24px;
+
+    --input-height: 48px;
+    --select-height: 52px;
+    --input-border-radius: 4px;
+    --input-padding: 12px 16px;
+    --select-padding: 14px 16px;
+    --textarea-min-height: 120px;
+
+    --heading-spacing-h1: clamp(20px, 3vw, 32px);
+    --heading-spacing-h2: clamp(16px, 2.5vw, 24px);
+    --heading-spacing-h3: clamp(12px, 2vw, 20px);
+
+    --msh-focus-ring: 0 0 0 2px rgba(53, 51, 47, 0.25);
+    --msh-focus-ring-strong: 0 0 0 3px rgba(218, 255, 0, 0.35);
+
+    /* ============================================
+       TYPOGRAPHY & CONTENT SUPPORT
+       ============================================ */
+    --leading-normal: 1.4;
+    --leading-relaxed: 1.6;
+    --text-base: var(--text-md);
+    --form-input-text: var(--text-sm);
+    --textarea-padding: 12px 16px;
+    --msh-micro-ls: 0.06em;
+
+    /* ============================================
+       COLOR & BORDER UTILITIES
+       ============================================ */
+    --msh-border-weak: #dce2ec;
+    --msh-border-mid: #e0e0e0;
+    --msh-border-strong: #cfc7bb;
+    --msh-text-muted-1: #666666;
+    --msh-text-muted-2: #999999;
+    --msh-text-muted-3: #6b7280;
+    --msh-link-blue: #35332F;  /* Brand charcoal for links */
 }
 
 /**

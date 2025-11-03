@@ -8,54 +8,14 @@
    BASE LAYOUT
    ======================= */
 
+/* Page background now in global-admin.css */
+
 .msh-dashboard {
 	background: #FAF9F6;
 	padding: 0;
 }
 
-/* Product Header (consistent across all pages) */
-.msh-page-header {
-	display: flex;
-	justify-content: space-between;
-	align-items: center;
-	padding: 20px 20px 24px 20px;
-	background: #fff;
-	border-bottom: 1px solid rgba(53, 51, 47, 0.1);
-	margin: 0 0 32px 0;
-}
-
-.msh-logo-container {
-	flex-shrink: 0;
-}
-
-.msh-logo {
-	height: 32px;
-	width: auto;
-}
-
-.msh-header-links {
-	display: flex;
-	gap: 24px;
-	align-items: center;
-}
-
-.msh-support-link,
-.msh-website-link {
-	display: flex;
-	align-items: center;
-	gap: 8px;
-	font-family: 'futura-pt', sans-serif;
-	font-size: 14px;
-	font-weight: 300;
-	color: #35332F;
-	text-decoration: none;
-	transition: opacity 0.2s;
-}
-
-.msh-support-link:hover,
-.msh-website-link:hover {
-	opacity: 0.7;
-}
+/* Page header now in global-admin.css (standardized settings page version) */
 
 /* Page Title Area */
 .msh-dashboard-header {
@@ -552,12 +512,9 @@
    RESPONSIVE
    ======================= */
 
+/* Responsive: Tablet and below */
 @media (max-width: 782px) {
-	.msh-page-header {
-		flex-direction: column;
-		align-items: flex-start;
-		gap: 16px;
-	}
+	/* .msh-page-header responsive rules now in global-admin.css */
 
 	.msh-stats-grid,
 	.msh-balance-cards {
@@ -583,6 +540,57 @@
 
 	.msh-tab-wrapper .nav-tab {
 		margin-right: 20px;
+		padding: 10px 16px;
+		font-size: 12px;
+	}
+
+	.msh-dashboard-title {
+		font-size: 20px;
+	}
+
+	.msh-dashboard-subtitle {
+		font-size: 13px;
+	}
+}
+
+/* Responsive: Mobile */
+@media (max-width: 600px) {
+	.msh-tab-wrapper {
+		display: flex;
+		flex-wrap: wrap;
+		gap: 8px;
+	}
+
+	.msh-tab-wrapper .nav-tab {
+		padding: 8px 12px;
+		font-size: 11px;
+		margin: 0;
+		flex: 0 1 auto;
+	}
+
+	.msh-dashboard-title {
+		font-size: 18px;
+	}
+
+	.msh-dashboard-subtitle {
+		font-size: 12px;
+	}
+
+	.msh-stat-value {
+		font-size: 28px;
+	}
+
+	.msh-balance-value {
+		font-size: 24px;
+	}
+
+	.msh-tip-card,
+	.msh-did-you-know {
+		padding: 16px;
+	}
+
+	.msh-tip-content p {
+		font-size: 14px;
 	}
 }
 

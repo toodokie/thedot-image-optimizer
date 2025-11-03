@@ -1,0 +1,462 @@
+/**
+ * MSH Image Optimizer - Global Admin Styles
+ * Shared styles across ALL admin pages
+ * The Dot Creative Agency Brand
+ *
+ * This file contains:
+ * - Page background
+ * - Section card patterns
+ * - Page header styling
+ * - Common borders, radius, shadows
+ * - Typography
+ */
+
+/* Import centralized typography variables */
+@import url('typography-variables.css');
+
+/* ============================================
+   PAGE BACKGROUND - CONSISTENT CREAM
+   Applied to all plugin admin pages
+   ============================================ */
+html,
+body,
+#wpcontent,
+#wpbody,
+#wpbody-content {
+    background-color: #FAF9F6;
+    color: #35332F;
+}
+
+/* ============================================
+   PAGE HEADER - Logo + Support Links
+   Used on all plugin pages
+   ============================================ */
+.msh-page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 2.5rem;
+    margin-bottom: 2.5rem;
+    padding-bottom: 2rem;
+    border-bottom: 1px solid #35332F;
+}
+
+.msh-logo-container {
+    flex: 0 0 auto;
+}
+
+.msh-logo {
+    height: clamp(28px, 3vw, 37px);
+    width: auto;
+    display: block;
+}
+
+.msh-header-links {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 8px;
+}
+
+.msh-support-link,
+.msh-website-link {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    text-decoration: none;
+    color: #35332F;
+    font-family: var(--font-secondary);
+    font-weight: var(--weight-normal);
+    font-size: var(--text-xs);
+    line-height: 24px;
+    transition: color 0.2s ease;
+}
+
+.msh-support-link:hover,
+.msh-website-link:hover {
+    color: #8B8883;
+}
+
+.msh-support-link:hover .msh-mail-icon path,
+.msh-website-link:hover .msh-website-icon path {
+    fill: #8B8883;
+}
+
+.msh-support-link:focus,
+.msh-website-link:focus {
+    outline: none;
+    box-shadow: var(--msh-focus-ring);
+    border-radius: var(--input-border-radius);
+}
+
+.msh-mail-icon {
+    flex-shrink: 0;
+    width: 24px;
+    height: 24px;
+}
+
+.msh-website-icon {
+    flex-shrink: 0;
+    width: 20px;
+    height: 20px;
+}
+
+.msh-mail-icon path,
+.msh-website-icon path {
+    transition: fill 0.2s ease;
+}
+
+.msh-support-text,
+.msh-website-text {
+    white-space: nowrap;
+}
+
+@media (max-width: 600px) {
+    .msh-page-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 1rem;
+    }
+
+    .msh-header-links {
+        align-items: flex-start;
+    }
+}
+
+/* ============================================
+   SECTION CARD PATTERN
+   The standard container for all sections
+   Background: cream (#faf9f6)
+   Border: light grey (#ddd)
+   Radius: 12px
+   Shadow: subtle
+   ============================================ */
+.msh-section-card {
+    background: #faf9f6;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: var(--section-padding-y-lg) var(--section-padding-x-lg);
+    margin-bottom: 32px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* Also apply to existing section classes for backwards compatibility */
+.msh-settings-card,
+.msh-onboarding-wizard,
+.msh-onboarding-summary,
+.msh-actions-section,
+.msh-results-section,
+.msh-progress-section,
+.msh-webp-status-section,
+.msh-log-section,
+.msh-advanced-section {
+    background: #faf9f6;
+    border: 1px solid #ddd;
+    border-radius: 12px;
+    padding: var(--section-padding-y-lg) var(--section-padding-x-lg);
+    margin-bottom: 32px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.08);
+    overflow: hidden;
+    box-sizing: border-box;
+}
+
+/* ============================================
+   COMMON BORDERS & FORM ELEMENTS
+   Consistent light borders everywhere
+   ============================================ */
+.msh-input,
+.msh-select,
+.msh-textarea,
+.filter-select,
+.context-dropdown,
+.filter-group input[type="text"] {
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+/* Filter controls and toolbars */
+.filter-controls,
+.bulk-actions {
+    background: #ffffff;
+    border: 1px solid #ddd;
+    border-radius: 10px;
+}
+
+/* Tables */
+.results-container {
+    border: 1px solid #ddd;
+    border-radius: 6px;
+}
+
+.results-table th,
+.results-table td {
+    border-bottom: 1px solid #ddd;
+}
+
+.results-table th {
+    background: #faf9f6;
+    color: #35332f;
+}
+
+.results-table tbody tr:hover td {
+    background: #faf9f6;
+}
+
+/* ============================================
+   TYPOGRAPHY
+   Headings: futura-pt (--font-primary)
+   Body: ff-real-text-pro (--font-secondary)
+   ============================================ */
+.msh-optimizer-dashboard,
+.msh-settings-wrap,
+.msh-hub-page {
+    font-family: var(--font-secondary);
+}
+
+.msh-optimizer-dashboard h1,
+.msh-optimizer-dashboard h2,
+.msh-optimizer-dashboard h3,
+.msh-optimizer-dashboard h4,
+.msh-optimizer-dashboard h5,
+.msh-settings-wrap h1,
+.msh-settings-wrap h2,
+.msh-settings-wrap h3,
+.msh-settings-wrap h4,
+.msh-settings-wrap h5 {
+    font-family: var(--font-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-weight: var(--weight-normal);
+    color: #35332f;
+}
+
+.msh-optimizer-dashboard p,
+.msh-settings-wrap p {
+    font-family: var(--font-secondary);
+    font-size: var(--text-xs);
+    font-weight: var(--weight-light);
+    line-height: var(--leading-relaxed);
+    color: #4a4945;
+}
+
+/* ============================================
+   TABBED PAGES STYLING
+   Matches Hub page structure
+   (Used in: Hub, Insights, Localization, Review Center)
+   ============================================ */
+
+/* Page h1 title styling */
+.msh-hub-page h1,
+.msh-insights-page h1,
+.msh-localization-page h1,
+.msh-review-center-page h1 {
+    font-family: var(--font-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: #35332f;
+    margin-bottom: 30px;
+}
+
+/* Tab Navigation */
+.msh-hub-page .nav-tab-wrapper,
+.msh-insights-page .nav-tab-wrapper,
+.msh-localization-page .nav-tab-wrapper,
+.msh-review-center-page .nav-tab-wrapper {
+    border-bottom: 1px solid #35332f;
+    margin-bottom: 30px;
+    padding: 0;
+}
+
+.msh-hub-page .nav-tab,
+.msh-insights-page .nav-tab,
+.msh-localization-page .nav-tab,
+.msh-review-center-page .nav-tab {
+    font-family: var(--font-primary);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-size: 13px;
+    color: #8B8883;
+    border: none;
+    background: transparent;
+    padding: 12px 24px;
+    margin: 0 4px;
+    transition: all 0.2s ease;
+    border-bottom: 2px solid transparent;
+    text-decoration: none;
+}
+
+.msh-hub-page .nav-tab:hover,
+.msh-insights-page .nav-tab:hover,
+.msh-localization-page .nav-tab:hover,
+.msh-review-center-page .nav-tab:hover {
+    color: #35332f;
+    background: transparent;
+}
+
+.msh-hub-page .nav-tab:focus,
+.msh-hub-page .nav-tab:focus-visible,
+.msh-insights-page .nav-tab:focus,
+.msh-insights-page .nav-tab:focus-visible,
+.msh-localization-page .nav-tab:focus,
+.msh-localization-page .nav-tab:focus-visible,
+.msh-review-center-page .nav-tab:focus,
+.msh-review-center-page .nav-tab:focus-visible {
+    outline: none;  /* Remove blue WordPress outline */
+    box-shadow: none;  /* Remove blue box-shadow */
+    color: #35332f;
+    border-bottom: 2px solid #35332f;
+}
+
+.msh-hub-page .nav-tab-active,
+.msh-hub-page .nav-tab-active:hover,
+.msh-hub-page .nav-tab-active:focus,
+.msh-insights-page .nav-tab-active,
+.msh-insights-page .nav-tab-active:hover,
+.msh-insights-page .nav-tab-active:focus,
+.msh-localization-page .nav-tab-active,
+.msh-localization-page .nav-tab-active:hover,
+.msh-localization-page .nav-tab-active:focus,
+.msh-review-center-page .nav-tab-active,
+.msh-review-center-page .nav-tab-active:hover,
+.msh-review-center-page .nav-tab-active:focus {
+    color: #35332f;
+    border-bottom: 2px solid #35332f;
+    background: transparent;
+    font-weight: 600;
+    outline: none;  /* Remove blue WordPress outline */
+    box-shadow: none;  /* Remove blue box-shadow */
+}
+
+/* Tab Content Area */
+.msh-tab-content {
+    background: #fff;
+    padding: 30px;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+    min-height: 400px;
+}
+
+/* ============================================
+   RESPONSIVE DESIGN
+   Mobile and tablet breakpoints
+   ============================================ */
+
+/* Tablet and below (WordPress admin breakpoint) */
+@media (max-width: 782px) {
+    /* Tabbed pages - reduce tab padding */
+    .msh-hub-page .nav-tab,
+    .msh-insights-page .nav-tab,
+    .msh-localization-page .nav-tab,
+    .msh-review-center-page .nav-tab {
+        padding: 10px 16px;
+        font-size: 12px;
+        margin: 0 2px;
+    }
+
+    /* Tab content - reduce padding */
+    .msh-tab-content {
+        padding: 20px;
+    }
+
+    /* Page titles - smaller */
+    .msh-hub-page h1,
+    .msh-insights-page h1,
+    .msh-localization-page h1,
+    .msh-review-center-page h1 {
+        font-size: 20px;
+        margin-bottom: 20px;
+    }
+}
+
+/* Mobile */
+@media (max-width: 600px) {
+    /* Tabbed pages - stack tabs vertically if needed */
+    .msh-hub-page .nav-tab-wrapper,
+    .msh-insights-page .nav-tab-wrapper,
+    .msh-localization-page .nav-tab-wrapper,
+    .msh-review-center-page .nav-tab-wrapper {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+    }
+
+    .msh-hub-page .nav-tab,
+    .msh-insights-page .nav-tab,
+    .msh-localization-page .nav-tab,
+    .msh-review-center-page .nav-tab {
+        padding: 8px 12px;
+        font-size: 11px;
+        margin: 0;
+        flex: 0 1 auto;
+    }
+
+    /* Tab content - more compact */
+    .msh-tab-content {
+        padding: 16px;
+        border-radius: 6px;
+    }
+
+    /* Page titles - even smaller */
+    .msh-hub-page h1,
+    .msh-insights-page h1,
+    .msh-localization-page h1,
+    .msh-review-center-page h1 {
+        font-size: 18px;
+        margin-bottom: 16px;
+    }
+
+    /* Section cards - reduce padding */
+    .msh-section-card,
+    .msh-settings-card,
+    .msh-onboarding-wizard,
+    .msh-onboarding-summary,
+    .msh-actions-section,
+    .msh-results-section,
+    .msh-progress-section,
+    .msh-webp-status-section,
+    .msh-log-section,
+    .msh-advanced-section {
+        padding: 16px;
+        margin-bottom: 16px;
+    }
+}
+
+/* ============================================
+   DROPDOWN OPTIONS - NO BLUE EVER
+   Override browser default blue highlight
+   ============================================ */
+select option,
+select option:hover,
+select option:focus,
+select option:checked,
+select option:active,
+select option[selected],
+.msh-select option,
+.msh-select option:hover,
+.msh-select option:checked,
+.filter-select option,
+.filter-select option:hover,
+.filter-select option:checked,
+.context-dropdown option,
+.context-dropdown option:hover,
+.context-dropdown option:checked {
+    background-color: #ffffff !important;
+    color: #35332F !important;  /* Brand charcoal, NOT blue */
+}
+
+select option:hover,
+select option:checked,
+select option[selected],
+.msh-select option:hover,
+.msh-select option:checked,
+.filter-select option:hover,
+.filter-select option:checked,
+.context-dropdown option:hover,
+.context-dropdown option:checked {
+    background-color: #FAF9F6 !important;  /* Brand cream on hover/selected */
+    color: #35332F !important;  /* Brand charcoal, NOT blue */
+}
+

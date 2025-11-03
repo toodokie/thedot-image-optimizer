@@ -216,7 +216,7 @@ class MSH_Version_Manager {
 			$target['locale'],
 			$target['field'],
 			$target['value'],
-			'rollback',
+			'manual', // Rollback is a manual action by the user
 			array(
 				'version_notes' => wp_json_encode(
 					array(
