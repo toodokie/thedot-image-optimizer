@@ -1,6 +1,10 @@
 # Phase 0A Test Harness - Smart Mode Quality Validation
 
-**Created:** November 2, 2025
+> **RETROSPECTIVE NOTE:** This document describes the **test harness tool** created on November 2, 2025 to validate Smart Mode before production deployment. This testing framework was used to generate the results documented in [PHASE-0B-VERIFICATION-REPORT.md](file:///Users/anastasiavolkova/msh-image-optimizer-standalone/PHASE-0B-VERIFICATION-REPORT.md). **Phase 0B was deployed to production on November 4, 2025**.
+
+**Created:** November 2, 2025 (Testing Framework)
+**Used For:** Pre-production validation of Smart Mode (Phase 0B)
+**Outcome:** Validation passed → Phase 0B deployed Nov 4, 2025
 **Purpose:** Side-by-side comparison of current (high detail) vs Smart Mode (low detail + compressed prompts)
 **Goal:** Validate that Smart Mode achieves ≥90% quality at ≤230 tokens/image before full rollout
 

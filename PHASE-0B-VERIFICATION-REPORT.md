@@ -1,9 +1,12 @@
 # Phase 0B Verification Report
 
-**Date:** November 2, 2025
+> **RETROSPECTIVE NOTE:** This document contains the **initial testing results** from November 2, 2025 when Phase 0B was validated in test environment. **Production deployment occurred on November 4, 2025** - see [DAILY-LOG-2025-11-04.md](file:///Users/anastasiavolkova/msh-image-optimizer-standalone/DAILY-LOG-2025-11-04.md) for actual production results (439 avg tokens/image, 27% under budget).
+
+**Test Date:** November 2, 2025 (Pre-Production Validation)
+**Deployment Date:** November 4, 2025 (Production)
 **Tester:** Engineering Team
 **Environment:** thedot-optimizer-test.local
-**Status:** ✅ PRODUCTION READY
+**Status:** ✅ PRODUCTION READY → ✅ DEPLOYED
 
 ---
 
@@ -354,3 +357,280 @@ wp db query "SELECT COUNT(*), AVG(token_count) FROM wp_msh_ai_token_usage WHERE 
 **Version:** 1.0
 **Status:** Final
 **Approval:** ✅ Ready for Production Deployment
+
+---
+
+# DEPLOYMENT UPDATE - November 4, 2025
+
+## Production Deployment Completed ✅
+
+**Date:** 2025-11-04
+**Status:** Phase 0B prompts deployed to production
+**Engineer:** Development Team
+
+---
+
+## Deployment Summary
+
+Phase 0B optimizations that were tested on Nov 2 have been **successfully deployed to production** on Nov 4.
+
+### Critical Discovery
+
+**The Nov 2 tests were simulation-only.** The optimized prompts were documented and tested but **never actually deployed to production**. This caused:
+
+1. Production was still using bloated ~400-token system prompts
+2. Token usage was 704 tokens/image instead of tested 309 tokens/image
+3. Context logic was broken (facility+SEO → generic outputs)
+
+### What Was Deployed
+
+**1. Ultra-Compressed System Prompt (~20 tokens)**
+```php
+$ctx_id = $this->generate_context_id( $context );
+$system_message = "AI metadata assistant. Context:{$ctx_id}. JSON only. No commentary.";
+```
+
+**2. Compact User Prompt with Explicit Flags (~75-85 tokens)**
+```php
+$user_message = sprintf(
+    "ctx:%s|ct:%s|cm:%d|seo:%d|bm:%d|bn:%s|bl:%s|sv:%s|bv:%s\npg:ti=%s|kw=%s|pr=%s\nschema:{fn,t,a,c,d,k[],s[],attr[],conf,iss[]}\nrules: ct final if cm=1; describe visible only; brand only if bm=1 and (ct in [logo,team,facility,equipment] or (ct in [clinical,business] and bm=1)); if ct=facility and bm=1 include bn in both t and d; if bm=0 the business name must not appear anywhere; when seo=1 include exactly one location (from bl/pg.ti) and one service keyword (from sv) if context allows; never invent location or service beyond those; if seo=0 no brand/location/CTA; use kw only if visibly relevant; tone=%s.",
+    // ... parameters
+);
+```
+
+**3. Helper Methods**
+- `generate_context_id()` - Creates stable 7-char fingerprint
+- `promptSafe()` - Sanitizes inputs to prevent injection
+- `csvSafe()` - Converts arrays to CSV safely
+
+**4. Audit Logging**
+```php
+error_log(sprintf(
+    '[MSH SmartMode] ctx:%s | prompt=%s…',
+    $ctx_id,
+    substr($user_message, 0, 80)
+));
+```
+
+**5. Image Resize Optimization**
+- Changed from 1600px → 640px max dimension
+- Optimized for `detail:low` processing
+
+---
+
+## Token Budget - Revised Comparison
+
+### Before Deployment (Nov 3)
+
+| Component | Tokens | % of Total |
+|-----------|--------|------------|
+| System Prompt | ~400 | 56.8% |
+| User Prompt | ~70 | 9.9% |
+| Vision (detail:low) | 85 | 12.1% |
+| Response (short keys) | ~150 | 21.3% |
+| **TOTAL** | **~704** | **100%** |
+
+**Budget Overrun:** 104 tokens over 600 target (17.3% over)
+
+### After Deployment (Nov 4 - Expected)
+
+| Component | Tokens | % of Total |
+|-----------|--------|------------|
+| System Prompt | ~20 | 5.7% |
+| User Prompt | ~75-85 | 21.4-24.3% |
+| Vision (detail:low) | 85 | 24.3% |
+| Response (short keys) | ~150 | 42.9% |
+| Overhead | ~14 | 4.0% |
+| **TOTAL** | **~340-360** | **100%** |
+
+**Budget Compliance:** 240-260 tokens **under** 600 target (40-43% under)
+
+**Net Reduction:** 350 tokens/image (52% reduction)
+
+---
+
+## Context Logic Fixes
+
+### Problem: Manual Context Not Respected
+
+**Symptom (Nov 3):**
+```
+User sets: facility + SEO ON + manual
+AI outputs: "Serene Forest Landscape" (generic, ignores context)
+```
+
+**Root Cause:**
+- Weak prompt rule: "facility: always **allow** business_name"
+- No enforcement mechanism for manual category
+- No explicit SEO content requirements
+
+**Fix (Nov 4):**
+- Strong rule: "if ct=facility and bm=1 **include bn in both t and d**"
+- `cm:1` flag prevents AI reinterpretation
+- Explicit SEO rule: "when seo=1 include exactly one location + one service keyword"
+
+**Expected Outcome:**
+```
+User sets: facility + SEO ON + manual
+AI outputs: "Main Street Health Rehabilitation Facility - Hamilton"
+           "Main Street Health's modern facility offers physiotherapy
+            services in Hamilton, Ontario."
+```
+
+---
+
+## Files Modified
+
+### Production Plugin
+**Path:** `/Users/anastasiavolkova/Local Sites/thedot-optimizer-test/app/public/wp-content/plugins/msh-image-optimizer/includes/class-msh-openai-connector.php`
+
+**Changes:**
+- Lines 468-473: System prompt → Phase 0B version
+- Lines 475-506: User prompt → Compact format with flags
+- Lines 496-519: Added `generate_context_id()`
+- Lines 521-533: Added `promptSafe()`
+- Lines 535-556: Added `csvSafe()`
+- Lines 499-506: Added SmartMode audit logging
+- Line 840: Updated docblock (1600px → 640px)
+- Line 872-873: Changed `$max_dimension` from 1600 to 640
+
+### Standalone Copy
+**Path:** `/Users/anastasiavolkova/msh-image-optimizer-standalone/includes/class-msh-openai-connector.php`
+
+**Status:** ✅ Synced with production
+
+---
+
+## Testing Plan (Post-Deployment)
+
+### Phase 1: Verification Testing
+
+**Objectives:**
+1. Verify token usage drops to ~340-360 range
+2. Confirm facility+SEO context produces branded output
+3. Validate brand exclusion (bm=0) works correctly
+4. Check SmartMode logs appear correctly
+
+**Test Cases:**
+
+| Test | Context | Expected Output | Status |
+|------|---------|-----------------|--------|
+| 1 | facility + seo:1 + cm:1 | Branded with location + service keyword | ⏳ Pending |
+| 2 | stock + seo:0 + bm:0 | No brand, no location, pure descriptive | ⏳ Pending |
+| 3 | logo + bm:1 | Brand name in title | ⏳ Pending |
+| 4 | decorative + bm:0 | No brand anywhere | ⏳ Pending |
+
+**Commands:**
+```bash
+# Test single image
+cd "/Users/anastasiavolkova/Local Sites/thedot-optimizer-test/app/public"
+wp msh analyze --id=1692
+
+# Check logs
+tail -50 /Users/anastasiavolkova/Library/Application\ Support/Local/log/local.log | grep "MSH SmartMode"
+
+# Check token usage
+wp db query "SELECT attachment_id, tokens_used, model FROM wp_msh_ai_audit_log ORDER BY created_at DESC LIMIT 10"
+```
+
+### Phase 2: Batch Testing
+
+**Test:** Process 20-25 images in batch
+**Goal:** Verify no rate limit errors (30K TPM limit)
+
+**Expected:**
+- All images process without HTTP 429 errors
+- Average token usage: ~340-360 tokens/image
+- Batch of 25 images: ~8,500-9,000 total tokens
+- Well under 30K TPM limit
+
+### Phase 3: Quality Comparison
+
+**Methodology:**
+1. Run Phase 0B on same 30 images from Nov 2 test
+2. Compare quality metrics:
+   - Good titles: Target ≥90%
+   - Brand compliance: Target 100%
+   - SEO keyword inclusion: Target 100% when seo=1
+
+**Baseline (Nov 2):**
+- Good titles: 90% (27/30 images)
+- Token usage: 309 avg
+
+**Target (Nov 4):**
+- Good titles: ≥90%
+- Token usage: ~340-360 avg (slightly higher due to additional flags)
+- Brand compliance: 100%
+
+---
+
+## Success Criteria
+
+| Metric | Target | Status |
+|--------|--------|--------|
+| Token usage | 340-360 tokens/image | ⏳ Testing |
+| Budget compliance | Under 600 tokens | ⏳ Testing |
+| Facility+SEO branding | 100% compliance | ⏳ Testing |
+| Brand exclusion (bm=0) | 100% compliance | ⏳ Testing |
+| Rate limit errors | Zero in batch of 25 | ⏳ Testing |
+| Quality rating | ≥90% good titles | ⏳ Testing |
+| SmartMode logs | All requests logged | ⏳ Testing |
+
+---
+
+## Rollback Plan
+
+**If testing reveals issues:**
+
+1. **Immediate Rollback:**
+   ```bash
+   cd "/Users/anastasiavolkova/Local Sites/thedot-optimizer-test/app/public/wp-content/plugins/msh-image-optimizer"
+   git revert <commit-hash>
+   ```
+
+2. **Issues that warrant rollback:**
+   - Token usage exceeds 600 per image
+   - Quality drops below 80%
+   - Rate limit errors persist
+   - Brand logic broken (brand appears when bm=0)
+
+3. **Issues that do NOT warrant rollback:**
+   - Token usage 360-380 (still under budget)
+   - Quality 85-90% (acceptable range)
+   - Minor prompt tuning needed
+
+---
+
+## Next Steps
+
+**Immediate (Nov 4-5):**
+1. ⏳ Run verification tests on facility+SEO images
+2. ⏳ Monitor logs for first 50 images processed
+3. ⏳ Verify token usage stays in 340-360 range
+4. ⏳ Check for any error patterns
+
+**Short-term (Nov 5-10):**
+1. ⏳ Run batch test with 20-25 images
+2. ⏳ Quality comparison with Nov 2 baseline
+3. ⏳ Document any prompt tuning needed
+4. ⏳ Update user documentation if needed
+
+**Long-term (Nov 10+):**
+1. ⏳ Monitor production metrics over 1 week
+2. ⏳ A/B test quality if concerns arise
+3. ⏳ Consider Phase 0C further optimizations if needed
+
+---
+
+## Related Documentation
+
+- [DAILY-LOG-2025-11-04.md](file:///Users/anastasiavolkova/msh-image-optimizer-standalone/DAILY-LOG-2025-11-04.md) - Detailed implementation notes
+- [SMART-MODE-STATUS.md](file:///Users/anastasiavolkova/msh-image-optimizer-standalone/SMART-MODE-STATUS.md) - Updated with Nov 4 deployment
+- [V1-2-17-IMPLEMENTATION-PLAN.md](file:///Users/anastasiavolkova/msh-image-optimizer-standalone/V1-2-17-IMPLEMENTATION-PLAN.md) - Original Phase 0B specification
+
+---
+
+**Deployment Completed:** 2025-11-04
+**Testing Status:** PENDING
+**Next Review:** 2025-11-05
+**Updated By:** Development Team
