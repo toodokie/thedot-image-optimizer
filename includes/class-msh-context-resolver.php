@@ -24,7 +24,10 @@ class MSH_Context_Resolver {
 		$manual        = ! empty( $context['context_set_manually'] );
 		$auto_type     = isset( $context['type'] ) ? $context['type'] : 'stock';
 		$selected_type = $manual ? ( $context['manual_value'] ?? $auto_type ) : ( $context['initial_context_type'] ?? $auto_type );
-		$final_type    = $auto_type;
+		$final_type    = sanitize_key( $selected_type ) ?: sanitize_key( $auto_type );
+		if ( '' === $final_type ) {
+			$final_type = 'stock';
+		}
 		$trace_steps   = array();
 
 		$downgrades = isset( $context['downgraded_reasons'] ) && is_array( $context['downgraded_reasons'] )
@@ -35,19 +38,21 @@ class MSH_Context_Resolver {
 			$trace_steps[] = 'downgrade:' . $reason;
 		}
 
-		// Safety re-check: downgrade clinical without strong signals.
-		if ( $final_type === 'clinical' && ! self::has_strong_clinical_signals( $context ) ) {
-			$final_type  = 'stock';
-			$downgrades[] = 'no_strong_signals';
-			$trace_steps[] = 'downgrade:no_strong_signals';
-		}
+		if ( ! $manual ) {
+			// Safety re-check: downgrade clinical without strong signals.
+			if ( $final_type === 'clinical' && ! self::has_strong_clinical_signals( $context ) ) {
+				$final_type   = 'stock';
+				$downgrades[] = 'no_strong_signals';
+				$trace_steps[] = 'downgrade:no_strong_signals';
+			}
 
-		// Gallery/portfolio style content should remain stock.
-		if ( self::looks_like_gallery( $context ) ) {
-			$final_type   = 'stock';
-			$downgrades[] = 'gallery';
-			if ( ! in_array( 'downgrade:gallery', $trace_steps, true ) ) {
-				$trace_steps[] = 'downgrade:gallery';
+			// Gallery/portfolio style content should remain stock.
+			if ( self::looks_like_gallery( $context ) ) {
+				$final_type   = 'stock';
+				$downgrades[] = 'gallery';
+				if ( ! in_array( 'downgrade:gallery', $trace_steps, true ) ) {
+					$trace_steps[] = 'downgrade:gallery';
+				}
 			}
 		}
 

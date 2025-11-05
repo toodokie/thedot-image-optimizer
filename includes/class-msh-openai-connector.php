@@ -253,6 +253,13 @@ class MSH_OpenAI_Connector {
 			$resolved_language
 		);
 
+		// DIAGNOSTIC: Log AI call
+		error_log( sprintf(
+			'[AI_CALL] #%d url=%s model=gpt-4o',
+			$attachment_id,
+			substr( $image_url, 0, 80 ) . ( strlen( $image_url ) > 80 ? '...' : '' )
+		) );
+
 		// Call OpenAI Vision API with new message structure
 		$response = $this->call_openai_vision( $image_url, $messages, $api_key );
 
@@ -272,6 +279,15 @@ class MSH_OpenAI_Connector {
 
 			error_log( sprintf(
 				'[MSH OpenAI] Token usage - prompt: %d, completion: %d, total: %d',
+				$tokens_used['prompt_tokens'],
+				$tokens_used['completion_tokens'],
+				$tokens_used['total_tokens']
+			) );
+
+			// DIAGNOSTIC: Log AI response success
+			error_log( sprintf(
+				'[AI_RESP] #%d ok=1 tokens=%d/%d/%d',
+				$attachment_id,
 				$tokens_used['prompt_tokens'],
 				$tokens_used['completion_tokens'],
 				$tokens_used['total_tokens']
@@ -358,36 +374,86 @@ class MSH_OpenAI_Connector {
 		error_log( '[MSH OpenAI] Generated title: ' . ( $parsed_metadata['title'] ?? 'N/A' ) );
 		error_log( '[MSH OpenAI] Generated description: ' . ( $parsed_metadata['description'] ?? 'N/A' ) );
 
-		// CRITICAL: Strip business branding from titles when seo_mode=false
-		// This is a safety net to ensure AI-generated titles don't include business name
-		// when SEO mode is disabled, regardless of what the AI model returns
-		$seo_mode = isset( $context['seo_mode'] ) ? (bool) $context['seo_mode'] : true;
-		if ( ! $seo_mode && isset( $parsed_metadata['title'] ) ) {
-			$business_name = $context['business_name'] ?? '';
-			if ( $business_name ) {
-				$original_title = $parsed_metadata['title'];
-				// Strip common branding suffix patterns
-				$patterns = array(
-					'/\s*-\s*' . preg_quote( $business_name, '/' ) . '\s*Imagery\s*$/i',
-					'/\s*-\s*' . preg_quote( $business_name, '/' ) . '\s*Wellness Imagery\s*$/i',
-					'/\s*-\s*' . preg_quote( $business_name, '/' ) . '\s*$/i',
-					'/\s*\|\s*' . preg_quote( $business_name, '/' ) . '\s*$/i',
-				);
-				$clean_title = preg_replace( $patterns, '', $parsed_metadata['title'] );
-				// Normalize leftover whitespace/hyphens
-				$clean_title = preg_replace( '/\s{2,}/', ' ', trim( $clean_title ) );
-				$clean_title = preg_replace( '/\s*-\s*$/', '', $clean_title );
+		// CRITICAL: Enforce seo_mode rules (no branding/location when disabled).
+		$seo_mode      = isset( $context['seo_mode'] ) ? (bool) $context['seo_mode'] : true;
+		$business_name = $context['business_name'] ?? '';
 
-				if ( $clean_title !== $original_title ) {
-					error_log( '[MSH OpenAI] seo_mode=false: Stripped business name from title' );
-					error_log( '[MSH OpenAI] Original: ' . $original_title );
-					error_log( '[MSH OpenAI] Sanitized: ' . $clean_title );
-					$parsed_metadata['title'] = $clean_title;
+		if ( ! $seo_mode ) {
+			$location_terms = array_filter(
+				array_unique(
+					array(
+						$context['city'] ?? '',
+						$context['region'] ?? '',
+						$context['country'] ?? '',
+						$context['service_area'] ?? '',
+						$context['location'] ?? '',
+					)
+				)
+			);
+
+			$disallowed_terms = $location_terms;
+			if ( $business_name ) {
+				$disallowed_terms[] = $business_name;
+			}
+
+			foreach ( array( 'title', 'alt_text', 'caption', 'description' ) as $field ) {
+				if ( isset( $parsed_metadata[ $field ] ) && $parsed_metadata[ $field ] !== '' ) {
+					$clean_value = $this->strip_disallowed_terms( $parsed_metadata[ $field ], $disallowed_terms );
+					if ( $clean_value === '' ) {
+						$clean_value = $this->get_non_seo_fallback( $field, $context );
+					}
+					if ( $clean_value !== $parsed_metadata[ $field ] ) {
+						error_log( sprintf( '[MSH OpenAI] seo_mode=false: Sanitised %s field', $field ) );
+					}
+					$parsed_metadata[ $field ] = $clean_value;
 				}
+			}
+
+			if ( isset( $parsed_metadata['keywords'] ) ) {
+				$parsed_metadata['keywords'] = array();
 			}
 		}
 
 		return $parsed_metadata;
+	}
+
+	private function strip_disallowed_terms( $value, array $terms ) {
+		$value = (string) $value;
+		if ( $value === '' || empty( $terms ) ) {
+			return trim( $value );
+		}
+
+		foreach ( $terms as $term ) {
+			$term = trim( (string) $term );
+			if ( $term === '' ) {
+				continue;
+			}
+			$pattern = '/\b' . preg_quote( $term, '/' ) . '\b/iu';
+			$value   = preg_replace( $pattern, '', $value );
+			$value   = str_ireplace( $term, '', $value );
+		}
+
+		$value = preg_replace( '/\s{2,}/u', ' ', trim( $value ) );
+		$value = preg_replace( '/\s+([,.;:])/u', '$1', $value );
+
+		return trim( $value );
+	}
+
+	private function get_non_seo_fallback( $field, $context ) {
+		$type = isset( $context['final_context_type'] ) ? $context['final_context_type'] : ( $context['type'] ?? 'stock' );
+
+		switch ( $field ) {
+			case 'title':
+				return ucfirst( $type ) . ' Image';
+			case 'alt_text':
+				return 'Neutral scene description without branding.';
+			case 'caption':
+				return 'Scene-focused caption with no brand references.';
+			case 'description':
+				return 'Neutral scene overview with no brand or location references.';
+			default:
+				return 'Image detail';
+		}
 	}
 
 	/**
@@ -429,7 +495,7 @@ class MSH_OpenAI_Connector {
 		$page_role     = isset( $context['page_role'] ) ? wp_strip_all_tags( (string) $context['page_role'] ) : 'general_content_image';
 
 		// Determine model pass type
-		$model_pass = 'high_detail'; // Using high detail for all images
+		$model_pass = 'low_detail'; // Phase 0B: Use low detail for token optimization
 
 		// Get locale
 		$locale = ! empty( $context['locale'] ) ? $context['locale'] : 'en-US';
@@ -449,177 +515,112 @@ class MSH_OpenAI_Connector {
 		}
 		$downgrade_summary = empty( $downgrades ) ? 'none' : implode( ', ', array_map( 'sanitize_key', $downgrades ) );
 
-		// Build SYSTEM message
-		$seo_critical_instruction = '';
-		if ( ! $seo_mode ) {
-			$seo_critical_instruction = "
-⚠️ CRITICAL OVERRIDE - SEO MODE IS DISABLED (seo_mode = false):
-- You MUST write ONLY pure descriptive metadata
-- DO NOT use business_name ({$business_name_clean}) in ANY field - including title, alt_text, caption, and description
-- DO NOT add business branding suffixes to the title like '- Main Street Health' or '- Main Street Health Imagery'
-- DO NOT reference the business or its services in any way
-- DO NOT include location keywords (Hamilton, Ontario, Canada, etc.)
-- DO NOT include service keywords (wellness, physiotherapy, rehabilitation, clinic, imagery, branding, etc.)
-- DO NOT include calls-to-action (Visit, Book, Explore, Discover, Learn, etc.)
-- Write as if you have NO knowledge of the business
-- Describe ONLY what is literally visible in the image
-- This restriction applies to ALL context types, even when brand_name_visible = true
-- EXAMPLE CORRECT TITLE when seo_mode=false: 'Lettuce Field at Sunrise' (NOT 'Lettuce Field at Sunrise - Main Street Health Imagery')
+		// Phase 0B: Generate context ID for compact prompt
+		$ctx_id = $this->generate_context_id( $context );
 
-";
-		}
+		// Phase 0B: Ultra-compressed system prompt (~20 tokens)
+		// All context and rules moved to user message for token efficiency
+		$system_message = "AI metadata assistant. Context:{$ctx_id}. JSON only. No commentary.";
 
-		$system_message = "You are an AI metadata assistant for an image optimization plugin (locale: {$locale}).
-{$seo_critical_instruction}
-PRIORITY OF TRUTH:
-1) context_type is authoritative. If the user set it manually, treat it as final. Do not override or reinterpret.
-2) Page context (page_title, focus_keyword) and business context (business_name, industry) guide tone and relevance ONLY. Never use them to invent facts or override context_type.
-3) Describe only what is visible in the image.
+		// Phase 0B: Build compact user message with all context flags
+		$brand_voice_val = ! empty( $brand_voice ) ? $brand_voice : 'neutral';
+		$bn = $this->promptSafe( $business_name_clean );
+		$bl = $this->promptSafe( $location_clean );
+		$sv = isset( $context['service_keywords'] ) ? $this->csvSafe( $context['service_keywords'] ) : '';
 
-BUSINESS CONTEXT → use for tone and relevance, never to invent facts:
-- business_name: {$business_name_clean}
-- industry: {$industry_clean}
-- business_type: {$business_type}
-- ideal_customer: {$ideal_customer}
-- service_area: {$location_clean}
-- brand_voice: {$brand_voice}
-- unique_value: {$uvp_clean}
+		// Build compact pipe-delimited user message (~75-85 tokens)
+		$user_message = sprintf(
+			"ctx:%s|ct:%s|cm:%d|seo:%d|bm:%d|bn:%s|bl:%s|sv:%s|bv:%s\npg:ti=%s|kw=%s|pr=%s\nschema:{fn,t,a,c,d,k[],s[],attr[],conf,iss[]}\nrules: ct final if cm=1; describe visible only; brand only if bm=1 and (ct in [logo,team,facility,equipment] or (ct in [clinical,business,testimonial] and bm=1)); when ct=facility and bm=1 and seo=1 include bn in both t and d; if bm=0 or seo=0 the business name must not appear anywhere; when seo=1 include exactly one location (from bl or pg.ti) and one service keyword (from sv) if context allows; never invent location or service beyond those provided; if seo=0 omit brand, location, and CTA language; use kw only if visibly relevant; tone=%s.",
+			$ctx_id,
+			$context_type,
+			$context_set_manually ? 1 : 0,
+			$seo_mode ? 1 : 0,
+			$brand_flag ? 1 : 0,
+			$bn,
+			$bl,
+			$sv,
+			$brand_voice_val,
+			$this->promptSafe( $page_title ),
+			$this->promptSafe( $focus_keyword ),
+			$page_role,
+			$brand_voice_val
+		);
 
-IMAGE USE CONTEXT → authoritative, final, cannot be overridden:
-- context_type: {$context_type}  // user chosen or resolved. Treat as final
-- context_set_manually: {$manual_flag_str}  // true | false
-- brand_name_visible: {$brand_name_visible}  // true | false. Logo or brand text visibly present or permitted by rules below
-- brand_name_visible_manual: {$manual_brand_str}
-- ocr_found_brand: {$ocr_flag_str}
-- downgrade_trace: {$downgrade_summary}
-
-BRAND NAME INCLUSION RULES → When brand_name_visible = true, you MUST include {$business_name_clean} in BOTH title and description:
-
-TESTIMONIAL with brand_name_visible = true:
-  ✓ CORRECT: title: \"Hope and Recovery - {$business_name_clean} Patient Success\"
-  ✗ WRONG: title: \"Sunlit Reflection Testimonial\" (missing brand)
-
-STOCK with brand_name_visible = true:
-  ✓ CORRECT: title: \"Fresh Lettuce Field - {$business_name_clean} Wellness Imagery\"
-  ✗ WRONG: title: \"Lettuce Field at Sunrise\" (missing brand)
-
-CONTEXT TYPE RULES → respect context_type above all else, even if page context suggests otherwise:
-
-- brand_logo: Real branding. Include business_name. Describe visual mark and style. No location claims.
-- team: Staff photos. Include business_name. Professional tone.
-- facility: Actual building or clinic. Include business_name and city or region if known from page context. Do not invent addresses.
-- equipment: Tools or machinery owned by the business. You MUST include {$business_name_clean} naturally in title and description. Write organically as if describing equipment belonging to or used by the business. Examples: \"Rehabilitation equipment at {$business_name_clean}\", \"Medical tools for {$business_name_clean} patient care\", \"Clinical equipment used by {$business_name_clean} practitioners\". Be specific to visible items.
-- clinical: Care or service delivery imagery. If brand_name_visible = true, you MUST include {$business_name_clean} naturally in title and description. Write organically connecting treatment to the business. Examples: \"Patient care services at {$business_name_clean}\", \"Treatment session at {$business_name_clean} clinic\", \"Rehabilitation therapy provided by {$business_name_clean}\". If brand_name_visible = false, describe neutrally without brand reference.
-- business: Operations or office scenes. If brand_name_visible = true, you MUST include {$business_name_clean} naturally in title and description. Write organically as workplace content. Examples: \"Professional workspace at {$business_name_clean}\", \"Administrative operations at {$business_name_clean} office\", \"Team collaboration at {$business_name_clean}\". If brand_name_visible = false, describe neutrally without brand reference.
-- testimonial: If brand_name_visible = true, you MUST include {$business_name_clean} naturally in title and description connecting emotion to outcomes. Write organically linking experience to the business. Examples: \"Recovery journey with {$business_name_clean}\", \"Patient success story at {$business_name_clean}\", \"Positive health outcomes from {$business_name_clean} care\". PROHIBITED: claiming specific facility location or that this is an actual client photo. If brand_name_visible = false, describe emotion and visible elements without brand reference.
-- service-icon: Icon or graphic for a service. Describe the icon purpose and connect to the service category. Mention business_name only if logo or text is visible on the icon.
-- decorative: Pure background or pattern with no informational value. alt_text = \"\" and title = \"\" are appropriate.
-- stock: Generic stock photography. If brand_name_visible = true (manual override or OCR detected), you MUST include {$business_name_clean} in title. Format: \"[Visual Description] - {$business_name_clean} [Branding/Imagery/Visual]\". If false, describe only visible content with no business connection.
-
-CRITICAL ENFORCEMENT:
-- When brand_name_visible = true for clinical, business, testimonial, or stock contexts: business_name inclusion is REQUIRED, not optional.
-- When brand_name_visible = false for these contexts: business_name inclusion is PROHIBITED.
-- When context_type = stock or decorative and brand_name_visible = false: business_name is PROHIBITED regardless of page context.
-- brand_logo, team, facility, equipment contexts ALWAYS permit business_name (do not invent addresses).
-
-AI SEARCH AND SEO EXTENSION (applies when seo_mode = true):
-When seo_mode = true, enhance metadata with natural SEO elements:
-- Include ONE location keyword from service_area if known (e.g., Hamilton, Hamilton Ontario)
-- Include ONE service keyword relevant to industry/business_type (e.g., physiotherapy, rehabilitation, chiropractic care)
-- Add soft call-to-action at end of description when appropriate:
-  * For facility/team/equipment/stock wellness: Visit our clinic, Book your appointment, Explore our services
-  * For clinical: Learn more about our programs, Schedule your consultation
-  * For business: Contact our team
-- Keep language natural and conversational. Do NOT keyword-stuff.
-- IMPORTANT: For stock/decorative images, you MAY include location and service keywords even when brand_name_visible = false. Do NOT include business_name, but DO include location (Hamilton Ontario) and service keywords (physiotherapy, rehabilitation, wellness).
-- Example (stock image, seo_mode=true, brand_name_visible=false): Fresh organic lettuce in a wellness-focused field at sunrise in Hamilton Ontario. Explore natural health approaches.
-- Example (stock image, seo_mode=false, brand_name_visible=false): Rows of lettuce in agricultural field at sunrise.
-
-When seo_mode = false, write pure descriptive metadata:
-- Focus ONLY on visible content in the image
-- Do NOT include business_name under ANY circumstances (even if brand_name_visible = true)
-- Do NOT include location keywords (Hamilton, Ontario, Canada, etc.)
-- Do NOT include service keywords (wellness, physiotherapy, rehabilitation, clinic, etc.)
-- Do NOT include calls-to-action (Visit, Book, Explore, Discover, etc.)
-- Do NOT reference the business or its services in any way
-- Write as if describing the image to someone who has no knowledge of the business
-- Keep neutral and factual, describing only what is literally visible in the image
-
-SPECIFICITY AND UNIQUENESS:
-- Provide subjects[] with at least 5 concrete visible nouns.
-- Provide attributes[] with at least 3 visual traits such as color, material, lighting, perspective.
-- Avoid generic phrases: 'brand imagery', 'generic image', 'stock photo', 'placeholder', 'medical treatment'.
-- Make title and alt_text specific to visible elements, not vague category labels.
-
-OUTPUT FORMAT (return exactly one JSON object with keys in this order):
-{
-  \"file_name_suggestion\": \"...\",     // lowercase, hyphenated, no special chars, length ≤ 50
-  \"title\": \"...\",                    // length ≤ 60
-  \"alt_text\": \"...\",                 // 8–140 chars. If decorative, set \"\"
-  \"caption\": \"...\",                  // one sentence
-  \"description\": \"...\",              // 2–3 sentences
-  \"keywords\": [\"...\", \"...\", \"...\"],  // 3–5 short terms relevant to visible content and allowed context
-  \"subjects\": [\"...\", \"...\", \"...\", \"...\", \"...\"],  // at least 5 concrete visible nouns
-  \"attributes\": [\"...\", \"...\", \"...\"],  // at least 3 visual traits
-  \"confidence\": 0.00,                 // 0.0–1.0
-  \"issues\": [\"...\"]                  // zero or more of: brand_name_assumed, low_confidence, text_in_image_detected, decorative_image, context_mismatch, too_generic
-}
-
-SELF CHECK BEFORE RESPONDING:
-- If business_name appears where the rules forbid it for this context_type, add 'brand_name_assumed' and lower confidence to ≤ 0.70.
-- If decorative, set alt_text = \"\" and title = \"\" and add 'decorative_image'.
-- If your text conflicts with context_type semantics, add 'context_mismatch' and lower confidence.
-- If subjects fewer than 5 or you used generic phrases ('brand imagery', 'medical treatment', 'stock photo'), add 'too_generic' and rewrite with specific visible nouns and attributes.
-- If text/signage is visible, include 'text_in_image_detected'.
-- If confidence < 0.50, include 'low_confidence'.
-
-OUTPUT exactly one JSON object per the schema above. No extra prose.";
-
-		// Build USER message with parameters
-		$seo_mode_reminder = '';
-		if ( ! $seo_mode ) {
-			$seo_mode_reminder = "
-⚠️ CRITICAL: seo_mode is FALSE - Do NOT include '{$business_name_clean}' in title, alt_text, caption, or description!
-Example CORRECT title: 'Lettuce Field at Sunrise'
-Example WRONG title: 'Lettuce Field at Sunrise - Main Street Health Imagery'
-";
-		}
-
-		$user_message = "Image URL: {$image_url}
-Original filename: {$original_filename}
-{$seo_mode_reminder}
-Page context:
-- page_title: {$page_title}
-- focus_keyword: {$focus_keyword}
-- page_role: {$page_role}     // header_image | article_body_image | service_page_photo | product_gallery
-
-Execution context:
-- model_pass: {$model_pass}    // overview | crops | high_detail
-- ai_search_friendly: {$ai_search_flag_str}
-- seo_mode: {$seo_mode_str}    // true = include location/service keywords + CTAs | false = pure descriptive
-
-Business context (same as above):
-- business_name: {$business_name_clean}
-- industry: {$industry_clean}
-- business_type: {$business_type}
-- ideal_customer: {$ideal_customer}
-- service_area: {$location_clean}
-- brand_voice: {$brand_voice}
-- unique_value: {$uvp_clean}
-
-Authoritative image purpose (MANDATORY):
-- context_type: {$context_type}         // exactly as user selected
-- brand_name_visible: {$brand_name_visible}
-- context_set_manually: {$manual_flag_str}
-- brand_name_visible_manual: {$manual_brand_str}
-- ocr_found_brand: {$ocr_flag_str}
-
-Return exactly one JSON object matching the specified schema, nothing else.";
+		// Phase 0B: Log audit trail with ctx_id and first 80 chars of prompt
+		error_log(
+			sprintf(
+				'[MSH SmartMode] ctx:%s | prompt=%s…',
+				$ctx_id,
+				substr( $user_message, 0, 80 )
+			)
+		);
 
 		return array(
 			'system' => $system_message,
 			'user'   => $user_message,
 		);
+	}
+
+	/**
+	 * Phase 0B: Generate context ID fingerprint for compact prompts
+	 *
+	 * @param array $context Context array from detect_context()
+	 * @return string Context ID (e.g., "ctx_9f11db7")
+	 */
+	private function generate_context_id( $context ) {
+		$site_id  = get_option( 'siteurl' );
+		$locale   = get_locale();
+		$business = isset( $context['business_name'] ) ? $context['business_name'] : '';
+		$industry = isset( $context['industry'] ) ? $context['industry'] : '';
+		$seo_mode = isset( $context['seo_mode'] ) ? (int) $context['seo_mode'] : 0;
+
+		// Generate stable fingerprint
+		$fingerprint = sha1(
+			$site_id . '|' .
+			$locale . '|' .
+			$business . '|' .
+			$industry . '|' .
+			$seo_mode
+		);
+
+		return 'ctx_' . substr( $fingerprint, 0, 7 );
+	}
+
+	/**
+	 * Phase 0B: Sanitize prompt values to prevent injection and reduce token count
+	 *
+	 * @param mixed $val Value to sanitize
+	 * @param int   $maxTokens Maximum words to keep (approx. 1.3 tokens per word)
+	 * @return string Sanitized value
+	 */
+	private function promptSafe( $val, $maxTokens = 12 ) {
+		$s = wp_strip_all_tags( (string) $val );
+		$s = preg_replace( '/\s+/', ' ', $s );
+		$s = str_replace( array( '|', "\n", "\r", '{', '}', ':' ), ' ', $s );
+		return wp_trim_words( $s, $maxTokens, '' );
+	}
+
+	/**
+	 * Phase 0B: Convert array to safe CSV string for compact prompts
+	 *
+	 * @param array|string $arr Array of values or single value
+	 * @param int          $maxItems Maximum items to include
+	 * @param int          $maxLenPerItem Maximum tokens per item
+	 * @return string CSV string
+	 */
+	private function csvSafe( $arr, $maxItems = 5, $maxLenPerItem = 4 ) {
+		if ( ! is_array( $arr ) ) {
+			$arr = array( $arr );
+		}
+		$arr = array_filter(
+			array_map(
+				function( $x ) use ( $maxLenPerItem ) {
+					return $this->promptSafe( $x, $maxLenPerItem );
+				},
+				array_slice( $arr, 0, $maxItems )
+			)
+		);
+		return implode( ',', $arr );
 	}
 
 	/**
@@ -682,9 +683,71 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 	}
 
 	/**
+	 * Token bucket rate limiter - prevents hitting OpenAI 30K TPM limit
+	 *
+	 * @param int $estimated_tokens Conservative estimate for this request
+	 * @return bool True if safe to proceed, false if need to wait
+	 */
+	private function check_rate_limit( $estimated_tokens = 500 ) {
+		$tpm_limit = 30000; // OpenAI BYOK limit
+		$headroom = 0.8;    // Use only 80% of limit for safety
+		$safe_limit = $tpm_limit * $headroom;
+
+		// Get rolling window data (last 60 seconds)
+		$window_key = 'msh_openai_token_window';
+		$window_data = get_transient( $window_key );
+
+		if ( false === $window_data ) {
+			$window_data = array();
+		}
+
+		// Clean old entries (older than 60 seconds)
+		$now = time();
+		$window_data = array_filter( $window_data, function( $entry ) use ( $now ) {
+			return ( $now - $entry['timestamp'] ) < 60;
+		} );
+
+		// Calculate tokens used in last 60 seconds
+		$tokens_used_last_60s = array_sum( array_column( $window_data, 'tokens' ) );
+
+		// Check if adding this request would exceed limit
+		if ( ( $tokens_used_last_60s + $estimated_tokens ) >= $safe_limit ) {
+			error_log( sprintf(
+				'[MSH RATE LIMIT] Would exceed safe limit: used=%d, estimated=%d, safe_limit=%d. Delaying request.',
+				$tokens_used_last_60s,
+				$estimated_tokens,
+				$safe_limit
+			) );
+
+			// Wait for oldest entry to expire
+			if ( ! empty( $window_data ) ) {
+				$oldest = min( array_column( $window_data, 'timestamp' ) );
+				$wait_time = 60 - ( $now - $oldest ) + 1; // Wait until oldest expires + 1 sec buffer
+				if ( $wait_time > 0 && $wait_time < 60 ) {
+					sleep( $wait_time );
+				}
+			}
+		}
+
+		// Log this request to the window
+		$window_data[] = array(
+			'timestamp' => $now,
+			'tokens'    => $estimated_tokens,
+		);
+
+		// Save updated window (expires in 65 seconds)
+		set_transient( $window_key, $window_data, 65 );
+
+		return true;
+	}
+
+	/**
 	 * Call OpenAI Vision API
 	 */
 	private function call_openai_vision( $image_url, $messages, $api_key ) {
+		// RATE LIMIT GATE: Check token bucket before making request
+		$this->check_rate_limit( 500 ); // Conservative estimate until we measure actual usage
+
 		// For local development, convert image to base64 if URL is not publicly accessible
 		$image_data = $this->get_image_data( $image_url );
 
@@ -706,7 +769,7 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 							'type'      => 'image_url',
 							'image_url' => array(
 								'url'    => $image_data,
-								'detail' => 'high', // Week 1 hotfix: Use high detail to fix generic "Brand Imagery" outputs
+								'detail' => 'low', // Phase 0B: Use low detail (85 tokens) + short keys for token optimization
 							),
 						),
 					),
@@ -716,6 +779,14 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 			'temperature' => 0, // Deterministic outputs, no variance in retries
 		);
 
+		// Log request payload size for optimization tracking
+		$request_json = wp_json_encode( $body );
+		$request_size = strlen( $request_json );
+		error_log( sprintf(
+			'[MSH AI Token Optimization] Request payload: %d bytes (includes short key schema)',
+			$request_size
+		) );
+
 		$response = wp_remote_post(
 			self::API_ENDPOINT,
 			array(
@@ -723,7 +794,7 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 					'Authorization' => 'Bearer ' . $api_key,
 					'Content-Type'  => 'application/json',
 				),
-				'body'    => wp_json_encode( $body ),
+				'body'    => $request_json,
 				'timeout' => 30,
 			)
 		);
@@ -816,7 +887,7 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 
 	/**
 	 * Resize image for AI processing to reduce base64 payload and token costs.
-	 * Targets ~1600px long edge, JPEG 80% quality, <200KB file size.
+	 * Phase 0B: Targets 640px long edge (optimized for detail:low), JPEG 80% quality, <100KB file size.
 	 *
 	 * @param string $image_path Absolute path to original image.
 	 * @return string Path to resized image (or original if resize fails).
@@ -848,8 +919,8 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 		$width  = $size['width'];
 		$height = $size['height'];
 
-		// Calculate new dimensions (max 1600px on long edge)
-		$max_dimension = 1600;
+		// Phase 0B: Calculate new dimensions (max 640px on long edge, optimized for detail:low)
+		$max_dimension = 640;
 		if ( $width > $max_dimension || $height > $max_dimension ) {
 			if ( $width > $height ) {
 				$new_width  = $max_dimension;
@@ -872,8 +943,16 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 			return $image_path;
 		}
 
+		// Use the actual saved path from the editor (WordPress may modify the filename)
+		$actual_path = isset( $saved['path'] ) ? $saved['path'] : $temp_path;
+
 		// Check file size
-		$file_size = filesize( $temp_path );
+		if ( ! file_exists( $actual_path ) ) {
+			error_log( '[MSH OpenAI] Temp file not created: ' . $actual_path );
+			return $image_path;
+		}
+
+		$file_size = filesize( $actual_path );
 		error_log( sprintf(
 			'[MSH OpenAI] Resized image: %dx%d → %dx%d, %s → %s',
 			$width,
@@ -884,7 +963,7 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 			size_format( $file_size, 2 )
 		) );
 
-		return $temp_path;
+		return $actual_path;
 	}
 
 	/**
@@ -896,6 +975,12 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 		if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
 			return null;
 		}
+
+		// INSTRUMENTATION: Extract token usage from OpenAI response
+		$usage = $data['usage'] ?? array();
+		$prompt_tokens = $usage['prompt_tokens'] ?? 0;
+		$completion_tokens = $usage['completion_tokens'] ?? 0;
+		$total_tokens = $usage['total_tokens'] ?? 0;
 
 		$content = trim( $data['choices'][0]['message']['content'] );
 
@@ -909,6 +994,50 @@ Return exactly one JSON object matching the specified schema, nothing else.";
 			error_log( '[MSH OpenAI] Invalid JSON in response: ' . $content );
 			return null;
 		}
+
+		// Log short key optimization metrics
+		$short_key_size = strlen( $content );
+		error_log( sprintf(
+			'[MSH AI Token Optimization] Raw response (short keys): %d bytes',
+			$short_key_size
+		) );
+		error_log( '[MSH AI Token Optimization] Short key response: ' . $content );
+
+		// INSTRUMENTATION: Per-image telemetry (Phase 0B audit trail)
+		$attachment_id = $context['attachment_id'] ?? 0;
+		error_log( sprintf(
+			'[MSH TELEMETRY] image_id=%d | model=gpt-4o | detail=low | schema=short_keys_v4 | prompt_tokens=%d | completion_tokens=%d | total_tokens=%d | response_bytes=%d',
+			$attachment_id,
+			$prompt_tokens,
+			$completion_tokens,
+			$total_tokens,
+			$short_key_size
+		) );
+
+		// Flag if tokens exceed target
+		if ( $total_tokens > 600 ) {
+			error_log( sprintf(
+				'[MSH ALERT] Image %d exceeded 600 token threshold: %d tokens (prompt=%d, completion=%d)',
+				$attachment_id,
+				$total_tokens,
+				$prompt_tokens,
+				$completion_tokens
+			) );
+		}
+
+		// Expand short keys to verbose keys (backward compatible - accepts both)
+		$metadata = MSH_Key_Compactor::expand_keys( $metadata );
+
+		// Log expanded size for comparison
+		$verbose_equivalent = json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		$verbose_size = strlen( $verbose_equivalent );
+		$savings = round( ( 1 - ( $short_key_size / $verbose_size ) ) * 100, 1 );
+		error_log( sprintf(
+			'[MSH AI Token Optimization] Verbose equivalent: %d bytes | Savings: %d bytes (%.1f%%)',
+			$verbose_size,
+			$verbose_size - $short_key_size,
+			$savings
+		) );
 
 		// Extract confidence and issues from new structure
 		$confidence = isset( $metadata['confidence'] ) ? floatval( $metadata['confidence'] ) : 0.0;

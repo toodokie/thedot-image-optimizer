@@ -14,6 +14,7 @@ class MSH_Contextual_Meta_Generator {
 	private $location_slug        = '';
 	private $city                 = '';
 	private $city_slug            = '';
+	private $region               = '';
 	private $country              = '';
 	private $service_area         = '';
 	private $active_context       = array();
@@ -262,6 +263,7 @@ class MSH_Contextual_Meta_Generator {
 
 		$this->service_area = $service_area;
 		$this->country      = $country;
+		$this->region       = $region;
 
 		$this->city      = $city;
 		$this->city_slug = $city !== '' ? MSH_Image_Optimizer_Context_Helper::slugify( $city ) : '';
@@ -1430,6 +1432,8 @@ class MSH_Contextual_Meta_Generator {
 			$context = MSH_Context_Resolver::finalize( $context );
 		}
 
+		$context['service_keywords'] = $this->resolve_service_keywords_for_prompt( $context );
+
 		if ( isset( $context['context_trace'] ) ) {
 			update_post_meta( $attachment_id, '_msh_context_trace', wp_json_encode( $context['context_trace'] ) );
 		}
@@ -1676,6 +1680,56 @@ class MSH_Contextual_Meta_Generator {
 		}
 
 		return $this->get_default_service_slug( $this->industry );
+	}
+
+	private function resolve_service_keywords_for_prompt( array $context ) {
+		$slug_candidates = array_filter(
+			array(
+				isset( $context['service'] ) ? sanitize_key( (string) $context['service'] ) : '',
+				isset( $context['default_service_slug'] ) ? sanitize_key( (string) $context['default_service_slug'] ) : '',
+				isset( $context['industry'] ) ? sanitize_key( (string) $context['industry'] ) : '',
+				isset( $context['type'] ) ? sanitize_key( (string) $context['type'] ) : '',
+			)
+		);
+
+		$keywords = array();
+
+		foreach ( $slug_candidates as $slug ) {
+			if ( $slug !== '' && isset( $this->service_keywords[ $slug ] ) ) {
+				$keywords = array_merge( $keywords, (array) $this->service_keywords[ $slug ] );
+			}
+		}
+
+		// Fallback to global industry/service defaults.
+		if ( empty( $keywords ) ) {
+			$industry_slug = sanitize_key( (string) $this->industry );
+			if ( $industry_slug !== '' && isset( $this->service_keywords[ $industry_slug ] ) ) {
+				$keywords = array_merge( $keywords, (array) $this->service_keywords[ $industry_slug ] );
+			}
+		}
+
+		if ( empty( $keywords ) && isset( $this->service_keywords['general'] ) ) {
+			$keywords = array_merge( $keywords, (array) $this->service_keywords['general'] );
+		}
+
+		$keywords = array_slice(
+			array_values(
+				array_unique(
+					array_filter(
+						array_map(
+							function ( $value ) {
+								return sanitize_text_field( (string) $value );
+							},
+							$keywords
+						)
+					)
+				)
+			),
+			0,
+			5
+		);
+
+		return $keywords;
 	}
 
 	private function get_manual_brand_visibility( $attachment_id ) {
@@ -2283,6 +2337,15 @@ class MSH_Contextual_Meta_Generator {
 			}
 		}
 
+		// DEBUG: Log context type to diagnose why all images get clinical metadata
+		error_log( sprintf(
+			'[MSH TEMPLATE DEBUG] attachment_id=%d, context_type=%s, seo_mode=%s, context_set_manually=%s',
+			$attachment_id,
+			$context['type'] ?? 'NULL',
+			! empty( $context['seo_mode'] ) ? 'true' : 'false',
+			! empty( $context['context_set_manually'] ) ? 'true' : 'false'
+		) );
+
 		switch ( $context['type'] ) {
 			case 'team':
 				return $this->generate_team_meta( $context );
@@ -2300,6 +2363,7 @@ class MSH_Contextual_Meta_Generator {
 					return $this->generate_product_meta( $context );
 				}
 				return $this->generate_equipment_meta( $context );
+			case 'stock':
 			case 'business':
 				if ( ! empty( $context['asset'] ) ) {
 					if ( $context['asset'] === 'logo' ) {
@@ -2849,12 +2913,12 @@ class MSH_Contextual_Meta_Generator {
 				$keywords_line
 			);
 
-			$title_base  = "{$subject} Patient Success Story - {$this->business_name} {$this->location}";
+			$title_base  = "{$subject} Success Story - {$this->business_name} {$this->location}";
 			$final_title = $this->ensure_unique_title( $title_base, $context['attachment_id'] ?? 0 );
 
 			return array(
 				'title'       => $this->clean_text( $final_title ),
-				'alt_text'    => $this->clean_text( sprintf( __( 'Patient %1$s shares %2$s recovery story at %3$s %4$s', 'msh-image-optimizer' ), $subject, $service_lower, $this->business_name, $this->location ) ),
+				'alt_text'    => $this->clean_text( sprintf( __( '%1$s shares %2$s recovery story at %3$s %4$s', 'msh-image-optimizer' ), $subject, $service_lower, $this->business_name, $this->location ) ),
 				'caption'     => $this->clean_text( $caption ),
 				'description' => $this->clean_text( $description ),
 			);
@@ -2892,7 +2956,7 @@ class MSH_Contextual_Meta_Generator {
 
 		return array(
 			'title'       => $this->clean_text( $this->ensure_unique_title( $title_base, $context['attachment_id'] ?? 0 ) ),
-			'alt_text'    => $this->clean_text( sprintf( __( 'Client %1$s testimonial for %2$s%3$s.', 'msh-image-optimizer' ), $subject, $this->business_name, $this->get_location_phrase( ' in ' ) ) ),
+			'alt_text'    => $this->clean_text( sprintf( __( '%1$s testimonial for %2$s%3$s.', 'msh-image-optimizer' ), $subject, $this->business_name, $this->get_location_phrase( ' in ' ) ) ),
 			'caption'     => $this->clean_text( $caption ),
 			'description' => $this->clean_text( implode( ' ', $description_parts ) ),
 		);
@@ -3124,43 +3188,81 @@ class MSH_Contextual_Meta_Generator {
 
 	private function generate_facility_meta( array $context ) {
 		if ( MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry ) ) {
-			return array(
-				'title'       => $this->clean_text( "{$this->business_name} Clinic - {$this->location} Rehabilitation Facility" ),
-				'alt_text'    => $this->clean_text( "Interior view of {$this->business_name} rehabilitation clinic in {$this->location}" ),
-				'caption'     => $this->clean_text( "Modern rehabilitation facility at {$this->business_name} {$this->location}" ),
-				'description' => $this->clean_text( "Modern healthcare facility at {$this->business_name} {$this->location}. Professional clinic with specialized treatment rooms and comprehensive care programs." ),
-			);
+			// POLICY: Respect SEO mode - when false, no brand/location
+			$seo_mode = ! empty( $context['seo_mode'] );
+
+			if ( $seo_mode ) {
+				// SEO enabled: Include brand and location
+				return array(
+					'title'       => $this->clean_text( "{$this->business_name} Clinic - {$this->location} Rehabilitation Facility" ),
+					'alt_text'    => $this->clean_text( "Interior view of {$this->business_name} rehabilitation clinic in {$this->location}" ),
+					'caption'     => $this->clean_text( "Modern rehabilitation facility at {$this->business_name} {$this->location}" ),
+					'description' => $this->clean_text( "Modern healthcare facility at {$this->business_name} {$this->location}. Professional clinic with specialized treatment rooms and comprehensive care programs." ),
+				);
+			} else {
+				// SEO disabled: Scene-only, no brand/location
+				return array(
+					'title'       => $this->clean_text( __( 'Rehabilitation Clinic Interior', 'msh-image-optimizer' ) ),
+					'alt_text'    => $this->clean_text( __( 'Interior view of rehabilitation clinic facility.', 'msh-image-optimizer' ) ),
+					'caption'     => $this->clean_text( __( 'Modern rehabilitation facility interior', 'msh-image-optimizer' ) ),
+					'description' => $this->clean_text( __( 'Modern healthcare facility interior. Professional clinic with specialized treatment rooms and comprehensive care programs.', 'msh-image-optimizer' ) ),
+				);
+			}
 		}
 
+		// POLICY: Respect SEO mode for non-healthcare facility too
+		$seo_mode = ! empty( $context['seo_mode'] );
 		$industry_label = $this->get_industry_label_or_default();
 		$location       = $this->location;
 
-		$title = $this->business_name !== ''
-			? sprintf( __( '%1$s Workspace – %2$s', 'msh-image-optimizer' ), $this->business_name, $location )
-			: sprintf( __( 'Workspace – %s', 'msh-image-optimizer' ), $location );
+		if ( $seo_mode ) {
+			// SEO enabled: Include brand and location
+			$title = $this->business_name !== ''
+				? sprintf( __( '%1$s Workspace – %2$s', 'msh-image-optimizer' ), $this->business_name, $location )
+				: sprintf( __( 'Workspace – %s', 'msh-image-optimizer' ), $location );
 
-		$alt_text = $this->business_name !== ''
-			? sprintf( __( 'Interior view of %1$s%2$s.', 'msh-image-optimizer' ), $this->business_name, $this->get_location_phrase( ' in ' ) )
-			: sprintf( __( 'Interior workspace%1$s.', 'msh-image-optimizer' ), $this->get_location_phrase( ' in ' ) );
+			$alt_text = $this->business_name !== ''
+				? sprintf( __( 'Interior view of %1$s%2$s.', 'msh-image-optimizer' ), $this->business_name, $this->get_location_phrase( ' in ' ) )
+				: sprintf( __( 'Interior workspace%1$s.', 'msh-image-optimizer' ), $this->get_location_phrase( ' in ' ) );
 
-		$caption = sprintf(
-			__( 'Collaborative space for %1$s team members.', 'msh-image-optimizer' ),
-			strtolower( $industry_label )
-		);
+			$caption = sprintf(
+				__( 'Collaborative space for %1$s team members.', 'msh-image-optimizer' ),
+				strtolower( $industry_label )
+			);
 
-		$description_parts = array_filter(
-			array(
-				sprintf(
-					__( 'The %1$s workspace%2$s designed for %3$s collaboration.', 'msh-image-optimizer' ),
-					$this->business_name !== '' ? $this->business_name : __( 'business', 'msh-image-optimizer' ),
-					$this->get_location_phrase( ' in ' ),
-					strtolower( $industry_label )
-				),
-				$this->normalize_sentence( $this->uvp ),
-				$this->get_target_audience_sentence(),
-				$this->get_cta_sentence(),
-			)
-		);
+			$description_parts = array_filter(
+				array(
+					sprintf(
+						__( 'The %1$s workspace%2$s designed for %3$s collaboration.', 'msh-image-optimizer' ),
+						$this->business_name !== '' ? $this->business_name : __( 'business', 'msh-image-optimizer' ),
+						$this->get_location_phrase( ' in ' ),
+						strtolower( $industry_label )
+					),
+					$this->normalize_sentence( $this->uvp ),
+					$this->get_target_audience_sentence(),
+					$this->get_cta_sentence(),
+				)
+			);
+		} else {
+			// SEO disabled: Scene-only, no brand/location
+			$title = sprintf( __( '%s Workspace Interior', 'msh-image-optimizer' ), ucfirst( $industry_label ) );
+
+			$alt_text = sprintf( __( 'Interior view of %s workspace.', 'msh-image-optimizer' ), strtolower( $industry_label ) );
+
+			$caption = sprintf(
+				__( 'Collaborative workspace for %s professionals', 'msh-image-optimizer' ),
+				strtolower( $industry_label )
+			);
+
+			$description_parts = array_filter(
+				array(
+					sprintf(
+						__( 'Professional workspace designed for %s collaboration and productivity.', 'msh-image-optimizer' ),
+						strtolower( $industry_label )
+					),
+				)
+			);
+		}
 
 		return array(
 			'title'       => $this->clean_text( $this->ensure_unique_title( $title, $context['attachment_id'] ?? 0 ) ),
@@ -4073,6 +4175,13 @@ class MSH_Contextual_Meta_Generator {
 	}
 
 	private function generate_business_meta( array $context ) {
+		// QUICK FIX: Stock context should be scene-only, no brand, no business boilerplate
+		// This prevents identical UVP descriptions across all stock images
+		$context_type = $context['type'] ?? '';
+		if ( $context_type === 'stock' ) {
+			return $this->generate_stock_meta( $context );
+		}
+
 		$industry_generators = array(
 			'plumbing'     => 'generate_plumbing_meta',
 			'hvac'         => 'generate_hvac_meta',
@@ -4254,6 +4363,146 @@ class MSH_Contextual_Meta_Generator {
 			'caption'     => $this->clean_text( $caption ),
 			'description' => $this->clean_text( $description ),
 		);
+	}
+
+	/**
+	 * Generate scene-only metadata for stock images (no brand, no business boilerplate)
+	 *
+	 * Uses Smart Rephrase system when enabled (feature flag: msh_nonai_smart_rephrase_enabled)
+	 * Falls back to quick fix templates when disabled
+	 *
+	 * @since 1.2.16
+	 * @param array $context Image context array
+	 * @return array Metadata array with title, alt_text, caption, description
+	 */
+	private function generate_stock_meta( array $context ) {
+		// Feature flag: Use Smart Rephrase composer if enabled
+		$smart_rephrase_enabled = get_option( 'msh_nonai_smart_rephrase_enabled', true );
+		$class_exists = class_exists( 'MSH_NonAI_Composer' );
+
+		error_log( sprintf(
+			'[MSH Smart Rephrase] Flag=%s, Class=%s, ID=%d, File=%s',
+			$smart_rephrase_enabled ? 'ON' : 'OFF',
+			$class_exists ? 'EXISTS' : 'MISSING',
+			$context['attachment_id'] ?? 0,
+			$context['original_filename'] ?? 'NO_FILE'
+		) );
+
+		if ( $smart_rephrase_enabled && $class_exists ) {
+			error_log( '[MSH Smart Rephrase] Using Smart Rephrase composer' );
+			return $this->generate_stock_smart_rephrase( $context );
+		}
+
+		error_log( '[MSH Smart Rephrase] Using fallback templates' );
+		// Fallback: Quick fix templates
+		$original_filename = $context['original_filename'] ?? '';
+		$attachment_id = $context['attachment_id'] ?? 0;
+
+		// Use full filename as scene description (convert hyphens/underscores to spaces, title case)
+		if ( $original_filename !== '' ) {
+			// Remove extension
+			$scene_raw = preg_replace( '/\.(jpg|jpeg|png|webp|gif)$/i', '', $original_filename );
+			// Replace separators with spaces
+			$scene_raw = str_replace( array( '-', '_' ), ' ', $scene_raw );
+			// Title case
+			$scene = ucwords( strtolower( $scene_raw ) );
+		} else {
+			$scene = __( 'Scenic view', 'msh-image-optimizer' );
+		}
+
+		// Deterministic variation based on attachment ID (simple modulo)
+		$variant = $attachment_id % 4;
+
+		// Title: Just the scene (no brand)
+		$title = $scene;
+
+		// ALT: Single descriptive sentence
+		$alt_templates = array(
+			__( '%s captured in natural setting.', 'msh-image-optimizer' ),
+			__( 'Scenic view of %s.', 'msh-image-optimizer' ),
+			__( '%s in landscape composition.', 'msh-image-optimizer' ),
+			__( 'Natural view featuring %s.', 'msh-image-optimizer' ),
+		);
+		$alt_text = sprintf( $alt_templates[ $variant ], strtolower( $scene ) );
+
+		// Caption: One scene sentence (varied)
+		$caption_templates = array(
+			__( 'Natural landscape featuring %s', 'msh-image-optimizer' ),
+			__( 'Scenic composition with %s', 'msh-image-optimizer' ),
+			__( 'Outdoor view of %s', 'msh-image-optimizer' ),
+			__( 'Landscape photography highlighting %s', 'msh-image-optimizer' ),
+		);
+		$caption = sprintf( $caption_templates[ $variant ], strtolower( $scene ) );
+
+		// Description: Two sentences - both scene-focused (NO brand, NO UVP)
+		$desc_templates = array(
+			__( 'A landscape view showcasing %1$s. The composition emphasizes natural elements and visual depth.', 'msh-image-optimizer' ),
+			__( 'This scenic image features %1$s in a natural setting. The photograph captures ambient lighting and environmental context.', 'msh-image-optimizer' ),
+			__( 'Natural scenery highlighting %1$s with attention to composition. The image presents a balanced view of the subject and surroundings.', 'msh-image-optimizer' ),
+			__( 'An outdoor photograph of %1$s showing environmental details. The scene conveys a sense of place through natural lighting and framing.', 'msh-image-optimizer' ),
+		);
+		$description = sprintf( $desc_templates[ $variant ], strtolower( $scene ) );
+
+		return array(
+			'title'       => $this->clean_text( $this->ensure_unique_title( $title, $attachment_id ) ),
+			'alt_text'    => $this->clean_text( $alt_text ),
+			'caption'     => $this->clean_text( $caption ),
+			'description' => $this->clean_text( $description ),
+		);
+	}
+
+	/**
+	 * Generate stock metadata using Smart Rephrase composer
+	 *
+	 * Maps context to canonical input format and invokes MSH_NonAI_Composer
+	 *
+	 * @since 1.3.0
+	 * @param array $context Image context array
+	 * @return array Metadata array
+	 */
+	private function generate_stock_smart_rephrase( array $context ) {
+		// Map to canonical input format
+		$input = array(
+			'id'       => $context['attachment_id'] ?? 0,
+			'filename' => $context['original_filename'] ?? '',
+			'biz_context' => array(
+				'business_name' => $this->business_name,
+				'city'          => $this->city,
+				'region'        => $this->region,
+				'country'       => $this->country,
+				'industry'      => $this->industry,
+				'brand_voice'   => 'Professional', // Default for now
+				'unique_value'  => substr( $this->uvp, 0, 160 ), // Trim to 160 chars
+			),
+			'page_context' => array(
+				'page_title'   => $context['page_title'] ?? null,
+				'focus_keyword' => $context['focus_keyword'] ?? null,
+				'page_role'    => $context['page_role'] ?? null,
+			),
+			'policy' => array(
+				'context_type'         => $context['type'] ?? 'stock',
+				'context_set_manually' => ! empty( $context['context_set_manually'] ),
+				'brand_name_visible'   => ! empty( $context['brand_name_visible'] ),
+				'seo_mode'             => ! empty( $context['seo_mode'] ),
+			),
+		);
+
+		// Invoke composer
+		$metadata = MSH_NonAI_Composer::compose( $input );
+
+		// Ensure unique title
+		if ( ! empty( $metadata['title'] ) ) {
+			$metadata['title'] = $this->ensure_unique_title( $metadata['title'], $context['attachment_id'] ?? 0 );
+		}
+
+		// Clean all fields
+		foreach ( $metadata as $key => $value ) {
+			if ( is_string( $value ) ) {
+				$metadata[ $key ] = $this->clean_text( $value );
+			}
+		}
+
+		return $metadata;
 	}
 
 	/**
@@ -6093,6 +6342,15 @@ class MSH_Image_Optimizer {
 		add_action( 'wp_ajax_msh_check_capabilities', array( $this, 'ajax_check_capabilities' ) );
 		add_action( 'init', array( $this, 'prime_season_cache' ) );
 
+		// DIAGNOSTIC: Verify hook registration
+		add_action( 'admin_init', function() {
+			if ( has_action( 'wp_ajax_msh_analyze_images' ) ) {
+				error_log( '[HOOK] wp_ajax_msh_analyze_images registered' );
+			} else {
+				error_log( '[HOOK ERROR] wp_ajax_msh_analyze_images NOT registered' );
+			}
+		} );
+
 		$this->contextual_meta_generator = new MSH_Contextual_Meta_Generator();
 
 		// Auto-generate suggestions for new uploads
@@ -6916,6 +7174,22 @@ class MSH_Image_Optimizer {
 		}
 		// For unoptimized images, AI mode will be determined by global setting
 
+		// DIAGNOSTIC: Log row-level analyze parameters
+		$final_ct = $context_info['type'] ?? 'unknown';
+		$seo = isset( $context_info['seo_mode'] ) ? (int) $context_info['seo_mode'] : 1;
+		$ai_mode_val = $ai_options['ai_mode'] ?? 'manual';
+		$ai = ( $ai_mode_val !== 'manual' ) ? 1 : 0;
+		$needs_ai = ( $ai && ! $is_already_optimized ) ? 1 : 0;
+		error_log( sprintf(
+			'[ANALYZE] ROW %d ct=%s seo=%d ai=%d needs_ai=%d mode=%s',
+			$attachment_id,
+			$final_ct,
+			$seo,
+			$ai,
+			$needs_ai,
+			$ai_mode_val
+		) );
+
 		$generated_meta            = $this->contextual_meta_generator->generate_meta_fields( $attachment_id, $context_info, $ai_options );
 
 		// PHASE 3: End AI timing
@@ -6999,6 +7273,7 @@ class MSH_Image_Optimizer {
 
 		// Check if file renaming feature is enabled
 		$rename_enabled = $this->is_file_rename_enabled();
+		$had_existing_suggestion = (bool) get_post_meta( $attachment_id, '_msh_suggested_filename', true );
 
 		// Check if file already has SEO-optimized name FIRST
 		$current_file     = $file_path; // Use the correct variable name
@@ -7030,6 +7305,10 @@ class MSH_Image_Optimizer {
 							preg_match( '/^(rehabilitation|physiotherapy|chiropractic|acupuncture|massage|orthotics|chronic-pain|work-related|sport-injuries|motor-vehicle|patient-testimonial|bluecross|canada-life|manulife)-/', $current_basename ) ||
 							// Or files that end with OUR attachment ID pattern (more specific to avoid false matches)
 							preg_match( '/-' . $attachment_id . '\.(jpg|jpeg|png|gif|svg|webp)$/', $current_basename ) );
+		}
+
+		if ( $has_good_name && ! $had_existing_suggestion ) {
+			$has_good_name = false;
 		}
 
 		// Debug filename suggestion logic for SVGs
@@ -8222,6 +8501,9 @@ class MSH_Image_Optimizer {
 	 * @return void
 	 */
 	public function ajax_analyze_images() {
+		// DIAGNOSTIC: Log handler entry
+		error_log( '[MSH DEBUG] ajax_analyze_images handler called' );
+
 		check_ajax_referer( 'msh_image_optimizer', 'nonce' );
 
 		if ( ! current_user_can( 'manage_options' ) ) {
@@ -8233,7 +8515,9 @@ class MSH_Image_Optimizer {
 
 		// Check for AI regeneration params
 		$ai_scope              = isset( $_POST['ai_scope'] ) ? sanitize_text_field( $_POST['ai_scope'] ) : null;
-		$ai_mode               = isset( $_POST['ai_mode'] ) ? sanitize_text_field( $_POST['ai_mode'] ) : 'fill-empty';
+		// For batch analyze (non-regeneration), use global AI mode setting; for AI regeneration, use POST param or default to 'fill-empty'
+		$global_ai_mode        = get_option( 'msh_ai_mode', 'manual' );
+		$ai_mode               = isset( $_POST['ai_mode'] ) ? sanitize_text_field( $_POST['ai_mode'] ) : ( empty( $ai_scope ) ? $global_ai_mode : 'fill-empty' );
 		$ai_fields             = isset( $_POST['ai_fields'] ) && is_array( $_POST['ai_fields'] ) ? array_map( 'sanitize_text_field', $_POST['ai_fields'] ) : array();
 		$ai_language           = isset( $_POST['ai_language'] ) ? sanitize_text_field( $_POST['ai_language'] ) : 'auto';
 		$active_profile_record = MSH_Image_Optimizer_Context_Helper::get_active_profile();
@@ -8335,16 +8619,17 @@ class MSH_Image_Optimizer {
 					$this->log_debug( "MSH: AI Regeneration progress: {$current_index}/{$total_to_process} ({$percent}%) - Processing attachment {$image['ID']}" );
 				}
 
-				// Pass AI options if this is an AI regeneration request
-				$ai_options = array();
+				// ALWAYS pass ai_mode (from global setting or POST param) so AI can run during batch analyze
+				$ai_options = array(
+					'ai_mode' => $ai_mode,
+				);
+
+				// Add AI regeneration-specific params if this is an AI regeneration request
 				if ( $is_ai_regeneration ) {
-					$ai_options = array(
-						'ai_regeneration' => true,
-						'ai_mode'         => $ai_mode,
-						'ai_fields'       => $ai_fields,
-						'language'        => $ai_language,
-						'profile_locale'  => $profile_locale,
-					);
+					$ai_options['ai_regeneration'] = true;
+					$ai_options['ai_fields']       = $ai_fields;
+					$ai_options['language']        = $ai_language;
+					$ai_options['profile_locale']  = $profile_locale;
 				}
 
 				$analysis = $this->analyze_single_image( $image['ID'], $ai_options );
@@ -9362,7 +9647,16 @@ class MSH_Image_Optimizer {
 		$reset_count = $wpdb->query(
 			"
             DELETE FROM {$wpdb->postmeta}
-            WHERE meta_key IN ('msh_optimized_date', '_msh_suggested_filename', '_msh_suggested_filename_context', 'msh_metadata_context_hash')
+            WHERE meta_key IN (
+                'msh_optimized_date',
+                '_msh_suggested_filename',
+                '_msh_suggested_filename_context',
+                'msh_metadata_context_hash',
+                'msh_descriptor',
+                'msh_last_analyzed',
+                '_msh_context_trace',
+                '_msh_descriptor_backup'
+            )
         "
 		);
 
@@ -10613,6 +10907,9 @@ class MSH_Image_Optimizer {
 		}
 
 		update_option( 'msh_ai_features', $features, false );
+
+		// Ensure next Analyze run reflects the new mode by clearing cached results
+		$this->clear_analysis_cache();
 
 		wp_send_json_success(
 			array(

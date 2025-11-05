@@ -153,6 +153,15 @@ final class MSH_Image_Optimizer_Plugin {
         if (!class_exists('MSH_Manual_Edit_Protection')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-manual-edit-protection.php';
         }
+        if (!class_exists('MSH_Phrasebank')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-phrasebank.php';
+        }
+        if (!class_exists('MSH_NonAI_Scene')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-nonai-scene.php';
+        }
+        if (!class_exists('MSH_NonAI_Composer')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-nonai-composer.php';
+        }
         if (!class_exists('MSH_Image_Optimizer')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-image-optimizer.php';
         }
