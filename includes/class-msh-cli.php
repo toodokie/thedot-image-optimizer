@@ -294,14 +294,43 @@ class MSH_CLI {
 		$progress = \WP_CLI\Utils\make_progress_bar( 'Regenerating metadata', $total );
 
 		foreach ( $attachment_ids as $attachment_id ) {
-			// Build context
-			$context = array(
-				'attachment_id' => $attachment_id,
-				'business_name' => get_option( 'msh_business_name', '' ),
-				'industry'      => get_option( 'msh_industry', '' ),
-				'location'      => get_option( 'msh_location', '' ),
-				'uvp'           => get_option( 'msh_uvp', '' ),
+			// Phase 0B Fix: Build context from active context helper (reads msh_onboarding_context)
+			$active_context = class_exists( 'MSH_Image_Optimizer_Context_Helper' )
+				? MSH_Image_Optimizer_Context_Helper::get_active_context()
+				: array();
+
+			$context = array_merge(
+				$active_context,
+				array( 'attachment_id' => $attachment_id )
 			);
+
+			// Phase 0B Fix: Preserve stored manual context settings
+			$stored_context_trace = get_post_meta( $attachment_id, '_msh_context_trace', true );
+			if ( ! empty( $stored_context_trace ) ) {
+				$context_trace = json_decode( $stored_context_trace, true );
+
+				if ( is_array( $context_trace ) ) {
+					// Preserve manual context type
+					if ( ! empty( $context_trace['context_set_manually'] ) && ! empty( $context_trace['final_context_type'] ) ) {
+						$context['final_context_type']  = $context_trace['final_context_type'];
+						$context['context_set_manually'] = true;
+					}
+
+					// Preserve brand visibility settings
+					if ( isset( $context_trace['brand_name_visible'] ) ) {
+						$context['brand_name_visible'] = (bool) $context_trace['brand_name_visible'];
+					}
+					if ( isset( $context_trace['brand_name_visible_manual'] ) ) {
+						$context['brand_name_visible_manual'] = (bool) $context_trace['brand_name_visible_manual'];
+					}
+				}
+			}
+
+			// Also read SEO mode from attachment meta (if stored)
+			$seo_mode = get_post_meta( $attachment_id, '_msh_seo_mode', true );
+			if ( $seo_mode !== '' ) {
+				$context['seo_mode'] = (bool) $seo_mode;
+			}
 
 			// Backup existing metadata
 			$backup = array(
@@ -455,6 +484,106 @@ class MSH_CLI {
 
 			default:
 				WP_CLI::error( 'Unknown command. Use: list, set, unset, or clear' );
+		}
+	}
+
+	/**
+	 * Scan attachments for corrupted size metadata and optionally repair.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--limit=<number>]
+	 * : Maximum attachments to scan (default: 500).
+	 *
+	 * [--repair]
+	 * : Attempt automatic repair when corruption is detected.
+	 *
+	 * ## EXAMPLES
+	 *
+	 *     wp msh scan-corrupt-sizes --limit=250
+	 *     wp msh scan-corrupt-sizes --repair
+	 *
+	 * @param array $args Positional arguments.
+	 * @param array $assoc_args Associative arguments.
+	 */
+	public function scan_corrupt_sizes( $args, $assoc_args ) {
+		$limit  = isset( $assoc_args['limit'] ) ? max( 1, (int) $assoc_args['limit'] ) : 500;
+		$repair = isset( $assoc_args['repair'] );
+
+		$query = new WP_Query(
+			array(
+				'post_type'      => 'attachment',
+				'post_status'    => 'inherit',
+				'posts_per_page' => $limit,
+				'fields'         => 'ids',
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+			)
+		);
+
+		if ( empty( $query->posts ) ) {
+			WP_CLI::success( 'No attachments found.' );
+			return;
+		}
+
+		$renamer = class_exists( 'MSH_Safe_Rename_System' ) ? MSH_Safe_Rename_System::get_instance() : null;
+		$issues  = 0;
+
+		foreach ( $query->posts as $attachment_id ) {
+			$metadata = wp_get_attachment_metadata( $attachment_id );
+			if ( ! is_array( $metadata ) || empty( $metadata['sizes'] ) ) {
+				continue;
+			}
+
+			$file      = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			$uploads   = wp_get_upload_dir();
+			$base_dir  = trailingslashit( $uploads['basedir'] );
+			$main_path = $file ? $base_dir . ltrim( $file, '/' ) : get_attached_file( $attachment_id );
+			$dir       = $main_path ? dirname( $main_path ) : $uploads['basedir'];
+			$ext       = pathinfo( $main_path, PATHINFO_EXTENSION );
+			$problems  = array();
+
+			foreach ( $metadata['sizes'] as $size_key => $size_data ) {
+				$size_file = $size_data['file'] ?? '';
+				$full_path = $size_file ? trailingslashit( $dir ) . $size_file : '';
+
+				if ( $size_file === '' || ! preg_match( '/-\d+x\d+\.[a-z0-9]+$/i', $size_file ) ) {
+					$problems[] = "Size '{$size_key}' missing WxH suffix ({$size_file})";
+					continue;
+				}
+
+				if ( ! file_exists( $full_path ) ) {
+					$problems[] = "Size '{$size_key}' file missing on disk ({$size_file})";
+				}
+			}
+
+			if ( empty( $problems ) ) {
+				continue;
+			}
+
+			$issues++;
+			WP_CLI::warning( sprintf( 'Attachment %d has corrupted metadata:', $attachment_id ) );
+			foreach ( $problems as $problem ) {
+				WP_CLI::line( "  - {$problem}" );
+			}
+
+			if ( $repair && $renamer ) {
+				$result = $renamer->repair_corrupted_attachment( $attachment_id, false );
+				if ( is_wp_error( $result ) ) {
+					WP_CLI::error( sprintf( 'Repair failed for attachment %d: %s', $attachment_id, $result->get_error_message() ) );
+				} else {
+					WP_CLI::success( sprintf( 'Attempted repair for attachment %d.', $attachment_id ) );
+				}
+			}
+		}
+
+		if ( $issues === 0 ) {
+			WP_CLI::success( 'No corrupted metadata detected in scanned attachments.' );
+		} else {
+			WP_CLI::warning( sprintf( 'Detected %d attachment(s) with corrupted size metadata.', $issues ) );
+			if ( ! $repair ) {
+				WP_CLI::line( 'Re-run with --repair to attempt automatic healing.' );
+			}
 		}
 	}
 

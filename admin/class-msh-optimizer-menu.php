@@ -98,8 +98,8 @@ class MSH_Optimizer_Menu {
 
 		// Top-level menu
 		add_menu_page(
-			__( 'TinyDot Optimizer', 'msh-image-optimizer' ),
-			__( 'TinyDot', 'msh-image-optimizer' ),
+			__( 'MSH Optimizer', 'msh-image-optimizer' ),
+			__( 'MSH-Optimizer', 'msh-image-optimizer' ),
 			'manage_options',
 			'msh-optimizer',
 			array( 'MSH_Dashboard_Page', 'render' ),

@@ -102,8 +102,8 @@ class MSH_Hub_Page {
 	 * @return void
 	 */
 	public function enqueue_assets( $hook ) {
-		// Hook is based on menu title "TinyDot" -> tinydot_page_{page_slug}
-		if ( 'tinydot_page_msh-hub' !== $hook ) {
+		// Hook is based on parent menu slug "msh-optimizer" -> msh-optimizer_page_{page_slug}
+		if ( 'msh-optimizer_page_msh-hub' !== $hook ) {
 			return;
 		}
 		$assets_base = defined( 'MSH_IO_ASSETS_URL' )

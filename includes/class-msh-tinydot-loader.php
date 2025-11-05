@@ -58,19 +58,16 @@ class MSH_TinyDot_Loader {
 	 */
 	public function enqueue_loader_styles( $hook ) {
 		// Only enqueue on MSH admin pages
-		// Hook format: {menu_slug}_page_{page_slug} where menu_slug is from menu title "TinyDot"
+		// Hook format: {parent_slug}_page_{page_slug} where parent_slug is "msh-optimizer"
 		$msh_pages = array(
-			'toplevel_page_msh-optimizer',
-			'tinydot_page_msh-image-optimizer',  // Image Optimizer submenu page
-			'tinydot_page_msh-hub',
-			'tinydot_page_msh-glossary',
-			'tinydot_page_msh-locale-profiles',
-			'tinydot_page_msh-image-optimizer-settings',
-			'tinydot_page_msh-context-analytics',
-			'tinydot_page_msh-dashboard',
-			'tinydot_page_msh-approval-queue',
-			'tinydot_page_msh-version-history',
-			'tinydot_page_msh-ab-testing',
+			'toplevel_page_msh-optimizer',                      // Dashboard (top-level)
+			'msh-optimizer_page_msh-image-optimizer',           // Image Optimizer
+			'msh-optimizer_page_msh-hub',                       // Optimizer Hub
+			'msh-optimizer_page_msh-insights',                  // Insights & Analytics
+			'msh-optimizer_page_msh-localization',              // Localization
+			'msh-optimizer_page_msh-review-center',             // Review Center
+			'msh-optimizer_page_msh-image-optimizer-settings',  // Settings
+			'msh-optimizer_page_msh-help',                      // Help & Docs
 		);
 
 		// Also enqueue on upload.php (Media Library) for image upload feedback

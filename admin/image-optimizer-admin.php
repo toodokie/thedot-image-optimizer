@@ -128,8 +128,8 @@ class MSH_Image_Optimizer_Admin {
 	 * @return void
 	 */
 	public function enqueue_admin_scripts( $hook ) {
-		// Hook is based on menu title "TinyDot" -> tinydot_page_{page_slug}
-		if ( 'tinydot_page_msh-image-optimizer' !== $hook ) {
+		// Hook is based on parent menu slug "msh-optimizer" -> msh-optimizer_page_{page_slug}
+		if ( 'msh-optimizer_page_msh-image-optimizer' !== $hook ) {
 			return;
 		}
 
@@ -982,7 +982,7 @@ class MSH_Image_Optimizer_Admin {
 								<?php esc_html_e( 'Verify WebP Status', 'msh-image-optimizer' ); ?>
 							</button>
 							<button id="reset-optimization" class="button button-dot-secondary">
-								<?php esc_html_e( 'Reset Optimization Flags', 'msh-image-optimizer' ); ?>
+								<?php esc_html_e( 'Reset', 'msh-image-optimizer' ); ?>
 							</button>
 						</div>
 					</div>

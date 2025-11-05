@@ -194,7 +194,100 @@ class MSH_Safe_Rename_System {
 			return $normalized;
 		}
 
+		// Collapse repeated identical suffix patterns like "file-main-main-main.ext" → "file-main.ext"
+		// Pattern: if hyphen-delimited segments before extension repeat ≥2, collapse to one
+		// Example: lettuce-field-sunrise-main-main-main.jpg → lettuce-field-sunrise-main.jpg
+		if ( preg_match( '/^(.+?)(-([a-z0-9]+)(?:-\3)+)(\.[a-z0-9]+)$/i', $basename, $m ) ) {
+			// $m[1] = "lettuce-field-sunrise", $m[3] = "main", $m[4] = ".jpg"
+			$normalized = $m[1] . '-' . $m[3] . $m[4];
+			return $normalized;
+		}
+
 		return $basename;
+	}
+
+	/**
+	 * Strip repeated occurrences of a rename tag from the end of a basename.
+	 *
+	 * @param string $filename Filename (basename or full filename).
+	 * @param string $tag      Tag to strip (without leading hyphen).
+	 * @return string Basename without extension and duplicate tags.
+	 */
+	private function normalize_basename_without_tag( $filename, $tag ) {
+		$ext  = pathinfo( $filename, PATHINFO_EXTENSION );
+		$name = $ext ? substr( $filename, 0, -( strlen( $ext ) + 1 ) ) : $filename;
+
+		if ( $tag !== '' ) {
+			$pattern = '/(?:-' . preg_quote( $tag, '/' ) . ')+$/';
+			$name    = preg_replace( $pattern, '', $name );
+		}
+
+		return $name;
+	}
+
+	/**
+	 * Build a canonical filename for a sized image.
+	 */
+	private function build_size_filename( $clean_basename, $ext, $width, $height, $tag = '' ) {
+		$suffix = ( $width > 0 && $height > 0 ) ? '-' . $width . 'x' . $height : '';
+		$tagbit = $tag !== '' ? '-' . $tag : '';
+
+		return $clean_basename . $tagbit . $suffix . '.' . $ext;
+	}
+
+	/**
+	 * Build the value that should be stored in metadata sizes[*]['file'].
+	 */
+	private function build_sizes_file_value( $clean_basename, $ext, $width, $height, $tag = '' ) {
+		return $this->build_size_filename( $clean_basename, $ext, $width, $height, $tag );
+	}
+
+	/**
+	 * Resolve the actual disk path of a size file when metadata is corrupted.
+	 *
+	 * @return string Absolute path or empty string if nothing found.
+	 */
+	private function resolve_old_size_path( $dir, $clean_old_base, $ext, $data ) {
+		// 1) Trust metadata if file exists.
+		if ( ! empty( $data['file'] ) ) {
+			$candidate = trailingslashit( $dir ) . $data['file'];
+			if ( file_exists( $candidate ) ) {
+				return $candidate;
+			}
+		}
+
+		$width  = isset( $data['width'] ) ? (int) $data['width'] : 0;
+		$height = isset( $data['height'] ) ? (int) $data['height'] : 0;
+
+		// 2) Reconstruct expected WxH path.
+		if ( $width > 0 && $height > 0 ) {
+			$expected = trailingslashit( $dir ) . $clean_old_base . '-' . $width . 'x' . $height . '.' . $ext;
+			if ( file_exists( $expected ) ) {
+				return $expected;
+			}
+		}
+
+		// 3) Fallback: glob for any size variant.
+		$pattern = trailingslashit( $dir ) . $clean_old_base . '-*x*.' . $ext;
+		$matches = glob( $pattern );
+		if ( ! empty( $matches ) ) {
+			if ( $width > 0 && $height > 0 ) {
+				foreach ( $matches as $candidate ) {
+					if ( preg_match( '/-(\d+)x(\d+)\.' . preg_quote( $ext, '/' ) . '$/', $candidate, $mm ) ) {
+						if ( (int) $mm[1] === $width && (int) $mm[2] === $height ) {
+							return $candidate;
+						}
+					}
+				}
+			}
+
+			// If we only found one candidate, use it.
+			if ( count( $matches ) === 1 ) {
+				return $matches[0];
+			}
+		}
+
+		return '';
 	}
 
 	/**
@@ -509,12 +602,28 @@ class MSH_Safe_Rename_System {
 			$this->clear_usage_lookup_cache();
 		}
 
+		// ====== PRE-RENAME METADATA VALIDATION & AUTO-REPAIR ======
+		// CRITICAL: Fix corrupted metadata BEFORE attempting rename
 		$current_path = get_attached_file( $attachment_id );
-		error_log( '[MSH Rename DEBUG] Current file path: ' . $current_path );
+		error_log( '[MSH Rename DEBUG] Current file path from database: ' . $current_path );
 
 		if ( ! $current_path || ! file_exists( $current_path ) ) {
-			return new WP_Error( 'missing_file', __( 'Original file not found for attachment.', 'msh-image-optimizer' ) );
+			error_log( '[MSH AUTO-REPAIR] Corrupted metadata detected for attachment #' . $attachment_id );
+			error_log( '[MSH AUTO-REPAIR] Database says file is: ' . $current_path );
+
+			// Try to find the actual file on disk
+			$repaired_path = $this->auto_repair_corrupted_metadata( $attachment_id, $current_path );
+
+			if ( $repaired_path && file_exists( $repaired_path ) ) {
+				error_log( '[MSH AUTO-REPAIR] SUCCESS - Repaired metadata, actual file found at: ' . $repaired_path );
+				$current_path = $repaired_path;
+			} else {
+				error_log( '[MSH AUTO-REPAIR] FAILED - Could not locate actual file on disk' );
+				return new WP_Error( 'missing_file', __( 'Original file not found for attachment. Automatic repair attempted but failed.', 'msh-image-optimizer' ) );
+			}
 		}
+		error_log( '[MSH Rename DEBUG] Verified file path: ' . $current_path );
+		// ====== END PRE-RENAME VALIDATION & AUTO-REPAIR ======
 
 		$new_filename     = sanitize_file_name( $new_filename );
 		error_log( '[MSH Rename DEBUG] Sanitized filename: ' . $new_filename );
@@ -575,7 +684,8 @@ class MSH_Safe_Rename_System {
 			return $rename;
 		}
 
-		$this->update_wordpress_metadata( $attachment_id, $rename['new_path'], $old_metadata, $new_relative );
+		$updated_metadata = isset( $rename['metadata'] ) ? $rename['metadata'] : $old_metadata;
+		$this->update_wordpress_metadata( $attachment_id, $rename['new_path'], $updated_metadata, $new_relative );
 
 		$map      = $this->build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir, $attachment_id );
 		$replaced = $this->replace_references( $map, $attachment_id, $current_basename, $new_filename );
@@ -821,44 +931,119 @@ class MSH_Safe_Rename_System {
 
 		error_log( 'MSH Rename: Main file renamed successfully' );
 
+		$old_basename_raw = pathinfo( $old_path, PATHINFO_FILENAME );
+		$new_basename_raw = pathinfo( $new_filename, PATHINFO_FILENAME );
+		$ext               = pathinfo( $new_filename, PATHINFO_EXTENSION );
+		$tag               = '';
+		if ( substr( $new_basename_raw, -strlen( '-msh-regression' ) ) === '-msh-regression' ) {
+			$tag = 'msh-regression';
+		}
+		$clean_old_base = $this->normalize_basename_without_tag( $old_basename_raw, $tag );
+		$clean_new_base = $this->normalize_basename_without_tag( $new_basename_raw, $tag );
+
 		// Handle sized images (thumbnails) - WITHOUT error suppression
 		if ( is_array( $old_metadata ) && ! empty( $old_metadata['sizes'] ) ) {
-			foreach ( $old_metadata['sizes'] as $size => $data ) {
-				if ( empty( $data['file'] ) ) {
+			foreach ( $old_metadata['sizes'] as $size_key => $data ) {
+				$has_dimensions = ! empty( $data['width'] ) && ! empty( $data['height'] );
+				if ( empty( $data['file'] ) && ! $has_dimensions ) {
+					error_log( "[MSH Rename] Skip size '{$size_key}' because metadata has neither file nor dimensions" );
 					continue;
 				}
 
-				$old_size_path = trailingslashit( $dir ) . $data['file'];
-				if ( ! file_exists( $old_size_path ) ) {
+				$old_size_path = $this->resolve_old_size_path( $dir, $clean_old_base, $ext, $data );
+				if ( empty( $old_size_path ) ) {
+					$metafile = isset( $data['file'] ) ? $data['file'] : '(none)';
+					error_log( "[MSH Rename] Thumbnail not found for '{$size_key}'. Metadata file '{$metafile}' not on disk" );
 					continue;
 				}
 
-				$ext               = pathinfo( $data['file'], PATHINFO_EXTENSION );
-				$new_size_filename = pathinfo( $new_filename, PATHINFO_FILENAME ) . '-' .
-									$data['width'] . 'x' . $data['height'] . '.' . $ext;
+				$width  = isset( $data['width'] ) ? intval( $data['width'] ) : 0;
+				$height = isset( $data['height'] ) ? intval( $data['height'] ) : 0;
+				$new_size_filename = $this->build_size_filename( $clean_new_base, $ext, $width, $height, $tag );
 				$new_size_path     = trailingslashit( $dir ) . $new_size_filename;
 
-				// Backup thumbnail
-				$size_backup = $backup_dir . '/' . basename( $old_size_path ) . '.' . time();
-				copy( $old_size_path, $size_backup );
+				if ( realpath( $old_size_path ) === realpath( $new_size_path ) ) {
+					error_log( "[MSH Rename] Size '{$size_key}' already at target: " . basename( $new_size_path ) );
+				} else {
+					$size_backup = $backup_dir . '/' . basename( $old_size_path ) . '.' . time();
+					copy( $old_size_path, $size_backup );
 
-				// Rename thumbnail using WP_Filesystem
-				if ( $this->init_filesystem() ) {
-					global $wp_filesystem;
-					$thumb_result = $wp_filesystem->move( $old_size_path, $new_size_path, true );
+					if ( $this->init_filesystem() ) {
+						global $wp_filesystem;
+						$thumb_result = $wp_filesystem->move( $old_size_path, $new_size_path, true );
 
-					if ( ! $thumb_result ) {
-						// Try copy + delete fallback
-						if ( copy( $old_size_path, $new_size_path ) && $this->is_safe_path( $old_size_path ) ) {
-							wp_delete_file( $old_size_path );
-							error_log( 'MSH Rename: Thumbnail renamed via copy+delete: ' . basename( $old_size_path ) );
+						if ( ! $thumb_result ) {
+							if ( copy( $old_size_path, $new_size_path ) && $this->is_safe_path( $old_size_path ) ) {
+								wp_delete_file( $old_size_path );
+								error_log( 'MSH Rename: Thumbnail renamed via copy+delete: ' . basename( $old_size_path ) );
+							} else {
+								error_log( 'MSH Rename: Failed to rename thumbnail ' . basename( $old_size_path ) );
+							}
 						} else {
-							error_log( 'MSH Rename: Failed to rename thumbnail ' . basename( $old_size_path ) );
+							error_log( 'MSH Rename: Thumbnail renamed successfully: ' . basename( $new_size_path ) );
 						}
-					} else {
-						error_log( 'MSH Rename: Thumbnail renamed successfully: ' . basename( $old_size_path ) );
 					}
 				}
+
+				// Update metadata entry to canonical value
+				if ( $width > 0 && $height > 0 ) {
+					$old_metadata['sizes'][ $size_key ]['file'] = $this->build_sizes_file_value( $clean_new_base, $ext, $width, $height, $tag );
+				} else {
+					if ( preg_match( '/-(\d+)x(\d+)\.' . preg_quote( $ext, '/' ) . '$/', basename( $new_size_filename ), $mm ) ) {
+						$old_metadata['sizes'][ $size_key ]['width']  = intval( $mm[1] );
+						$old_metadata['sizes'][ $size_key ]['height'] = intval( $mm[2] );
+					}
+					$old_metadata['sizes'][ $size_key ]['file'] = basename( $new_size_filename );
+				}
+			}
+		}
+
+		if ( is_array( $old_metadata ) && ! empty( $old_metadata['file'] ) ) {
+			$subdir = trim( dirname( $old_metadata['file'] ), '/' );
+			$clean_new_base = $this->normalize_basename_without_tag( $new_basename_raw, $tag );
+			$relative_path  = $clean_new_base . '.' . $ext;
+			if ( $subdir !== '.' && $subdir !== '' ) {
+				$relative_path = $subdir . '/' . $relative_path;
+			}
+			$old_metadata['file'] = $relative_path;
+		}
+
+		// Handle WordPress large image original file (for images >2560px that were auto-scaled)
+		if ( is_array( $old_metadata ) && ! empty( $old_metadata['original_image'] ) ) {
+			$old_original_path = trailingslashit( $dir ) . $old_metadata['original_image'];
+			if ( file_exists( $old_original_path ) ) {
+				$ext              = pathinfo( $old_metadata['original_image'], PATHINFO_EXTENSION );
+				$new_basename     = pathinfo( $new_filename, PATHINFO_FILENAME );
+				// Remove -scaled suffix if present (main file is scaled, original is not)
+				$new_original_base     = str_replace( '-scaled', '', $new_basename );
+				$new_original_filename = $new_original_base . '.' . $ext;
+				$new_original_path     = trailingslashit( $dir ) . $new_original_filename;
+
+				error_log( 'MSH Rename: Renaming original large image from ' . basename( $old_original_path ) . ' to ' . $new_original_filename );
+
+				// Backup original file
+				$original_backup = $backup_dir . '/' . basename( $old_original_path ) . '.' . time();
+				copy( $old_original_path, $original_backup );
+
+				// Rename original file using WP_Filesystem
+				if ( $this->init_filesystem() ) {
+					global $wp_filesystem;
+					$original_result = $wp_filesystem->move( $old_original_path, $new_original_path, true );
+
+					if ( ! $original_result ) {
+						// Try copy + delete fallback
+						if ( copy( $old_original_path, $new_original_path ) && $this->is_safe_path( $old_original_path ) ) {
+							wp_delete_file( $old_original_path );
+							error_log( 'MSH Rename: Original large image renamed via copy+delete: ' . $new_original_filename );
+						} else {
+							error_log( 'MSH Rename: Failed to rename original large image ' . basename( $old_original_path ) );
+						}
+					} else {
+						error_log( 'MSH Rename: Original large image renamed successfully: ' . $new_original_filename );
+					}
+				}
+			} else {
+				error_log( 'MSH Rename: Original large image not found at ' . $old_original_path );
 			}
 		}
 
@@ -868,6 +1053,7 @@ class MSH_Safe_Rename_System {
 		return array(
 			'new_path'    => $new_path,
 			'backup_path' => $backup_path,
+			'metadata'    => $old_metadata,
 		);
 	}
 
@@ -1045,6 +1231,17 @@ class MSH_Safe_Rename_System {
 				}
 			}
 
+			// Handle WordPress large image scaling (original_image field for images >2560px)
+			if ( ! empty( $metadata['original_image'] ) ) {
+				$old_original = $metadata['original_image'];
+				$ext          = pathinfo( $old_original, PATHINFO_EXTENSION );
+				$new_basename = pathinfo( $new_relative, PATHINFO_FILENAME );
+				// Remove -scaled suffix if present in the main filename to get original basename
+				$new_original_base       = str_replace( '-scaled', '', $new_basename );
+				$metadata['original_image'] = $new_original_base . '.' . $ext;
+				error_log( "[MSH Rename DEBUG] Updated original_image from '{$old_original}' to '{$metadata['original_image']}'" );
+			}
+
 			error_log( '[MSH Rename DEBUG] Calling wp_update_attachment_metadata() with file: ' . $metadata['file'] );
 			wp_update_attachment_metadata( $attachment_id, $metadata );
 
@@ -1052,39 +1249,81 @@ class MSH_Safe_Rename_System {
 			error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER wp_update_attachment_metadata(): ' . $after_wp_update );
 		}
 
-		// Detect if this is a manual rename (guard is set)
-		$is_manual_rename = ! empty( $GLOBALS['_msh_guard'] );
+		// CORRUPTION FIX: Do NOT call wp_generate_attachment_metadata() during rename
+		// Thumbnails already exist on disk (renamed separately), and regenerating metadata
+		// after physical rename can cause corruption (double prefixes, missing size suffixes, etc.)
+		error_log( '[MSH Rename] Metadata paths updated - thumbnail regeneration not needed during rename' );
 
-		$mime = get_post_mime_type( $attachment_id );
-		if ( $mime && strpos( $mime, 'image/' ) === 0 && ! $is_manual_rename ) {
-			// Only regenerate thumbnails if NOT a manual rename
-			// Manual renames only change the filename - thumbnails already exist with correct dimensions
-			require_once ABSPATH . 'wp-admin/includes/image.php';
-			error_log( '[MSH Rename DEBUG] Calling wp_generate_attachment_metadata() with: ' . $new_path );
-			$regen = wp_generate_attachment_metadata( $attachment_id, $new_path );
+		// VALIDATION: Ensure metadata paths are correct (prevent corruption)
+		$final_metadata    = wp_get_attachment_metadata( $attachment_id );
+		$validation_errors = array();
 
-			$after_generate = get_post_meta( $attachment_id, '_wp_attached_file', true );
-			error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER wp_generate_attachment_metadata(): ' . $after_generate );
+		// Check main file path
+		if ( empty( $final_metadata['file'] ) || $final_metadata['file'] !== $new_relative ) {
+			$validation_errors[] = 'Main file path mismatch: expected ' . $new_relative . ', got ' . ( $final_metadata['file'] ?? 'EMPTY' );
+		}
 
-			if ( ! is_wp_error( $regen ) && ! empty( $regen ) ) {
-				error_log( '[MSH Rename DEBUG] Generated metadata file key: ' . ( $regen['file'] ?? 'NOT SET' ) );
-				$regen['file'] = $new_relative;
-				error_log( '[MSH Rename DEBUG] Calling wp_update_attachment_metadata() (2nd time) with file: ' . $regen['file'] );
-				wp_update_attachment_metadata( $attachment_id, $regen );
+		// Check thumbnail paths have size suffixes
+		if ( ! empty( $final_metadata['sizes'] ) && is_array( $final_metadata['sizes'] ) ) {
+			$new_base = pathinfo( $new_relative, PATHINFO_FILENAME );
 
-				$after_second_update = get_post_meta( $attachment_id, '_wp_attached_file', true );
-				error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER 2nd wp_update_attachment_metadata(): ' . $after_second_update );
+			foreach ( $final_metadata['sizes'] as $size => $data ) {
+				if ( empty( $data['file'] ) ) {
+					$validation_errors[] = "Thumbnail '$size' has empty file path";
+					continue;
+				}
 
-				// CRITICAL FIX: Ensure _wp_attached_file meta points to the renamed file
-				// wp_generate_attachment_metadata() may have reset this to the old path
-				error_log( '[MSH Rename DEBUG] Calling update_post_meta() directly with: ' . $new_relative );
-				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+				// Check if file has size suffix (pattern: -123x456.)
+				if ( ! preg_match( '/-\d+x\d+\./', $data['file'] ) ) {
+					$validation_errors[] = "Thumbnail '$size' missing size suffix: " . $data['file'];
+				}
 
-				$after_final_fix = get_post_meta( $attachment_id, '_wp_attached_file', true );
-				error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER final update_post_meta(): ' . $after_final_fix );
+				// Check if base name matches
+				$thumb_base = preg_replace( '/-\d+x\d+\..*$/', '', $data['file'] );
+				if ( $thumb_base !== $new_base ) {
+					$validation_errors[] = "Thumbnail '$size' base name mismatch: expected '$new_base', got '$thumb_base'";
+				}
 			}
-		} elseif ( $is_manual_rename ) {
-			error_log( '[MSH Rename DEBUG] Skipping wp_generate_attachment_metadata() for manual rename - thumbnails already exist' );
+		}
+
+		// If validation errors found, attempt to fix them
+		if ( ! empty( $validation_errors ) ) {
+			error_log( '[MSH Rename ERROR] Metadata validation failed after update:' );
+			foreach ( $validation_errors as $error ) {
+				error_log( '[MSH Rename ERROR]   - ' . $error );
+			}
+
+			// Attempt to repair
+			error_log( '[MSH Rename] Attempting automatic repair...' );
+
+			$fixed_metadata         = $old_metadata; // Start with original metadata
+			$fixed_metadata['file'] = $new_relative;
+
+			// Fix thumbnail paths
+			if ( ! empty( $fixed_metadata['sizes'] ) ) {
+				foreach ( $fixed_metadata['sizes'] as $size => $data ) {
+					$ext                                    = pathinfo( $data['file'], PATHINFO_EXTENSION );
+					$fixed_metadata['sizes'][ $size ]['file'] = pathinfo( $new_relative, PATHINFO_FILENAME ) .
+																'-' . $data['width'] . 'x' . $data['height'] .
+																'.' . $ext;
+				}
+			}
+
+			// Fix original_image if present
+			if ( ! empty( $fixed_metadata['original_image'] ) ) {
+				$ext               = pathinfo( $fixed_metadata['original_image'], PATHINFO_EXTENSION );
+				$new_basename      = pathinfo( $new_relative, PATHINFO_FILENAME );
+				$new_original_base = str_replace( '-scaled', '', $new_basename );
+				$fixed_metadata['original_image'] = $new_original_base . '.' . $ext;
+			}
+
+			// Apply fix
+			wp_update_attachment_metadata( $attachment_id, $fixed_metadata );
+			update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+
+			error_log( '[MSH Rename] Automatic repair applied' );
+		} else {
+			error_log( '[MSH Rename] Metadata validation passed - all paths correct' );
 		}
 
 		$final_value = get_post_meta( $attachment_id, '_wp_attached_file', true );
@@ -1422,5 +1661,180 @@ class MSH_Safe_Rename_System {
 			'errors'  => $errors,
 			'message' => "Cleaned {$cleaned} old backup files" . ( $errors > 0 ? " ({$errors} errors)" : '' ),
 		);
+	}
+
+	/**
+	 * Automatically repair corrupted attachment metadata
+	 *
+	 * Searches for the actual file on disk when database metadata is corrupted,
+	 * then repairs the metadata to point to the correct file.
+	 *
+	 * @param int    $attachment_id Attachment post ID
+	 * @param string $corrupted_path Path from corrupted metadata (may not exist)
+	 * @return string|false Repaired file path if successful, false otherwise
+	 */
+	private function auto_repair_corrupted_metadata( $attachment_id, $corrupted_path ) {
+		error_log( '[MSH AUTO-REPAIR] Starting auto-repair for attachment #' . $attachment_id );
+
+		$upload_dir = wp_upload_dir();
+		$base_dir   = trailingslashit( $upload_dir['basedir'] );
+
+		// Get the directory where the file should be
+		$expected_dir = dirname( $corrupted_path );
+		if ( ! is_dir( $expected_dir ) ) {
+			error_log( '[MSH AUTO-REPAIR] Expected directory does not exist: ' . $expected_dir );
+			return false;
+		}
+
+		// Get attachment post to check filename
+		$post = get_post( $attachment_id );
+		if ( ! $post ) {
+			error_log( '[MSH AUTO-REPAIR] Attachment post not found' );
+			return false;
+		}
+
+		// Extract the corrupted filename
+		$corrupted_filename = basename( $corrupted_path );
+		$corrupted_base     = pathinfo( $corrupted_filename, PATHINFO_FILENAME );
+		$corrupted_ext      = pathinfo( $corrupted_filename, PATHINFO_EXTENSION );
+
+		error_log( '[MSH AUTO-REPAIR] Looking for actual file in directory: ' . $expected_dir );
+		error_log( '[MSH AUTO-REPAIR] Corrupted filename: ' . $corrupted_filename );
+
+		// Strategy 1: Try removing common prefixes (TEST-, etc.)
+		$prefixes_to_try = array( '', 'TEST-', 'TEST-TEST-', 'TEST-TEST-TEST-' );
+		foreach ( $prefixes_to_try as $prefix ) {
+			if ( strpos( $corrupted_base, $prefix ) === 0 ) {
+				$stripped_base = substr( $corrupted_base, strlen( $prefix ) );
+				$candidate     = $expected_dir . '/' . $stripped_base . '.' . $corrupted_ext;
+
+				if ( file_exists( $candidate ) ) {
+					error_log( '[MSH AUTO-REPAIR] Found actual file (stripped prefix): ' . $candidate );
+					return $this->repair_metadata_to_file( $attachment_id, $candidate );
+				}
+			}
+
+			// Also try adding prefixes
+			$candidate = $expected_dir . '/' . $prefix . $corrupted_base . '.' . $corrupted_ext;
+			if ( file_exists( $candidate ) ) {
+				error_log( '[MSH AUTO-REPAIR] Found actual file (added prefix): ' . $candidate );
+				return $this->repair_metadata_to_file( $attachment_id, $candidate );
+			}
+		}
+
+		// Strategy 2: Search for files with similar names in the same directory
+		$pattern = $expected_dir . '/*.' . $corrupted_ext;
+		$files   = glob( $pattern );
+
+		if ( $files ) {
+			error_log( '[MSH AUTO-REPAIR] Searching ' . count( $files ) . ' files in directory for match' );
+
+			// Look for files with attachment ID in filename
+			foreach ( $files as $file ) {
+				$filename = basename( $file );
+
+				// Check if filename contains the attachment ID
+				if ( strpos( $filename, '-' . $attachment_id . '.' ) !== false ||
+				     strpos( $filename, '-' . $attachment_id . '-' ) !== false ) {
+					error_log( '[MSH AUTO-REPAIR] Found file with attachment ID in name: ' . $file );
+					return $this->repair_metadata_to_file( $attachment_id, $file );
+				}
+			}
+
+			// Look for files with similar base name (fuzzy match)
+			$clean_base = preg_replace( '/^(TEST-)+/', '', $corrupted_base );
+			foreach ( $files as $file ) {
+				$filename  = basename( $file );
+				$file_base = pathinfo( $filename, PATHINFO_FILENAME );
+
+				if ( stripos( $file_base, $clean_base ) !== false ||
+				     stripos( $clean_base, $file_base ) !== false ) {
+					error_log( '[MSH AUTO-REPAIR] Found file with similar name: ' . $file );
+					return $this->repair_metadata_to_file( $attachment_id, $file );
+				}
+			}
+		}
+
+		error_log( '[MSH AUTO-REPAIR] Could not find actual file on disk' );
+		return false;
+	}
+
+	/**
+	 * Repair attachment metadata to point to the correct file
+	 *
+	 * @param int    $attachment_id Attachment post ID
+	 * @param string $actual_file   Full path to the actual file
+	 * @return string Repaired file path
+	 */
+	private function repair_metadata_to_file( $attachment_id, $actual_file ) {
+		error_log( '[MSH AUTO-REPAIR] Repairing metadata for attachment #' . $attachment_id );
+		error_log( '[MSH AUTO-REPAIR] Actual file: ' . $actual_file );
+
+		$upload_dir = wp_upload_dir();
+		$base_dir   = trailingslashit( $upload_dir['basedir'] );
+
+		// Calculate correct relative path
+		$relative_path = str_replace( $base_dir, '', $actual_file );
+		$relative_path = ltrim( $relative_path, '/' );
+
+		error_log( '[MSH AUTO-REPAIR] Updating _wp_attached_file to: ' . $relative_path );
+
+		// Update the attached file metadata
+		update_post_meta( $attachment_id, '_wp_attached_file', $relative_path );
+
+		// Get existing metadata
+		$metadata = wp_get_attachment_metadata( $attachment_id );
+
+		if ( ! is_array( $metadata ) ) {
+			$metadata = array();
+		}
+
+		// Update file path in metadata
+		$metadata['file'] = $relative_path;
+
+		// Check if thumbnails exist and fix their metadata
+		$dir           = dirname( $actual_file );
+		$actual_base   = pathinfo( $actual_file, PATHINFO_FILENAME );
+		$actual_ext    = pathinfo( $actual_file, PATHINFO_EXTENSION );
+		$thumbnails_ok = true;
+
+		if ( ! empty( $metadata['sizes'] ) && is_array( $metadata['sizes'] ) ) {
+			foreach ( $metadata['sizes'] as $size => $size_data ) {
+				// Check if thumbnail file is corrupted (no size suffix)
+				if ( ! empty( $size_data['file'] ) &&
+				     ! preg_match( '/-\d+x\d+\./', $size_data['file'] ) ) {
+
+					$thumbnails_ok = false;
+					error_log( '[MSH AUTO-REPAIR] Detected corrupted thumbnail metadata for size: ' . $size );
+
+					// Try to find actual thumbnail file
+					$expected_thumb = $dir . '/' . $actual_base . '-' . $size_data['width'] . 'x' . $size_data['height'] . '.' . $actual_ext;
+
+					if ( file_exists( $expected_thumb ) ) {
+						$metadata['sizes'][ $size ]['file'] = basename( $expected_thumb );
+						error_log( '[MSH AUTO-REPAIR] Repaired thumbnail path: ' . basename( $expected_thumb ) );
+					} else {
+						error_log( '[MSH AUTO-REPAIR] Thumbnail file not found: ' . $expected_thumb );
+					}
+				}
+			}
+		}
+
+		// If thumbnails are missing or corrupted, regenerate them
+		if ( ! $thumbnails_ok ) {
+			error_log( '[MSH AUTO-REPAIR] Regenerating thumbnails for attachment #' . $attachment_id );
+
+			if ( function_exists( 'wp_generate_attachment_metadata' ) ) {
+				$metadata = wp_generate_attachment_metadata( $attachment_id, $actual_file );
+				error_log( '[MSH AUTO-REPAIR] Thumbnails regenerated successfully' );
+			}
+		}
+
+		// Save updated metadata
+		wp_update_attachment_metadata( $attachment_id, $metadata );
+
+		error_log( '[MSH AUTO-REPAIR] Metadata repair complete' );
+
+		return $actual_file;
 	}
 }

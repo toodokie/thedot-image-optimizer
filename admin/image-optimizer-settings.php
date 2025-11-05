@@ -69,9 +69,9 @@ class MSH_Image_Optimizer_Settings {
 		}
 
 		// Fallback: If hook not set yet, use the WordPress-generated format
-		// Hook format is {menu_slug}_page_{page_slug} where menu_slug is from menu title
+		// Hook format is {parent_slug}_page_{page_slug} where parent_slug is "msh-optimizer"
 		if ( null === self::$page_hook ) {
-			$screen = 'tinydot_page_' . self::PAGE_SLUG;
+			$screen = 'msh-optimizer_page_' . self::PAGE_SLUG;
 			if ( $hook !== $screen ) {
 				return;
 			}
