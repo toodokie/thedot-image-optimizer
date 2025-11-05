@@ -2052,6 +2052,11 @@ class MSH_Contextual_Meta_Generator {
 		$combined      = $filename . ' ' . $title . ' ' . $caption;
 		$is_healthcare = MSH_Image_Optimizer_Context_Helper::is_healthcare_industry( $this->industry );
 
+		// Bail out if filename clearly references agricultural or non-medical equipment.
+		if ( preg_match( '/farm|tractor|agricultur|harvest|plow|plough|combine|bal(er|ing)|hay|barn|silo|crop|field/', $combined ) ) {
+			return null;
+		}
+
 		$patterns = array(
 			'/mediflow|waterbase|pillow/'               => array( 'product_type' => 'therapeutic-pillow' ),
 			'/biofreeze|gel|cream/'                     => array( 'product_type' => 'pain-relief' ),
@@ -2211,7 +2216,7 @@ class MSH_Contextual_Meta_Generator {
 			'logo'      => '/\b(logo|brandmark|wordmark|seal|badge)\b/i',
 			'icon'      => '/\b(icon|symbol|glyph|badge|\.svg)\b/i',  // Enhanced: Include .svg extension
 			'frame'     => '/\b(frame|border|template|layout|mockup)\b/i',
-			'product'   => '/\b(pillow|brace|support|sleeve|wrap|tens|biofreeze|orthotic|stocking|pillow|equipment|device|gel|cream)\b/i',
+			'product'   => '/\b(pillow|brace|support|sleeve|wrap|tens|biofreeze|orthotic|stocking|gel|cream)\b/i',
 			'equipment' => '/\b(machine|table|apparatus|equipment|device|tool)\b/i',
 			'graphic'   => '/\b(graphic|illustration|diagram|infographic|chart)\b/i',
 		);
@@ -2235,7 +2240,7 @@ class MSH_Contextual_Meta_Generator {
 			}
 		}
 
-		return 'rehabilitation-product';
+		return 'support-product';
 	}
 
 	private function ensure_unique_title( $title, $attachment_id ) {
@@ -4471,13 +4476,14 @@ class MSH_Contextual_Meta_Generator {
 				'region'        => $this->region,
 				'country'       => $this->country,
 				'industry'      => $this->industry,
-				'brand_voice'   => 'Professional', // Default for now
+				'brand_voice'   => ! empty( $context['brand_voice'] ) ? $context['brand_voice'] : ( $this->brand_voice ?: 'neutral' ),
 				'unique_value'  => substr( $this->uvp, 0, 160 ), // Trim to 160 chars
+				'service_keywords' => $context['service_keywords'] ?? array(),
 			),
 			'page_context' => array(
-				'page_title'   => $context['page_title'] ?? null,
-				'focus_keyword' => $context['focus_keyword'] ?? null,
-				'page_role'    => $context['page_role'] ?? null,
+				'page_title'    => $context['page_title'] ?? '',
+				'focus_keyword' => $context['focus_keyword'] ?? '',
+				'page_role'     => $context['page_role'] ?? '',
 			),
 			'policy' => array(
 				'context_type'         => $context['type'] ?? 'stock',
@@ -9683,6 +9689,8 @@ class MSH_Image_Optimizer {
 
 		error_log( '[MSH DEBUG] AI reset count: ' . $ai_reset_count );
 
+		error_log( '[MSH DEBUG] Soft reset completed (WP core fields preserved).' );
+
 		$total_reset = $reset_count + $ai_reset_count;
 
 		// Clear the analysis cache to force fresh analysis on next run
@@ -9695,7 +9703,7 @@ class MSH_Image_Optimizer {
 			array(
 				'reset_count'    => $total_reset,
 				'ai_reset_count' => $ai_reset_count,
-				'message'        => "Reset {$total_reset} flags. Analysis cache cleared. Images will be re-analyzed with fresh AI metadata generation on next analyze run.",
+				'message'        => "Reset {$total_reset} flags. Analysis cache cleared. Images will be re-analyzed with fresh metadata on next analyze run.",
 			)
 		);
 	}

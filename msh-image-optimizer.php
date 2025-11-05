@@ -32,11 +32,11 @@ if (!defined('MSH_IO_ASSETS_URL')) {
     define('MSH_IO_ASSETS_URL', trailingslashit(plugin_dir_url(__FILE__) . 'assets'));
 }
 if (!defined('MSH_IO_VERSION')) {
-    define('MSH_IO_VERSION', '1.3.0-0B');
+    define('MSH_IO_VERSION', '1.3.0-0C');
 }
 
 final class MSH_Image_Optimizer_Plugin {
-    const VERSION = '1.3.0-0B';
+    const VERSION = '1.3.0-0C';
 
     private static $instance = null;
 

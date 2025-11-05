@@ -3119,7 +3119,7 @@
         static resetOptimizationFlags() {
             this.updateLog('Resetting optimization flags...');
 
-            this.postWithNonceRetry({ action: 'msh_reset_optimization' })
+            Optimization.postWithNonceRetry({ action: 'msh_reset_optimization' })
                 .then((response) => {
                     if (response && response.success) {
                         const message = response.data && response.data.message
