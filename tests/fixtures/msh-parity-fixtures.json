@@ -1,0 +1,87 @@
+[
+	{
+		"id": 401,
+		"filename": "facility-lobby.jpg",
+		"biz_context": {
+			"business_name": "Main Street Health",
+			"industry": "medical",
+			"brand_voice": "confident",
+			"city": "Chattanooga",
+			"region": "TN",
+			"country": "USA",
+			"service_area": "Hamilton County"
+		},
+		"page_context": {
+			"title": "About Our Clinic"
+		},
+		"policy": {
+			"context_type": "facility",
+			"brand_name_visible": true,
+			"seo_mode": true,
+			"loc_mode": "force_all"
+		},
+		"ai": {
+			"title": "Main Street Health Lobby Chattanooga",
+			"alt_text": "Clinic lobby with reception desk and seating area",
+			"caption": "Main Street Health facility lobby during daytime hours.",
+			"description": "Bright reception area at Main Street Health. Useful for highlighting our Chattanooga TN facility.",
+			"filename_slug": "main-street-health-clinic-chattanooga"
+		}
+	},
+	{
+		"id": 402,
+		"filename": "stock-downtown.jpg",
+		"biz_context": {
+			"business_name": "Main Street Health",
+			"industry": "medical",
+			"brand_voice": "calm",
+			"city": "Denver",
+			"region": "CO",
+			"country": "USA"
+		},
+		"page_context": {
+			"title": "Community Support"
+		},
+		"policy": {
+			"context_type": "stock",
+			"brand_name_visible": false,
+			"seo_mode": true,
+			"loc_mode": "auto"
+		},
+		"ai": {
+			"title": "Community volunteers working together",
+			"alt_text": "Group of volunteers organizing supplies at a community event",
+			"caption": "Volunteers coordinating health outreach supplies.",
+			"description": "Volunteers coordinate supplies during a community outreach event. Highlights the Denver service area in supporting neighbors.",
+			"filename_slug": "community-volunteers-outreach"
+		}
+	},
+	{
+		"id": 403,
+		"filename": "decorative-wave.png",
+		"biz_context": {
+			"business_name": "Main Street Health",
+			"industry": "medical",
+			"brand_voice": "calm",
+			"city": "Austin",
+			"region": "TX",
+			"country": "USA"
+		},
+		"page_context": {
+			"title": "Care Philosophy"
+		},
+		"policy": {
+			"context_type": "decorative",
+			"brand_name_visible": false,
+			"seo_mode": false,
+			"loc_mode": "off"
+		},
+		"ai": {
+			"title": "",
+			"alt_text": "",
+			"caption": "",
+			"description": "",
+			"filename_slug": "decorative-gradient-wave"
+		}
+	}
+]

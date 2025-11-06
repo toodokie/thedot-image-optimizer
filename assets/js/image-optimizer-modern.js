@@ -1533,12 +1533,35 @@
 
     class UI {
         static audioContext = null;
+        static rowLoaderState = new Map();
+        static loaderDurations = {
+            ai: { min: 4000, max: 5000 },
+            nonAi: { min: 2000, max: 3000 },
+        };
         static init() {
             this.setupEventListeners();
             this.showWelcomeState();
             this.updateIndexStatus(CONFIG.indexStats);
             this.renderDiagnostics(CONFIG.diagnostics || {}, CONFIG.indexStats || null);
             Index.startPolling(true);
+        }
+
+        static computeLoaderDuration(isAiFlow = false) {
+            const range = isAiFlow ? this.loaderDurations.ai : this.loaderDurations.nonAi;
+            const min = Number(range?.min ?? 0);
+            const max = Number(range?.max ?? min);
+            if (!Number.isFinite(min) || !Number.isFinite(max) || max <= min) {
+                return Math.max(0, min);
+            }
+            return Math.floor(Math.random() * (max - min + 1)) + min;
+        }
+
+        static clearRowLoaderState(attachmentId) {
+            const state = this.rowLoaderState.get(attachmentId);
+            if (state && state.timer) {
+                clearTimeout(state.timer);
+            }
+            this.rowLoaderState.delete(attachmentId);
         }
 
         static setupEventListeners() {
@@ -2782,8 +2805,20 @@
             `);
         }
 
-        static showRowLoading(attachmentId) {
+        static showRowLoading(attachmentId, options = {}) {
             console.log('[MSH Loading] Showing loading for attachment:', attachmentId);
+            const isAiFlow = typeof options.isAiFlow === 'boolean' ? options.isAiFlow : Boolean(AppState.aiEnabled);
+            const duration = this.computeLoaderDuration(isAiFlow);
+            const startedAt = Date.now();
+
+            this.clearRowLoaderState(attachmentId);
+            this.rowLoaderState.set(attachmentId, {
+                startedAt,
+                minDuration: duration,
+                mode: isAiFlow ? 'ai' : 'nonAi',
+                timer: null,
+            });
+
             const $row = $(`.result-row[data-attachment-id="${attachmentId}"]`);
             console.log('[MSH Loading] Found row:', $row.length > 0);
             if ($row.length) {
@@ -2804,15 +2839,50 @@
         }
 
         static hideRowLoading(attachmentId) {
+            const state = this.rowLoaderState.get(attachmentId);
+            if (state && state.timer) {
+                clearTimeout(state.timer);
+            }
+            this.rowLoaderState.delete(attachmentId);
+
             const $row = $(`.result-row[data-attachment-id="${attachmentId}"]`);
             if ($row.length) {
                 $row.removeClass('is-regenerating');
             }
         }
 
+        static ensureRowLoaderMinimum(attachmentId) {
+            const state = this.rowLoaderState.get(attachmentId);
+            if (!state) {
+                this.hideRowLoading(attachmentId);
+                return Promise.resolve();
+            }
+
+            const elapsed = Date.now() - state.startedAt;
+            const remaining = Math.max(0, state.minDuration - elapsed);
+
+            return new Promise((resolve) => {
+                const finish = () => {
+                    this.hideRowLoading(attachmentId);
+                    resolve();
+                };
+
+                if (remaining <= 0) {
+                    finish();
+                } else {
+                    state.timer = setTimeout(finish, remaining);
+                }
+            });
+        }
+
+        static cancelRowLoading(attachmentId) {
+            this.hideRowLoading(attachmentId);
+        }
+
         static async updateImageContext(attachmentId, newContext, seoMode = null) {
             // Show loading state
-            this.showRowLoading(attachmentId);
+            const isAiFlow = Boolean(AppState.aiEnabled);
+            this.showRowLoading(attachmentId, { isAiFlow });
 
             try {
                 const payload = {
@@ -2856,11 +2926,12 @@
                         image.context = updatedImage.context || updatedImage.context_details || image.context || image.context_details || {};
                     }
 
+                    await this.ensureRowLoaderMinimum(attachmentId);
+
                     // Re-render the specific row to show updated context
                     UI.renderResults(FilterEngine.getFilteredImages());
-                    // Note: renderResults replaces the row HTML, so loading state is automatically removed
                 } else {
-                    this.hideRowLoading(attachmentId);
+                    await this.ensureRowLoaderMinimum(attachmentId);
                     alert('Error updating context: ' + (response.data || 'Unknown error'));
 
                     // Revert dropdown to previous value
@@ -2871,7 +2942,7 @@
                     }
                 }
             } catch (error) {
-                this.hideRowLoading(attachmentId);
+                this.cancelRowLoading(attachmentId);
                 alert('Error updating context. Please try again.');
                 console.error('Context update error:', error);
 

@@ -15,6 +15,12 @@ All 20 tests passed (10 context types × 2 SEO modes). The non-AI composer now p
 - **SEO OFF**: Clean, lean metadata (brand + scene only, no UVP, no location tails)
 - **SEO ON**: Full marketing metadata (brand + scene + UVP + location tails)
 
+These outcomes reinforce the shared metadata guardrails:
+1. Accuracy beats SEO guesses for non-branded/third-party imagery.  
+2. Brand-owned assets stay branded; `seo_mode` only expands or collapses optimization text.  
+3. SEO tails never dominate—only the description carries one tail sentence after the scene/UVP clause.  
+4. AI and non-AI pipelines now hit the same validator so operators see identical behaviour regardless of mode.
+
 ---
 
 ## Test Results by Context Type
@@ -88,12 +94,10 @@ patient recovery.
 
 ### 4. Team Context
 
-**SEO ON** (243 chars):
+**SEO ON** (148 chars):
 ```
-Description: Specialist care team at Main Street Health collaborates to
-support patient goals, featuring specialized first responder program with
-rapid physician referral system. Ideal for projects in Hamilton, Ontario,
-including medical topics.
+Description: Specialist care team at Main Street Health collaborates to support
+patient goals. Ideal for projects in Hamilton, Ontario, including medical topics.
 ```
 
 **SEO OFF** (75 chars):
@@ -104,18 +108,17 @@ personalised support.
 
 **Difference**: ✅ UVP + location tail removed
 
-**Character Reduction**: 168 chars (69%)
+**Character Reduction**: 73 chars (49%)
 
 ---
 
 ### 5. Equipment Context
 
-**SEO ON** (246 chars):
+**SEO ON** (153 chars):
 ```
 Description: Advanced therapy equipment suite at Main Street Health supports
-specialist programmes, featuring specialized first responder program with
-rapid physician referral system. Ideal for projects in Hamilton, Ontario,
-including medical topics.
+specialist programmes. Ideal for projects in Hamilton, Ontario, including
+medical topics.
 ```
 
 **SEO OFF** (79 chars):
@@ -126,7 +129,7 @@ specialised treatment.
 
 **Difference**: ✅ UVP + location tail removed
 
-**Character Reduction**: 167 chars (68%)
+**Character Reduction**: 74 chars (48%)
 
 ---
 
@@ -197,12 +200,11 @@ expertise.
 
 ### 9. Service-Icon Context
 
-**SEO ON** (155 chars):
+**SEO ON** (141 chars):
 ```
 Title: Main Street Health — Service Icon
-Description: Service Icon highlights Main Street Health services.
-Supporting branded content throughout Main Street Health messaging.
-Ideal for projects in Hamilton, Ontario, including medical topics.
+Description: Custom service icon reinforces Main Street Health across digital
+channels. Ideal for projects in Hamilton, Ontario, including medical topics.
 ```
 
 **SEO OFF** (60 chars):
@@ -211,11 +213,11 @@ Title: Main Street Health — Service Icon
 Description: Service Icon supporting Main Street Health digital content.
 ```
 
-**Difference**: ✅ Location tail removed, "Service" word preserved in title
+**Difference**: ✅ UVP suppressed; only location tail remains, “Service” word preserved in title
 
-**Character Reduction**: 95 chars (61%)
+**Character Reduction**: 81 chars (61%)
 
-**Key Achievement**: Service-icon title no longer strips "Service" word
+**Key Achievement**: Service-icon title no longer strips "Service" word and UVP stays suppressed
 
 ---
 
@@ -254,7 +256,7 @@ touchpoints.
 | service-icon | 155 | 60 | 95 | 61% |
 | brand_logo | 69 | 69 | 0 | 0% ✓ |
 
-**Average Character Reduction** (excluding decorative/logo): **~66%**
+**Average Character Reduction** (excluding decorative/logo): **~55%**
 
 **Branded Contexts Average** (facility, team, equipment, testimonial, clinical, business, service-icon): **~68% reduction**
 

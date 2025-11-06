@@ -2353,21 +2353,25 @@ class MSH_Contextual_Meta_Generator {
 
 		switch ( $context['type'] ) {
 			case 'team':
-				return $this->generate_team_meta( $context );
+				return $this->generate_context_via_composer( $context );
 			case 'testimonial':
-				return $this->generate_testimonial_meta( $context );
+				return $this->generate_context_via_composer( $context );
+			case 'brand_logo':
+				return $this->generate_logo_meta( $context );
 			case 'icon':
 				// Legacy fallback - redirect to service-icon
-				return $this->generate_service_icon_meta( $context );
+				$normalized = $context;
+				$normalized['type'] = 'service-icon';
+				return $this->generate_context_via_composer( $normalized );
 			case 'service-icon':
-				return $this->generate_service_icon_meta( $context );
+				return $this->generate_context_via_composer( $context );
 			case 'facility':
-				return $this->generate_facility_meta( $context );
+				return $this->generate_context_via_composer( $context );
 			case 'equipment':
 				if ( ! empty( $context['asset'] ) && $context['asset'] === 'product' ) {
 					return $this->generate_product_meta( $context );
 				}
-				return $this->generate_equipment_meta( $context );
+				return $this->generate_context_via_composer( $context );
 			case 'stock':
 			case 'business':
 				if ( ! empty( $context['asset'] ) ) {
@@ -2378,10 +2382,10 @@ class MSH_Contextual_Meta_Generator {
 						return $this->generate_product_meta( $context );
 					}
 				}
-				return $this->generate_business_meta( $context );
+				return $this->generate_context_via_composer( $context );
 			case 'clinical':
 			default:
-				return $this->generate_clinical_meta( $context );
+				return $this->generate_context_via_composer( $context );
 		}
 	}
 
@@ -4466,19 +4470,39 @@ class MSH_Contextual_Meta_Generator {
 	 * @return array Metadata array
 	 */
 	private function generate_stock_smart_rephrase( array $context ) {
-		// Map to canonical input format
-		$input = array(
-			'id'       => $context['attachment_id'] ?? 0,
-			'filename' => $context['original_filename'] ?? '',
+		return $this->generate_context_via_composer( $context );
+	}
+
+	/**
+	 * Generate metadata for any context using the deterministic composer.
+	 *
+	 * @since 1.3.0
+	 * @param array $context Image context array.
+	 * @return array Metadata array.
+	 */
+	private function generate_context_via_composer( array $context ) {
+		if ( ! class_exists( 'MSH_NonAI_Composer' ) ) {
+			// Composer unavailable – fall back to legacy templates.
+			return $this->generate_clinical_meta( $context );
+		}
+
+		if ( empty( $context['service_keywords'] ) ) {
+			$context['service_keywords'] = $this->resolve_service_keywords_for_prompt( $context );
+		}
+
+		$policy_context_type = isset( $context['final_context_type'] ) ? $context['final_context_type'] : ( $context['type'] ?? 'stock' );
+		$input               = array(
+			'id'         => $context['attachment_id'] ?? 0,
+			'filename'   => $context['original_filename'] ?? '',
 			'biz_context' => array(
-				'business_name' => $this->business_name,
-				'city'          => $this->city,
-				'region'        => $this->region,
-				'country'       => $this->country,
-				'industry'      => $this->industry,
-				'brand_voice'   => ! empty( $context['brand_voice'] ) ? $context['brand_voice'] : ( $this->brand_voice ?: 'neutral' ),
-				'unique_value'  => substr( $this->uvp, 0, 160 ), // Trim to 160 chars
-				'service_keywords' => $context['service_keywords'] ?? array(),
+				'business_name'    => $this->business_name,
+				'city'             => $this->city,
+				'region'           => $this->region,
+				'country'          => $this->country,
+				'industry'         => $this->industry,
+				'brand_voice'      => ! empty( $context['brand_voice'] ) ? $context['brand_voice'] : ( $this->brand_voice ?: 'neutral' ),
+				'unique_value'     => substr( $this->uvp, 0, 160 ),
+				'service_keywords' => array_values( array_filter( (array) ( $context['service_keywords'] ?? array() ) ) ),
 			),
 			'page_context' => array(
 				'page_title'    => $context['page_title'] ?? '',
@@ -4486,22 +4510,20 @@ class MSH_Contextual_Meta_Generator {
 				'page_role'     => $context['page_role'] ?? '',
 			),
 			'policy' => array(
-				'context_type'         => $context['type'] ?? 'stock',
+				'context_type'         => $policy_context_type,
 				'context_set_manually' => ! empty( $context['context_set_manually'] ),
 				'brand_name_visible'   => ! empty( $context['brand_name_visible'] ),
 				'seo_mode'             => ! empty( $context['seo_mode'] ),
+				'loc_mode'             => isset( $context['loc_mode'] ) ? sanitize_key( $context['loc_mode'] ) : 'auto',
 			),
 		);
 
-		// Invoke composer
 		$metadata = MSH_NonAI_Composer::compose( $input );
 
-		// Ensure unique title
 		if ( ! empty( $metadata['title'] ) ) {
 			$metadata['title'] = $this->ensure_unique_title( $metadata['title'], $context['attachment_id'] ?? 0 );
 		}
 
-		// Clean all fields
 		foreach ( $metadata as $key => $value ) {
 			if ( is_string( $value ) ) {
 				$metadata[ $key ] = $this->clean_text( $value );
@@ -5971,6 +5993,20 @@ class MSH_Image_Optimizer {
 		),
 	);
 
+	/**
+	 * Allowed per-attachment location insertion modes.
+	 *
+	 * @var string[]
+	 */
+	private static $loc_mode_allowed = array( 'auto', 'force_caption', 'force_all', 'off' );
+
+	/**
+	 * Contexts that support force_all behaviour.
+	 *
+	 * @var string[]
+	 */
+	private static $loc_mode_force_all_contexts = array( 'facility', 'service-icon' );
+
 	private function log_debug( $message ) {
 		if ( ! apply_filters( 'msh_image_optimizer_enable_debug', false ) ) {
 			return;
@@ -6008,6 +6044,49 @@ class MSH_Image_Optimizer {
 		}
 
 		return false;
+	}
+
+	/**
+	 * Resolve the effective location insertion mode for an attachment.
+	 *
+	 * @param int    $attachment_id Attachment ID.
+	 * @param string $final_context_type Final context type slug.
+	 * @return string Normalised location mode.
+	 */
+	private function resolve_loc_mode( $attachment_id, $final_context_type ) {
+		$stored = get_post_meta( $attachment_id, '_msh_loc_mode', true );
+		$stored = is_string( $stored ) ? sanitize_key( $stored ) : '';
+		if ( in_array( $stored, self::$loc_mode_allowed, true ) ) {
+			if ( 'force_all' === $stored && ! in_array( $final_context_type, self::$loc_mode_force_all_contexts, true ) ) {
+				return 'force_caption';
+			}
+			return $stored;
+		}
+
+		if ( in_array( $final_context_type, array( 'facility', 'team', 'equipment', 'service-icon' ), true ) ) {
+			return 'force_caption';
+		}
+
+		return 'auto';
+	}
+
+	/**
+	 * Sanitize incoming location mode values.
+	 *
+	 * @param string $loc_mode Raw location mode.
+	 * @return string|false Normalised value or false if invalid.
+	 */
+	private function sanitize_loc_mode( $loc_mode ) {
+		if ( ! is_string( $loc_mode ) || '' === $loc_mode ) {
+			return false;
+		}
+
+		$loc_mode = sanitize_key( $loc_mode );
+		if ( ! in_array( $loc_mode, self::$loc_mode_allowed, true ) ) {
+			return false;
+		}
+
+		return $loc_mode;
 	}
 
 	/**
@@ -7181,19 +7260,24 @@ class MSH_Image_Optimizer {
 		// For unoptimized images, AI mode will be determined by global setting
 
 		// DIAGNOSTIC: Log row-level analyze parameters
-		$final_ct = $context_info['type'] ?? 'unknown';
+		$final_context_type = isset( $context_info['final_context_type'] ) ? $context_info['final_context_type'] : ( $context_info['type'] ?? 'stock' );
+		$loc_mode           = $this->resolve_loc_mode( $attachment_id, $final_context_type );
+		$context_info['loc_mode'] = $loc_mode;
+
+		$final_ct = $final_context_type;
 		$seo = isset( $context_info['seo_mode'] ) ? (int) $context_info['seo_mode'] : 1;
 		$ai_mode_val = $ai_options['ai_mode'] ?? 'manual';
 		$ai = ( $ai_mode_val !== 'manual' ) ? 1 : 0;
 		$needs_ai = ( $ai && ! $is_already_optimized ) ? 1 : 0;
 		error_log( sprintf(
-			'[ANALYZE] ROW %d ct=%s seo=%d ai=%d needs_ai=%d mode=%s',
+			'[ANALYZE] ROW %d ct=%s seo=%d ai=%d needs_ai=%d mode=%s loc_mode=%s',
 			$attachment_id,
 			$final_ct,
 			$seo,
 			$ai,
 			$needs_ai,
-			$ai_mode_val
+			$ai_mode_val,
+			$loc_mode
 		) );
 
 		$generated_meta            = $this->contextual_meta_generator->generate_meta_fields( $attachment_id, $context_info, $ai_options );
@@ -7492,6 +7576,7 @@ class MSH_Image_Optimizer {
 			'manual_context'            => $manual_context_value,
 			'auto_context'              => $auto_context_value,
 			'seo_mode'                  => ! empty( $context_info['seo_mode'] ),
+			'loc_mode'                  => $loc_mode,
 			'context_active_label'      => $this->format_context_label( $active_context_slug ),
 			'context_auto_label'        => $auto_context_value !== '' ? $this->format_context_label( $auto_context_value ) : '',
 			'generated_meta'            => $generated_meta,
@@ -9081,6 +9166,18 @@ class MSH_Image_Optimizer {
 			return $result;
 		}
 
+		$lock_acquired = false;
+		if ( function_exists( 'msh_lock_start' ) ) {
+			if ( ! msh_lock_start( $attachment_id ) ) {
+				$result['status']    = 'error';
+				$result['actions'][] = __( 'Attachment is being processed. Try again shortly.', 'msh-image-optimizer' );
+				return $result;
+			}
+			$lock_acquired = true;
+		}
+
+		try {
+
 		$legacy_context       = $this->determine_image_context( $attachment_id );
 		$context_details      = $this->contextual_meta_generator->detect_context( $attachment_id );
 		$manual_context_value = get_post_meta( $attachment_id, '_msh_context', true );
@@ -9447,6 +9544,10 @@ class MSH_Image_Optimizer {
 		}
 
 		return $result;
+	} finally {
+		if ( $lock_acquired ) {
+			msh_lock_end( $attachment_id );
+		}
 	}
 
 	/**
@@ -9510,7 +9611,30 @@ class MSH_Image_Optimizer {
 
 		$seo_mode_changed = ( $existing_seo_mode !== $seo_mode_flag );
 
-		if ( $context_changed || $seo_mode_changed ) {
+		$loc_mode_changed = false;
+		$loc_mode_request = isset( $_POST['loc_mode'] ) ? sanitize_text_field( wp_unslash( $_POST['loc_mode'] ) ) : null;
+		if ( null !== $loc_mode_request ) {
+			$sanitised_loc_mode = $this->sanitize_loc_mode( $loc_mode_request );
+			if ( false === $sanitised_loc_mode ) {
+				wp_send_json_error( __( 'Invalid location mode.', 'msh-image-optimizer' ) );
+			}
+
+			$current_loc_mode_raw = get_post_meta( $attachment_id, '_msh_loc_mode', true );
+			$current_loc_mode     = '';
+			if ( is_string( $current_loc_mode_raw ) && '' !== $current_loc_mode_raw ) {
+				$maybe_loc_mode = $this->sanitize_loc_mode( $current_loc_mode_raw );
+				if ( false !== $maybe_loc_mode ) {
+					$current_loc_mode = $maybe_loc_mode;
+				}
+			}
+
+			if ( $current_loc_mode !== $sanitised_loc_mode ) {
+				update_post_meta( $attachment_id, '_msh_loc_mode', $sanitised_loc_mode );
+				$loc_mode_changed = true;
+			}
+		}
+
+		if ( $context_changed || $seo_mode_changed || $loc_mode_changed ) {
 			$this->flag_attachment_for_reoptimization( $attachment_id );
 		}
 
@@ -9564,6 +9688,17 @@ class MSH_Image_Optimizer {
 					: __( 'Unable to refresh analyzer data.', 'msh-image-optimizer' );
 				// Debug logging removed for production
 				wp_send_json_error( $error_message );
+			}
+
+			if ( isset( $image_data['loc_mode'] ) ) {
+				$final_context_type = isset( $image_data['context_details']['final_context_type'] ) ? $image_data['context_details']['final_context_type'] : ( $image_data['context_details']['type'] ?? 'stock' );
+				if ( 'force_all' === $image_data['loc_mode'] && ! in_array( $final_context_type, self::$loc_mode_force_all_contexts, true ) ) {
+					update_post_meta( $attachment_id, '_msh_loc_mode', 'force_caption' );
+					$image_data['loc_mode'] = 'force_caption';
+					if ( isset( $image_data['context_details'] ) && is_array( $image_data['context_details'] ) ) {
+						$image_data['context_details']['loc_mode'] = 'force_caption';
+					}
+				}
 			}
 
 			wp_send_json_success(

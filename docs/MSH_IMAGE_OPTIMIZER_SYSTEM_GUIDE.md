@@ -105,6 +105,25 @@
 - Context fusion (Phase 2) surfaces locale-aware keywords, headings, and entity metadata from parent content, with intent classifier fallback to AI when rules cannot determine relevance.  
 - Operators can toggle between View and Edit modes; manual changes persist via metadata cache and supersede automated results until explicitly regenerated.
 
+#### 4.2.1 Metadata Parity Principles (November 2025 refresh)
+To keep deterministic (non-AI) and Smart Mode (AI-assisted) paths aligned, both engines now follow four shared principles:
+
+1. **Accuracy beats SEO for non-owned imagery** – Stock and decorative assets never guess at city/service context. It is preferable to output “Street Scene” than mention Hamilton on the Golden Gate Bridge; accessibility and trust outweigh speculative SEO copy.  
+2. **Brand-owned assets already are marketing** – Facility, team, equipment, testimonial, clinical, business, service-icon, and brand_logo items stay branded in all modes. The `seo_mode` switch only controls how much optimization text (location/service tail) is appended.  
+3. **SEO tail should never dominate** – Titles, ALT, and filenames remain descriptive; the location/service tail is limited to one sentence in the description. UVP clauses are clamped to ≤ 120 chars and merged into the scene sentence before the tail is evaluated.  
+4. **Consistency across AI and non-AI paths** – Both pipes call the same validator (`MSH_Context_Aware_Validator`) so location placement, branding, and sentence limits match. Smart Mode output is now tested against the same matrix used for deterministic composer changes.
+
+The November 6 2025 regression run captured the behaviour parity; for example:
+
+> “Title: Main Street Health — Rehabilitation Facility Interior”  
+> “Description: Professional rehabilitation environment at Main Street Health supports specialised care, featuring specialized first responder program with rapid physician referral system. Ideal for projects in Hamilton, Ontario, including medical topics.”
+
+and the SEO-off mirror:
+
+> “Description: Rehabilitation facility interior at Main Street Health supporting patient recovery.”
+
+All 20 context × SEO combinations passed with the new rules (see `SEO-SHORT-CIRCUIT-TEST-RESULTS-2025-11-06.md` and the raw log excerpt embedded in Appendix A of `UVP-GATING-VERIFICATION-2025-11-06.md`).
+
 ### 4.3 WebP Conversion & Delivery
 - Converts source files to WebP while retaining originals under `uploads/msh-backups/`.  
 - Delivery helper rewrites markup or filter output while honoring theme overrides; safe fallback to original file triggered if client or browser lacks WebP support.  
@@ -147,6 +166,13 @@
 - **Metadata Version Rollback** available per attachment to revert to previous AI or manual entries.  
 - **CLI Regression Scripts** (`wp msh qa`) cover analyzer, rename, and duplicate flows; expand with duplicate assertions once quick scan helper exposes reports.  
 - **Context Overrides** per attachment allow manual specialization (e.g., service lines, practitioners, campaigns).
+
+### 5.4 Analyze → Optimize → Reset (Bullet-Proofing Checklist – Nov 2025)
+1. **Preflight** – Confirm `memory_limit`, `max_execution_time`, WebP support, writable uploads, and gather attachment locks (per-ID transient or lockfile) before touching originals.  
+2. **Optimize atomically** – Write WebP/optimized assets to temp files, `fflush`/`fsync`, then `rename()`; update `_wp_attached_file` + metadata inside a transaction when available; never alter `guid`.  
+3. **Post-run integrity** – After optimization, assert that `get_attached_file()` exists, derived sizes are present, and `wp_remote_head( wp_get_attachment_url() )` returns 200; run `wp_update_image_subsizes()` if any size is missing.  
+4. **Reset safely** – Clear only staging keys (`_msh_ai_staged_meta`, `_msh_suggested_filename`, `_msh_context_trace`, etc.) while retaining user-facing fields (`_wp_attached_file`, `_wp_attachment_image_alt`, `_msh_loc_mode`, `seo_mode`, `brand_name_visible`).  
+5. **Verify parity** – Run the 20-case context × SEO matrix (non-AI + AI) and archive the `/tmp/msh-context-tests/` JSON plus CLI transcript in the PR. Quote key lines in release notes, e.g. “Title: Main Street Health — Logo” / “Description: Main Street Health logo for use across digital and print touchpoints.”
 
 ---
 

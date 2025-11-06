@@ -1195,7 +1195,12 @@ class MSH_OpenAI_Connector {
 	private function validate_ai_response( $metadata, $context ) {
 		$validator = MSH_Context_Aware_Validator::get_instance();
 
-		return $validator->validate( $context, $metadata );
+		$seo_mode = isset( $context['seo_mode'] ) ? (bool) $context['seo_mode'] : true;
+		$loc_mode = isset( $context['loc_mode'] ) ? $context['loc_mode'] : (
+			isset( $context['policy']['loc_mode'] ) ? $context['policy']['loc_mode'] : 'auto'
+		);
+
+		return $validator->validate( $context, $metadata, $seo_mode, $loc_mode );
 	}
 }
 

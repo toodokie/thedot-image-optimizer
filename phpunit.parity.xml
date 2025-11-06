@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit colors="true"
+         stopOnFailure="false">
+	<testsuites>
+		<testsuite name="PolicyParity">
+			<file>tests/test-policy-parity.php</file>
+		</testsuite>
+	</testsuites>
+</phpunit>

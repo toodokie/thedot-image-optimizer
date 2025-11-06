@@ -60,6 +60,15 @@
 ### 4.5 Force Usage Index Rebuild (Advanced)
 - If new posts or builder changes aren’t reflected, click **Force Usage Refresh** in the header. This rebuilds the usage index. Watch the diagnostics card to confirm the queue completes.
 
+### 4.6 Understanding SEO Mode (Metadata Toggle)
+- **What the toggle does:** `SEO Mode` controls whether the optimizer appends marketing copy (UVP + location tail) to descriptions. It never turns branding on or off for owned assets.  
+- **When OFF:** You get clean, accessibility-first copy — e.g.  
+  > “Description: Specialist care team at Main Street Health delivering personalised support.”  
+  No UVP, no location tail, ALT stays geo-free.  
+- **When ON:** The optimizer adds a short UVP clause (only for facility/clinical/business/testimonial) followed by one location tail sentence, capped at two sentences total. For icons and other non-owned imagery the UVP stays suppressed:  
+  > “Description: Custom service icon reinforces Main Street Health across digital channels. Ideal for projects in Hamilton, Ontario, including medical topics.”  
+- **AI parity:** Smart Mode follows the same rules because all metadata runs through the shared validator — stock/decorative never guess at location, owned contexts stay branded, and only the description receives a tail sentence.
+
 ---
 
 ## 5. Duplicate Cleanup

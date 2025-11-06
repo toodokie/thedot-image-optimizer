@@ -358,6 +358,25 @@ ajax_save_edited_meta()         # Manual meta text editing
 **Purpose**:
 - Centralises healthcare-aware metadata templates and filename slugs
 - Normalises context detection across clinical, testimonial, facility, equipment, icon, and business imagery
+
+##### November 2025 Metadata Refresh
+- **Shared policy deck** – Both deterministic and Smart Mode generators now call through `MSH_Context_Aware_Validator` so location placement, branding, and sentence limits stay identical.  
+- **Principles enforced**:  
+  1. *Accuracy beats SEO for non-branded or third-party images.* Stock/decorative contexts never guess at location; better to output “Street Scene” than cite Hamilton on unrelated imagery.  
+  2. *Brand-owned assets already are marketing.* Facility, team, equipment, testimonial, clinical, business, service-icon, and brand_logo contexts remain branded regardless of `seo_mode`; the flag only toggles how much optimization text is appended.  
+  3. *SEO tail should never dominate.* Titles/ALT/filenames stay descriptive; the description carries at most one merged UVP clause (≤ 120 chars) plus a single location tail sentence.  
+  4. *Consistency across AI and non-AI paths.* Smart Mode output is validated against the same matrix and must satisfy the same invariants before staging.  
+- **UVP gating + trim** – `MSH_NonAI_Composer::unique_value_summary()` now whitelists UVP usage to facility/clinical/business/testimonial contexts and clamps each summary to ≤ 120 chars (cutting at the first comma when possible).  
+- **Sentence limiter** – `merge_sentence_with_uvp()` merges UVP clauses into the main scene sentence (“…supporting specialised care, featuring …”) and `append_sentence_with_limit()` caps descriptions at two sentences before the tail is appended.  
+- **Evidence** – Latest matrix (Nov 6 2025 13:26 EST) shows compliant output; e.g.,
+
+  > “Description: Custom service icon reinforces Main Street Health across digital channels. Ideal for projects in Hamilton, Ontario, including medical topics.”
+
+  confirms UVP suppression on service-icon with SEO on, while
+
+  > “Description: Specialist care team at Main Street Health collaborates to support patient goals. Ideal for projects in Hamilton, Ontario, including medical topics.”
+
+  verifies the two-sentence cap for team context. Full run lives in `SEO-SHORT-CIRCUIT-TEST-RESULTS-2025-11-06.md` with raw CLI output archived in `/tmp/msh-context-tests/`.
 - Generates in-memory previews for the analyzer UI before any fields are persisted
 - Respects manual overrides stored in `_msh_context` while keeping `_msh_auto_context` for audit transparency
 

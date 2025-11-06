@@ -17,6 +17,12 @@ All refinements deployed and verified:
 3. **Sentence Limiting**: Max 2 sentences (primary+UVP merged, then tail)
 4. **Stock Title Enhancement**: Contextual titles like "Street Scene" instead of generic
 
+These changes uphold the shared metadata principles used by both deterministic and Smart Mode flows:
+- Accuracy beats SEO for non-branded or third-party images.
+- Brand-owned assets are always branded; `seo_mode` only controls optimization tails.
+- SEO tails never dominate (titles/ALT/filenames stay descriptive; only the description gets one tail sentence).
+- Consistency across AI and non-AI paths is enforced by running both through the same validator.
+
 ---
 
 ## Key Changes Deployed
@@ -382,6 +388,17 @@ $allowed = array( 'facility', 'clinical', 'business', 'testimonial' );
 ✅ **facility (SEO on)** – Verified UVP is trimmed and merged into single sentence (239 chars)
 
 ✅ **Stock titles** – Glanced at "Street Scene" style output (contextual, not generic)
+
+---
+
+## Log Reference
+
+Full CLI output from the November 6 2025 matrix pass lives in `/tmp/msh-context-tests/` and is echoed in `SEO-SHORT-CIRCUIT-TEST-RESULTS-2025-11-06.md`. Example excerpt for auditors:
+
+> “Title: Main Street Health — Service Icon”  
+> “Description: Custom service icon reinforces Main Street Health across digital channels. Ideal for projects in Hamilton, Ontario, including medical topics.”
+
+Archive the transcript with release notes for parity checks.
 
 ---
 

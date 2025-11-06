@@ -156,6 +156,9 @@ final class MSH_Image_Optimizer_Plugin {
         if (!class_exists('MSH_Phrasebank')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-phrasebank.php';
         }
+        require_once MSH_IO_PLUGIN_DIR . 'includes/inc-policy.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/inc-io.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/inc-reset.php';
         if (!class_exists('MSH_NonAI_Scene')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-nonai-scene.php';
         }
@@ -287,6 +290,7 @@ require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-profiler.php';
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-feature-flags-cli.php';
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-migrate-cli.php';
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-template-cli.php';
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-parity-cli.php';
         }
 
         // Phase 5+9: Helper functions (Public API for frontend)
@@ -464,6 +468,18 @@ require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-profiler.php';
 // Instantiate plugin immediately (AJAX handlers need early registration)
 MSH_Image_Optimizer_Plugin::instance();
 
+add_action(
+	'init',
+	static function () {
+		load_plugin_textdomain(
+			'msh-image-optimizer',
+			false,
+			dirname( plugin_basename( __FILE__ ) ) . '/languages/'
+		);
+	},
+	0
+);
+
 // Phase 1B: Purge transient on deactivation
 register_deactivation_hook(__FILE__, function() {
     delete_transient('msh_content_usage_lookup');
@@ -536,5 +552,11 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
     }
     if ( class_exists( 'MSH_Migrate_CLI' ) ) {
         WP_CLI::add_command( 'msh migrate', 'MSH_Migrate_CLI' );
+    }
+    if ( class_exists( 'MSH_Parity_CLI' ) ) {
+        $msh_parity_cli = new MSH_Parity_CLI();
+        WP_CLI::add_command( 'msh parity', $msh_parity_cli );
+        WP_CLI::add_command( 'msh analyze-matrix', array( $msh_parity_cli, 'analyze_matrix' ) );
+        WP_CLI::add_command( 'msh verify-attachments', array( $msh_parity_cli, 'verify_attachments' ) );
     }
 }

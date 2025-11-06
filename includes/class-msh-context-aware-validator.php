@@ -36,6 +36,20 @@ class MSH_Context_Aware_Validator {
 	private $history_limit = 50;
 
 	/**
+	 * Allowed location modes.
+	 *
+	 * @var string[]
+	 */
+	private static $loc_mode_allowed = array( 'auto', 'force_caption', 'force_all', 'off' );
+
+	/**
+	 * Contexts that support force_all location insertion.
+	 *
+	 * @var string[]
+	 */
+	private static $loc_mode_force_all_contexts = array( 'facility', 'service-icon' );
+
+	/**
 	 * Get singleton instance.
 	 *
 	 * @return MSH_Context_Aware_Validator
@@ -53,14 +67,25 @@ class MSH_Context_Aware_Validator {
 	 *
 	 * @param array $context  Finalised context array.
 	 * @param array $metadata Sanitised metadata from the AI connector.
+	 * @param bool  $seo_mode Whether SEO mode is enabled.
+	 * @param string $loc_mode_override Optional explicit loc mode.
 	 * @return array Validated metadata array.
 	 */
-	public function validate( array $context, array $metadata ) {
+	public function validate( array $context, array $metadata, $seo_mode = true, $loc_mode_override = null ) {
 		if ( empty( $metadata['issues'] ) || ! is_array( $metadata['issues'] ) ) {
 			$metadata['issues'] = array();
 		}
 
+		$context  = $this->canonicalize_context_payload( $context );
+		$metadata = $this->apply_shared_policy_filters( $context, $metadata );
+
+		$context['seo_mode'] = (bool) $seo_mode;
+		if ( null !== $loc_mode_override ) {
+			$context['loc_mode'] = $loc_mode_override;
+		}
+
 		$this->enforce_context_rules( $context, $metadata );
+		$this->enforce_location_rules( $context, $metadata );
 		$this->enforce_specificity( $metadata );
 		$this->enforce_uniqueness( $metadata );
 		$this->finalise_metadata( $context, $metadata );
@@ -81,7 +106,7 @@ class MSH_Context_Aware_Validator {
 		}
 
 		$final_type   = isset( $context['final_context_type'] ) ? $context['final_context_type'] : ( $context['type'] ?? 'stock' );
-		$brand_fields = array( 'file_name_suggestion', 'title', 'alt_text', 'caption', 'description' );
+		$brand_fields = array( 'file_name_suggestion', 'filename_slug', 'title', 'alt_text', 'caption', 'description' );
 		$brand_found  = false;
 
 		foreach ( $brand_fields as $field ) {
@@ -96,16 +121,20 @@ class MSH_Context_Aware_Validator {
 		}
 
 		$brand_allowed = ! empty( $context['brand_name_visible'] );
-
-		if ( in_array( $final_type, array( 'brand_logo', 'team', 'facility', 'equipment' ), true ) ) {
-			return; // Always permitted.
+		if ( function_exists( 'msh_brand_permitted' ) ) {
+			$brand_allowed = msh_brand_permitted(
+				$final_type,
+				array(
+					'brand_name_visible' => ! empty( $context['brand_name_visible'] ),
+				)
+			);
 		}
 
 		$forbidden = false;
 
 		if ( in_array( $final_type, array( 'stock', 'decorative' ), true ) ) {
 			$forbidden = true;
-		} elseif ( in_array( $final_type, array( 'clinical', 'business', 'service-icon', 'testimonial' ), true ) && ! $brand_allowed ) {
+		} elseif ( ! $brand_allowed ) {
 			$forbidden = true;
 		}
 
@@ -148,6 +177,63 @@ class MSH_Context_Aware_Validator {
 					break;
 				}
 			}
+		}
+	}
+
+	/**
+	 * Enforce per-context location usage rules.
+	 *
+	 * @param array $context  Context array.
+	 * @param array $metadata Metadata array (passed by reference).
+	 */
+	private function enforce_location_rules( array $context, array &$metadata ) {
+		$location_terms = $this->collect_location_terms_from_context( $context );
+		if ( empty( $location_terms ) ) {
+			return;
+		}
+
+		$final_type = isset( $context['final_context_type'] ) ? $context['final_context_type'] : ( $context['type'] ?? 'stock' );
+		$seo_mode   = ! empty( $context['seo_mode'] );
+		$raw_loc    = isset( $context['loc_mode'] ) ? $context['loc_mode'] : (
+			isset( $context['policy'] ) && is_array( $context['policy'] ) && isset( $context['policy']['loc_mode'] )
+				? $context['policy']['loc_mode']
+				: 'auto'
+		);
+		$loc_mode   = $this->normalise_loc_mode( $raw_loc, $final_type );
+
+		$filename_fields = array( 'filename_slug', 'file_name_suggestion' );
+		$core_fields     = array( 'title', 'alt_text', 'caption' );
+		$log_triggered   = false;
+
+		if ( isset( $metadata['alt_text'] ) ) {
+			$metadata['alt_text'] = $this->strip_terms_from_field( $metadata['alt_text'], $location_terms );
+		}
+
+		if ( ! $seo_mode || 'off' === $loc_mode ) {
+			$fields       = array_merge( $core_fields, $filename_fields, array( 'description' ) );
+			$log_triggered = $this->strip_terms_from_fields( $metadata, $location_terms, $fields );
+			if ( isset( $metadata['description'] ) ) {
+				$metadata['description'] = $this->strip_seo_tail( $metadata['description'], $location_terms );
+			}
+		} elseif ( in_array( $final_type, array( 'stock', 'decorative' ), true ) ) {
+			$fields       = array_merge( $core_fields, $filename_fields );
+			$log_triggered = $this->strip_terms_from_fields( $metadata, $location_terms, $fields );
+		} elseif ( 'force_all' === $loc_mode && $this->context_supports_force_all( $final_type ) ) {
+			$log_triggered = $this->strip_terms_from_fields( $metadata, $location_terms, array( 'alt_text', 'caption' ) );
+		} else {
+			$fields       = array_merge( $core_fields, $filename_fields );
+			$log_triggered = $this->strip_terms_from_fields( $metadata, $location_terms, $fields );
+		}
+
+		if ( $log_triggered && apply_filters( 'msh_nonai_debug_logging', true ) ) {
+			error_log(
+				sprintf(
+					'[NONAI] validate fixed=loc context=%s loc_mode=%s seo=%d',
+					sanitize_key( $final_type ),
+					$loc_mode,
+					$seo_mode ? 1 : 0
+				)
+			);
 		}
 	}
 
@@ -242,6 +328,16 @@ class MSH_Context_Aware_Validator {
 			$metadata['issues'] = array_values( array_unique( $metadata['issues'] ) );
 		}
 
+		$location_terms = $this->collect_location_terms_from_context( $context );
+
+		if ( isset( $metadata['title'] ) ) {
+			$title_trim = trim( (string) $metadata['title'] );
+			if ( $this->looks_like_filename( $title_trim ) || str_word_count( $title_trim ) < 2 ) {
+				$metadata['title'] = $this->fallback_title( $context, $location_terms );
+				$this->add_issue( $metadata, 'title_adjusted' );
+			}
+		}
+
 		if ( $final_type !== 'decorative' && ! empty( $metadata['alt_text'] ) && is_string( $metadata['alt_text'] ) ) {
 			$alt_len = mb_strlen( $metadata['alt_text'] );
 			if ( $alt_len < 8 || $alt_len > 160 ) {
@@ -333,6 +429,403 @@ class MSH_Context_Aware_Validator {
 		}
 
 		return count( $intersection ) / count( $union );
+	}
+
+	/**
+	 * Gather location terms from context for sanitisation.
+	 *
+	 * @param array $context Context array.
+	 * @return array List of location strings and variants.
+	 */
+	private function collect_location_terms_from_context( array $context ) {
+		$city_sources    = array( 'city', 'business_city' );
+		$region_sources  = array( 'region', 'business_region' );
+		$country_sources = array( 'country', 'business_country' );
+
+		$city    = $this->extract_first_context_value( $context, $city_sources );
+		$region  = $this->extract_first_context_value( $context, $region_sources );
+		$country = $this->extract_first_context_value( $context, $country_sources );
+
+		if ( $city === '' && $region === '' && $country === '' ) {
+			return array();
+		}
+
+		$terms = array();
+
+		foreach ( array( $city, $region, $country ) as $value ) {
+			if ( $value === '' ) {
+				continue;
+			}
+			$terms[] = $value;
+			$terms[] = strtolower( $value );
+			$terms[] = sanitize_title( $value );
+		}
+
+		$combinations = array();
+		if ( $city !== '' && $region !== '' ) {
+			$combinations[] = $city . ', ' . $region;
+			$combinations[] = $city . ' ' . $region;
+		}
+		if ( $city !== '' && $country !== '' ) {
+			$combinations[] = $city . ', ' . $country;
+			$combinations[] = $city . ' ' . $country;
+		}
+		if ( $region !== '' && $country !== '' ) {
+			$combinations[] = $region . ', ' . $country;
+			$combinations[] = $region . ' ' . $country;
+		}
+		if ( $city !== '' && $region !== '' && $country !== '' ) {
+			$combinations[] = $city . ', ' . $region . ', ' . $country;
+			$combinations[] = $city . ' ' . $region . ' ' . $country;
+		}
+
+		foreach ( $combinations as $combo ) {
+			$terms[] = $combo;
+			$terms[] = strtolower( $combo );
+			$terms[] = sanitize_title( $combo );
+			$terms[] = sanitize_title( str_replace( ', ', '-', $combo ) );
+		}
+
+		return array_values( array_unique( array_filter( $terms ) ) );
+	}
+
+	/**
+	 * Extract the first non-empty value from context sources.
+	 *
+	 * @param array $context Context array.
+	 * @param array $keys    Keys to inspect.
+	 * @return string Sanitised value or empty string.
+	 */
+	private function extract_first_context_value( array $context, array $keys ) {
+		foreach ( $keys as $key ) {
+			if ( ! empty( $context[ $key ] ) ) {
+				return sanitize_text_field( $context[ $key ] );
+			}
+		}
+
+		if ( isset( $context['biz_context'] ) && is_array( $context['biz_context'] ) ) {
+			foreach ( $keys as $key ) {
+				if ( ! empty( $context['biz_context'][ $key ] ) ) {
+					return sanitize_text_field( $context['biz_context'][ $key ] );
+				}
+			}
+		}
+
+		return '';
+	}
+
+	/**
+	 * Strip the given terms from specific metadata fields.
+	 *
+	 * @param array $metadata Metadata array (passed by reference).
+	 * @param array $terms    Terms to remove.
+	 * @param array $fields   Field keys to process.
+	 * @return bool True if any field was modified.
+	 */
+	private function strip_terms_from_fields( array &$metadata, array $terms, array $fields ) {
+		if ( empty( $terms ) || empty( $fields ) ) {
+			return false;
+		}
+
+		$changed = false;
+
+		foreach ( $fields as $field ) {
+			if ( ! isset( $metadata[ $field ] ) ) {
+				continue;
+			}
+
+			$value = $metadata[ $field ];
+
+			if ( is_array( $value ) ) {
+				$cleaned = array();
+				foreach ( $value as $entry ) {
+					if ( ! is_string( $entry ) ) {
+						$cleaned[] = $entry;
+						continue;
+					}
+					$sanitised = $this->strip_terms_from_value( $entry, $terms );
+					if ( $sanitised !== $entry ) {
+						$changed = true;
+					}
+					if ( '' !== $sanitised ) {
+						$cleaned[] = $sanitised;
+					}
+				}
+				$metadata[ $field ] = $cleaned;
+				continue;
+			}
+
+			if ( ! is_string( $value ) || $value === '' ) {
+				continue;
+			}
+
+			$sanitised = $this->strip_terms_from_value( $value, $terms );
+			if ( $sanitised !== $value ) {
+				if ( in_array( $field, array( 'filename_slug', 'file_name_suggestion' ), true ) ) {
+					$sanitised = sanitize_title( $sanitised );
+				}
+				$metadata[ $field ] = $sanitised;
+				$changed            = true;
+			}
+		}
+
+		return $changed;
+	}
+
+	/**
+	 * Strip location terms from a single string field.
+	 *
+	 * Wrapper that delegates to strip_terms_from_fields() to keep behaviour consistent.
+	 *
+	 * @param string $value The field value.
+	 * @param array  $terms Terms to remove.
+	 * @return string Cleaned value.
+	 */
+	private function strip_terms_from_field( string $value, array $terms ) {
+		$meta = array( 'alt_text' => $value );
+		$this->strip_terms_from_fields( $meta, $terms, array( 'alt_text' ) );
+		return $meta['alt_text'];
+	}
+
+	private function strip_seo_tail( $text, array $location_terms ) {
+		$text = (string) $text;
+		if ( '' === trim( $text ) ) {
+			return $text;
+		}
+
+		$sentences = preg_split( '/(?<=[\.!?])\s+/', trim( $text ) );
+		if ( ! is_array( $sentences ) || count( $sentences ) <= 1 ) {
+			return $this->strip_terms_from_value( $text, $location_terms );
+		}
+
+		$last    = array_pop( $sentences );
+		$cleaned = $this->strip_terms_from_value( $last, $location_terms );
+
+		if ( '' === $cleaned || $cleaned !== $last ) {
+			$cleaned = trim( $cleaned );
+			if ( $cleaned !== '' ) {
+				$sentences[] = $cleaned;
+			}
+			return trim( implode( ' ', $sentences ) );
+		}
+
+		$sentences[] = $last;
+		return trim( implode( ' ', $sentences ) );
+	}
+
+	/**
+	 * Strip the given terms from a string value.
+	 *
+	 * @param string $value Input value.
+	 * @param array  $terms Terms to remove.
+	 * @return string Sanitised string.
+	 */
+	private function strip_terms_from_value( $value, array $terms ) {
+		foreach ( $terms as $term ) {
+			$term = trim( (string) $term );
+			if ( '' === $term ) {
+				continue;
+			}
+
+			$pattern = '/\b' . preg_quote( $term, '/' ) . '\b/iu';
+			$value   = preg_replace( $pattern, '', $value );
+		}
+
+		$value = preg_replace( '/\s+([,.;:])/u', '$1', $value );
+		$value = preg_replace( '/\s{2,}/u', ' ', $value );
+		$value = preg_replace( '/\s+\./u', '.', $value );
+
+		return trim( $value );
+	}
+
+	/**
+	 * Normalise incoming loc_mode values.
+	 *
+	 * @param string $loc_mode    Raw location mode.
+	 * @param string $context_type Final context type.
+	 * @return string Normalised loc_mode.
+	 */
+	private function normalise_loc_mode( $loc_mode, $context_type ) {
+		$loc_mode = sanitize_key( (string) $loc_mode );
+		if ( ! in_array( $loc_mode, self::$loc_mode_allowed, true ) ) {
+			$loc_mode = 'auto';
+		}
+
+		if ( 'force_all' === $loc_mode && ! $this->context_supports_force_all( $context_type ) ) {
+			return 'force_caption';
+		}
+
+		return $loc_mode;
+	}
+
+	/**
+	 * Determine if the context supports force_all behaviour.
+	 *
+	 * @param string $context_type Context type.
+	 * @return bool True when force_all is supported.
+	 */
+	private function context_supports_force_all( $context_type ) {
+		return in_array( $context_type, self::$loc_mode_force_all_contexts, true );
+	}
+
+	/**
+	 * Determine if the title resembles a filename slug.
+	 *
+	 * @param string $value Title value.
+	 * @return bool True if title looks like a filename.
+	 */
+	private function looks_like_filename( $value ) {
+		$value = strtolower( trim( (string) $value ) );
+		if ( $value === '' ) {
+			return false;
+		}
+
+		if ( preg_match( '/\.(jpg|jpeg|png|webp|gif)$/', $value ) ) {
+			return true;
+		}
+
+		if ( preg_match( '/[_\-][0-9]{3,}/', $value ) ) {
+			return true;
+		}
+
+		if ( preg_match( '/^[a-z0-9_\-]+$/', $value ) && str_word_count( $value ) <= 2 ) {
+			return true;
+		}
+
+		return false;
+	}
+
+	private function fallback_title( array $context, array $location_terms ) {
+		$final_type = isset( $context['final_context_type'] ) ? $context['final_context_type'] : ( $context['type'] ?? 'stock' );
+
+		switch ( $final_type ) {
+			case 'facility':
+				$base = __( 'Facility Interior', 'msh-image-optimizer' );
+				break;
+			case 'team':
+				$base = __( 'Care Team Portrait', 'msh-image-optimizer' );
+				break;
+			case 'equipment':
+				$base = __( 'Therapy Equipment', 'msh-image-optimizer' );
+				break;
+			case 'service-icon':
+				$base = __( 'Service Icon', 'msh-image-optimizer' );
+				break;
+			case 'clinical':
+				$base = __( 'Clinical Session', 'msh-image-optimizer' );
+				break;
+			case 'testimonial':
+				$base = __( 'Patient Testimonial', 'msh-image-optimizer' );
+				break;
+			case 'business':
+				$base = __( 'Editorial Image', 'msh-image-optimizer' );
+				break;
+			default:
+				$base = __( 'Editorial Image', 'msh-image-optimizer' );
+				break;
+		}
+
+		if ( $this->brand_allowed_for_context( $final_type, $context ) ) {
+			$brand_label = $this->clean_brand_label( $context, $location_terms );
+			if ( $brand_label !== '' ) {
+				return sprintf( '%s — %s', $brand_label, $base );
+			}
+		}
+
+		return $base;
+	}
+
+	private function brand_allowed_for_context( $context_type, array $context ) {
+		if ( in_array( $context_type, array( 'brand_logo', 'team', 'facility', 'equipment', 'service-icon' ), true ) ) {
+			return true;
+		}
+
+		if ( in_array( $context_type, array( 'clinical', 'business', 'testimonial' ), true ) ) {
+			return ! empty( $context['brand_name_visible'] );
+		}
+
+		return false;
+	}
+
+	private function clean_brand_label( array $context, array $location_terms ) {
+		$brand = isset( $context['business_name'] ) ? $context['business_name'] : '';
+		$brand = $this->strip_terms_from_value( $brand, $location_terms );
+		$brand = preg_replace( '/\s{2,}/', ' ', trim( $brand, "-|, " ) );
+
+		if ( $brand === '' && ! empty( $context['business_name'] ) ) {
+			$brand = sanitize_text_field( $context['business_name'] );
+		}
+
+		return trim( $brand );
+	}
+
+	/**
+	 * Canonicalize the provided context using the shared helper so both AI and deterministic
+	 * flows evaluate policy against the same context type.
+	 *
+	 * @param array $context Context array.
+	 * @return array
+	 */
+	private function canonicalize_context_payload( array $context ): array {
+		if ( function_exists( 'msh_canonicalize_ct' ) ) {
+			$ctx_payload = array(
+				'context_type'       => $context['final_context_type'] ?? ( $context['type'] ?? 'stock' ),
+				'brand_name_visible' => ! empty( $context['brand_name_visible'] ),
+			);
+
+			$biz_payload = array(
+				'industry' => $context['industry'] ?? ( $context['industry_label'] ?? '' ),
+				'vertical' => $context['vertical'] ?? '',
+			);
+
+			$context['final_context_type'] = msh_canonicalize_ct( $ctx_payload, $biz_payload );
+		}
+
+		return $context;
+	}
+
+	/**
+	 * Apply shared clamps (UVP gating, sentence limits, title length) before deeper validation.
+	 *
+	 * @param array $context  Context array.
+	 * @param array $metadata Metadata array.
+	 * @return array
+	 */
+	private function apply_shared_policy_filters( array $context, array $metadata ): array {
+		$final_type = isset( $context['final_context_type'] ) ? $context['final_context_type'] : ( $context['type'] ?? 'stock' );
+
+		if ( function_exists( 'msh_limit_sentences' ) && ! empty( $metadata['description'] ) ) {
+			$sentence_cap = 2;
+			if ( function_exists( 'msh_ct_allows_uvp' ) && ! msh_ct_allows_uvp( $final_type ) ) {
+				$sentence_cap = 1;
+			}
+
+			$metadata['description'] = msh_limit_sentences( $metadata['description'], $sentence_cap );
+		}
+
+		if ( isset( $metadata['uvp'] ) ) {
+			if ( function_exists( 'msh_ct_allows_uvp' ) && ! msh_ct_allows_uvp( $final_type ) ) {
+				$metadata['uvp'] = '';
+			} elseif ( function_exists( 'msh_clamp_uvp' ) ) {
+				$metadata['uvp'] = msh_clamp_uvp( (string) $metadata['uvp'] );
+			}
+		}
+
+		if ( function_exists( 'msh_clamp_length' ) ) {
+			if ( ! empty( $metadata['title'] ) ) {
+				$metadata['title'] = msh_clamp_length( $metadata['title'], 60 );
+			}
+
+			if ( ! empty( $metadata['alt_text'] ) ) {
+				$metadata['alt_text'] = msh_clamp_length( $metadata['alt_text'], 125, false );
+			}
+
+			if ( ! empty( $metadata['caption'] ) ) {
+				$metadata['caption'] = msh_clamp_length( $metadata['caption'], 200, false );
+			}
+		}
+
+		return $metadata;
 	}
 
 	/**

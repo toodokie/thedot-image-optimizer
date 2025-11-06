@@ -678,20 +678,55 @@ class MSH_Safe_Rename_System {
 			);
 		}
 
-		$rename = $this->rename_physical_files( $current_path, $new_filename, $old_metadata );
-		if ( is_wp_error( $rename ) ) {
-			$this->update_log( $log_id, 'failed', 0, $rename->get_error_message() );
-			return $rename;
-		}
+		$rename        = null;
+		$backup_path   = '';
+		$new_path      = '';
+		$updated_metadata = $old_metadata;
 
-		$updated_metadata = isset( $rename['metadata'] ) ? $rename['metadata'] : $old_metadata;
-		$this->update_wordpress_metadata( $attachment_id, $rename['new_path'], $updated_metadata, $new_relative );
+		if ( function_exists( 'msh_optimize_and_heal' ) ) {
+			$atomic = msh_optimize_and_heal(
+				$attachment_id,
+				static function () use ( $new_relative ) {
+					return $new_relative;
+				},
+				array(
+					'source'        => $current_path,
+					'delete_source' => true,
+				)
+			);
+
+			if ( is_wp_error( $atomic ) ) {
+				$this->update_log( $log_id, 'failed', 0, $atomic->get_error_message() );
+				return $atomic;
+			}
+
+			$new_path         = $atomic['absolute_path'] ?? trailingslashit( $upload_dir['basedir'] ) . ltrim( $new_relative, '/' );
+			$updated_metadata = $atomic['metadata'] ?? wp_get_attachment_metadata( $attachment_id );
+		} else {
+			$rename = $this->rename_physical_files( $current_path, $new_filename, $old_metadata );
+			if ( is_wp_error( $rename ) ) {
+				$this->update_log( $log_id, 'failed', 0, $rename->get_error_message() );
+				return $rename;
+			}
+
+			$updated_metadata = isset( $rename['metadata'] ) ? $rename['metadata'] : $old_metadata;
+			$this->update_wordpress_metadata( $attachment_id, $rename['new_path'], $updated_metadata, $new_relative );
+			$new_path    = $rename['new_path'];
+			$backup_path = isset( $rename['backup_path'] ) ? $rename['backup_path'] : '';
+		}
 
 		$map      = $this->build_search_replace_map( $old_url, $new_url, $old_metadata, $upload_dir, $attachment_id );
 		$replaced = $this->replace_references( $map, $attachment_id, $current_basename, $new_filename );
 
 		if ( is_wp_error( $replaced ) ) {
-			$this->restore_failed_rename( $attachment_id, $current_path, $rename, $old_metadata, $old_relative, $old_url );
+			$this->restore_failed_rename(
+				$attachment_id,
+				$current_path,
+				is_array( $rename ) ? $rename : array(),
+				$old_metadata,
+				$old_relative,
+				$old_url
+			);
 			$this->update_log( $log_id, 'failed', 0, $replaced->get_error_message() );
 			return $replaced;
 		}
@@ -734,7 +769,7 @@ class MSH_Safe_Rename_System {
 			'old_url'  => $old_url,
 			'new_url'  => $new_url,
 			'replaced' => $replaced,
-			'backup'   => $rename['backup_path'],
+			'backup'   => $backup_path,
 		);
 	}
 
