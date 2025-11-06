@@ -8428,6 +8428,12 @@ class MSH_Image_Optimizer {
 		$validated = array();
 
 		foreach ( $meta_data as $field => $content ) {
+			// Skip non-string values (like keywords array) - PHP 8 compatibility
+			if ( ! is_string( $content ) ) {
+				$validated[ $field ] = $content;
+				continue;
+			}
+
 			if ( strlen( $content ) > $limits[ $field ] ) {
 				$content = $this->smart_truncate( $content, $limits[ $field ] );
 			}
