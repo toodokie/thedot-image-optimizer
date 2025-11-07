@@ -7398,7 +7398,8 @@ class MSH_Image_Optimizer {
 							preg_match( '/-' . $attachment_id . '\.(jpg|jpeg|png|gif|svg|webp)$/', $current_basename ) );
 		}
 
-		if ( $has_good_name && ! $had_existing_suggestion ) {
+		if ( $had_existing_suggestion ) {
+			// Pending suggestion means we still need to apply the rename, even if the heuristic thinks the name is good.
 			$has_good_name = false;
 		}
 
@@ -9565,6 +9566,7 @@ class MSH_Image_Optimizer {
 		if ( $lock_acquired ) {
 			msh_lock_end( $attachment_id );
 		}
+	}
 	}
 
 	/**

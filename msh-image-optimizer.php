@@ -159,6 +159,7 @@ final class MSH_Image_Optimizer_Plugin {
         require_once MSH_IO_PLUGIN_DIR . 'includes/inc-policy.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/inc-io.php';
         require_once MSH_IO_PLUGIN_DIR . 'includes/inc-reset.php';
+        require_once MSH_IO_PLUGIN_DIR . 'includes/inc-sweep.php';
         if (!class_exists('MSH_NonAI_Scene')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-nonai-scene.php';
         }
@@ -558,5 +559,6 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
         WP_CLI::add_command( 'msh parity', $msh_parity_cli );
         WP_CLI::add_command( 'msh analyze-matrix', array( $msh_parity_cli, 'analyze_matrix' ) );
         WP_CLI::add_command( 'msh verify-attachments', array( $msh_parity_cli, 'verify_attachments' ) );
+        WP_CLI::add_command( 'msh sweep', array( $msh_parity_cli, 'sweep' ) );
     }
 }
