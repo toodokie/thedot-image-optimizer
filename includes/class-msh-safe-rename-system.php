@@ -644,7 +644,7 @@ class MSH_Safe_Rename_System {
 		$old_relative = get_post_meta( $attachment_id, '_wp_attached_file', true );
 		error_log( '[MSH Rename DEBUG] Old relative path from meta: ' . $old_relative );
 
-		$new_filename = $this->ensure_unique_filename( $new_filename, dirname( $current_path ) );
+		$new_filename = $this->ensure_unique_filename( $new_filename, dirname( $current_path ), $attachment_id );
 		error_log( '[MSH Rename DEBUG] Unique filename after collision check: ' . $new_filename );
 
 		$new_relative = str_replace( basename( $old_relative ), $new_filename, $old_relative );
@@ -742,7 +742,12 @@ class MSH_Safe_Rename_System {
 		$final_rel = get_post_meta( $attachment_id, '_wp_attached_file', true );
 		if ( $final_rel !== $new_relative ) {
 			error_log( "[MSH HEAL] Final _wp_attached_file mismatch for #{$attachment_id}! Expected: {$new_relative}, Got: {$final_rel}" );
-			update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+			if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+				msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+				$new_relative = get_post_meta( $attachment_id, '_wp_attached_file', true );
+			} else {
+				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+			}
 			error_log( "[MSH HEAL] Corrected _wp_attached_file to: {$new_relative}" );
 		}
 
@@ -797,7 +802,11 @@ class MSH_Safe_Rename_System {
 		}
 
 		if ( $old_relative ) {
+		if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+			msh_update_attached_file_collapsed( $attachment_id, $old_relative );
+		} else {
 			update_post_meta( $attachment_id, '_wp_attached_file', $old_relative );
+		}
 		}
 
 		if ( $old_url ) {
@@ -1187,15 +1196,29 @@ class MSH_Safe_Rename_System {
 		}
 	}
 
-	private function ensure_unique_filename( $filename, $directory ) {
+	private function ensure_unique_filename( $filename, $directory, $attachment_id ) {
 		$directory = trailingslashit( $directory );
+		$filename  = function_exists( 'msh_collapse_id_suffix' )
+			? msh_collapse_id_suffix( $filename, (int) $attachment_id )
+			: $filename;
+
 		$pathinfo  = pathinfo( $filename );
 		$name      = $pathinfo['filename'];
 		$ext       = isset( $pathinfo['extension'] ) && $pathinfo['extension'] !== '' ? '.' . $pathinfo['extension'] : '';
 		$candidate = $filename;
 		$counter   = 1;
+		$appended  = false;
 
 		while ( file_exists( $directory . $candidate ) ) {
+			if ( ! $appended ) {
+				if ( ! preg_match( '/-' . preg_quote( (string) $attachment_id, '/' ) . '$/', $name ) ) {
+					$name .= '-' . $attachment_id;
+				}
+				$candidate = $name . $ext;
+				$appended  = true;
+				continue;
+			}
+
 			$candidate = sprintf( '%s-%d%s', $name, $counter, $ext );
 			++$counter;
 		}
@@ -1248,9 +1271,13 @@ class MSH_Safe_Rename_System {
 		$before_value = get_post_meta( $attachment_id, '_wp_attached_file', true );
 		error_log( '[MSH Rename DEBUG] _wp_attached_file BEFORE updates: ' . $before_value );
 
-		// CRITICAL FIX: Use relative path, not full filesystem path
-		error_log( '[MSH Rename DEBUG] Calling update_attached_file() with: ' . $new_relative );
-		update_attached_file( $attachment_id, $new_relative );
+		if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+			$new_path = msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+			$new_relative = get_post_meta( $attachment_id, '_wp_attached_file', true );
+		} else {
+			error_log( '[MSH Rename DEBUG] Calling update_attached_file() with: ' . $new_relative );
+			update_attached_file( $attachment_id, $new_relative );
+		}
 
 		$after_update_attached = get_post_meta( $attachment_id, '_wp_attached_file', true );
 		error_log( '[MSH Rename DEBUG] _wp_attached_file AFTER update_attached_file(): ' . $after_update_attached );
@@ -1354,7 +1381,11 @@ class MSH_Safe_Rename_System {
 
 			// Apply fix
 			wp_update_attachment_metadata( $attachment_id, $fixed_metadata );
-			update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+			if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+				msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+			} else {
+				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+			}
 
 			error_log( '[MSH Rename] Automatic repair applied' );
 		} else {
@@ -1815,7 +1846,11 @@ class MSH_Safe_Rename_System {
 		error_log( '[MSH AUTO-REPAIR] Updating _wp_attached_file to: ' . $relative_path );
 
 		// Update the attached file metadata
-		update_post_meta( $attachment_id, '_wp_attached_file', $relative_path );
+		if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+			msh_update_attached_file_collapsed( $attachment_id, $relative_path );
+		} else {
+			update_post_meta( $attachment_id, '_wp_attached_file', $relative_path );
+		}
 
 		// Get existing metadata
 		$metadata = wp_get_attachment_metadata( $attachment_id );

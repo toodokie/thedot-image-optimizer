@@ -98,6 +98,45 @@ class MSH_Parity_CLI {
 	}
 
 	/**
+	 * Run the attachment sweep via CLI.
+	 *
+	 * ## OPTIONS
+	 *
+	 * [--days=<days>]
+	 * : Days back to scan (default 7).
+	 *
+	 * [--limit=<limit>]
+	 * : Number of attachments to scan (default 100).
+	 */
+	public function sweep( $args, $assoc_args ) {
+		$days  = isset( $assoc_args['days'] ) ? (int) $assoc_args['days'] : 7;
+		$limit = isset( $assoc_args['limit'] ) ? max( 1, (int) $assoc_args['limit'] ) : 100;
+
+		$days_callback = static function () use ( $days ) {
+			return $days;
+		};
+		$limit_callback = static function () use ( $limit ) {
+			return $limit;
+		};
+
+		add_filter(
+			'msh_sweep_days_back',
+			$days_callback
+		);
+		add_filter(
+			'msh_sweep_batch_limit',
+			$limit_callback
+		);
+
+		do_action( 'msh_nightly_attachment_integrity_sweep' );
+
+		remove_filter( 'msh_sweep_days_back', $days_callback );
+		remove_filter( 'msh_sweep_batch_limit', $limit_callback );
+
+		WP_CLI::success( sprintf( 'Sweep completed for last %d day(s), limit %d.', $days, $limit ) );
+	}
+
+	/**
 	 * Compose deterministic metadata for a fixture.
 	 *
 	 * @param array $fixture Fixture payload.
@@ -199,6 +238,11 @@ class MSH_Parity_CLI {
 
 		if ( ! empty( $metadata['alt_text'] ) && $this->contains_location_term( $metadata['alt_text'], $location_terms ) ) {
 			$errors[] = 'ALT text contains geo terms.';
+		}
+
+		// Check for duplicate ID suffixes (catches -ID-ID or -ID-ID-ID patterns)
+		if ( ! empty( $metadata['filename_slug'] ) && preg_match( '/(?:-\d+){2,}/', $metadata['filename_slug'] ) ) {
+			$errors[] = 'Filename slug contains duplicate ID suffix (e.g., -123-123).';
 		}
 
 		$errors = array_merge( $errors, $this->assert_loc_mode_matrix( $context, $metadata, $location_terms ) );

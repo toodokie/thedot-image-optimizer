@@ -2522,15 +2522,12 @@ class MSH_Contextual_Meta_Generator {
 						? $this->city_slug
 						: $this->location_slug;
 
-					$components = array( $prefix );
-					if ( $location_component !== '' ) {
-						$components[] = $location_component;
-					}
-
-					$attachment_id_component = (string) ( $context['attachment_id'] ?? $attachment_id );
-					if ( $attachment_id_component !== '' ) {
-						$components[] = $attachment_id_component;
-					}
+				$components = array_filter(
+					array(
+						$prefix,
+						$location_component !== '' ? $location_component : null,
+					)
+				);
 
 					$slug = MSH_Image_Optimizer_Context_Helper::slugify( implode( '-', array_filter( $components ) ) );
 					return $this->truncate_slug( $slug, 4 );
@@ -6261,7 +6258,11 @@ class MSH_Image_Optimizer {
 			$final_rel = get_post_meta( $attachment_id, '_wp_attached_file', true );
 			if ( $final_rel !== $new_relative ) {
 				error_log( "[MSH HEAL AJAX] Final _wp_attached_file mismatch! Expected: {$new_relative}, Got: {$final_rel}" );
-				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+				if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+					msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+				} else {
+					update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+				}
 				error_log( "[MSH HEAL AJAX] Corrected _wp_attached_file" );
 			}
 
@@ -7977,7 +7978,11 @@ class MSH_Image_Optimizer {
 	 */
 	private function ensure_unique_filename( $base_name, $extension, $attachment_id ) {
 		$base_name = $this->limit_slug_words( $base_name );
-		$filename = $base_name . '.' . $extension;
+		$filename  = $base_name . '.' . $extension;
+
+		if ( function_exists( 'msh_collapse_id_suffix' ) ) {
+			$filename = msh_collapse_id_suffix( $filename, (int) $attachment_id );
+		}
 
 		// Check if this exact filename already exists in WordPress
 		$existing_attachment = $this->get_attachment_by_filename( $filename );
@@ -7997,7 +8002,10 @@ class MSH_Image_Optimizer {
 
 			// Try with short attachment ID suffix first
 			$short_id = $attachment_id;
-			$filename = $base_name . '-' . $short_id . '.' . $extension;
+			if ( ! preg_match( '/-' . preg_quote( (string) $short_id, '/' ) . '$/', $base_name ) ) {
+				$base_name .= '-' . $short_id;
+			}
+			$filename = $base_name . '.' . $extension;
 
 			// If still conflicts, add timestamp
 			$existing_check = $this->get_attachment_by_filename( $filename );
@@ -8010,7 +8018,10 @@ class MSH_Image_Optimizer {
 			$suggestion_conflicts = $this->get_attachments_with_suggestion( $filename );
 			if ( ! empty( $suggestion_conflicts ) && ! in_array( $attachment_id, $suggestion_conflicts ) ) {
 				$short_id = $attachment_id;
-				$filename = $base_name . '-' . $short_id . '.' . $extension;
+				if ( ! preg_match( '/-' . preg_quote( (string) $short_id, '/' ) . '$/', $base_name ) ) {
+					$base_name .= '-' . $short_id;
+				}
+				$filename = $base_name . '.' . $extension;
 			}
 		}
 
@@ -10114,7 +10125,11 @@ class MSH_Image_Optimizer {
 							$final_rel = get_post_meta( $attachment_id, '_wp_attached_file', true );
 							if ( $final_rel !== $new_relative ) {
 								error_log( "[MSH BATCH HEAL] ⚠️ Final _wp_attached_file mismatch for #{$attachment_id}! Expected: {$new_relative}, Got: {$final_rel}" );
-								update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+								if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+									msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+								} else {
+									update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
+								}
 								error_log( "[MSH BATCH HEAL] ✅ Corrected _wp_attached_file to: {$new_relative}" );
 							} else {
 								error_log( "[MSH BATCH HEAL] ✅ Validation passed for #{$attachment_id}: {$final_rel}" );

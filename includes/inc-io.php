@@ -9,6 +9,52 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+if ( ! function_exists( 'msh_update_attached_file_collapsed' ) ) {
+	/**
+	 * Update _wp_attached_file ensuring duplicate -ID suffixes are collapsed.
+	 *
+	 * @param int    $attachment_id Attachment ID.
+	 * @param string $relative_path Relative upload path.
+	 * @return string Absolute filesystem path for the updated file.
+	 */
+function msh_update_attached_file_collapsed( int $attachment_id, string $relative_path ): string {
+	$upload    = wp_get_upload_dir();
+	$relative  = ltrim( str_replace( '\\', '/', $relative_path ), '/' );
+	$directory = '';
+	$basename  = $relative;
+
+		if ( false !== strpos( $relative, '/' ) ) {
+			$directory = substr( $relative, 0, strrpos( $relative, '/' ) );
+			$basename  = substr( $relative, strrpos( $relative, '/' ) + 1 );
+		}
+
+		if ( function_exists( 'msh_collapse_id_suffix' ) ) {
+			$basename = msh_collapse_id_suffix( $basename, $attachment_id );
+		}
+
+	$normalized = ltrim(
+		( $directory !== '' ? trailingslashit( $directory ) : '' ) . $basename,
+		'/'
+	);
+
+	$original_rel = $relative;
+	update_post_meta( $attachment_id, '_wp_attached_file', $normalized );
+
+	$original_abs  = trailingslashit( $upload['basedir'] ) . $original_rel;
+	$collapsed_abs = trailingslashit( $upload['basedir'] ) . $normalized;
+
+	if ( $original_rel !== $normalized && file_exists( $original_abs ) ) {
+		msh_fs_mkdir_p( dirname( $collapsed_abs ) );
+		if ( ! @rename( $original_abs, $collapsed_abs ) ) {
+			copy( $original_abs, $collapsed_abs );
+			wp_delete_file( $original_abs );
+		}
+	}
+
+	return $collapsed_abs;
+}
+}
+
 /**
  * Acquire a transient-based lock for an attachment.
  *
@@ -116,6 +162,7 @@ function msh_optimize_atomic( int $attachment_id, string $new_relative, array $o
 
 	$source             = $opts['source'] ?? get_attached_file( $attachment_id );
 	$previous_metadata  = wp_get_attachment_metadata( $attachment_id );
+	$previous_relative  = get_post_meta( $attachment_id, '_wp_attached_file', true );
 	if ( empty( $source ) || ! file_exists( $source ) ) {
 		return new WP_Error( 'msh_missing_source', __( 'Attachment source file is missing.', 'msh-image-optimizer' ) );
 	}
@@ -169,18 +216,45 @@ function msh_optimize_atomic( int $attachment_id, string $new_relative, array $o
 		}
 	}
 
-	$metadata = wp_generate_attachment_metadata( $attachment_id, $absolute_target );
-	if ( is_wp_error( $metadata ) ) {
-		return $metadata;
+	if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+		$new_absolute = msh_update_attached_file_collapsed( $attachment_id, $relative );
+		$relative     = ltrim( str_replace( trailingslashit( $uploads['basedir'] ), '', $new_absolute ), '/' );
+	} else {
+		update_post_meta( $attachment_id, '_wp_attached_file', $relative );
+		$new_absolute = $absolute_target;
 	}
 
-	update_post_meta( $attachment_id, '_wp_attached_file', $relative );
-	wp_update_attachment_metadata( $attachment_id, $metadata );
+	$old_base = basename( (string) $previous_relative );
+	$new_base = basename( $relative );
+
+	if ( function_exists( 'msh_collapse_id_suffix' ) ) {
+		$old_base = msh_collapse_id_suffix( $old_base, $attachment_id );
+		$new_base = msh_collapse_id_suffix( $new_base, $attachment_id );
+	}
+
+	$base_changed = ( $old_base !== $new_base ) || empty( $previous_relative );
+
+	if ( $base_changed || empty( $previous_metadata ) ) {
+		$metadata = wp_generate_attachment_metadata( $attachment_id, $new_absolute );
+		if ( is_wp_error( $metadata ) ) {
+			return $metadata;
+		}
+		wp_update_attachment_metadata( $attachment_id, $metadata );
+	} else {
+		if ( function_exists( 'wp_update_image_subsizes' ) ) {
+			wp_update_image_subsizes( $attachment_id );
+		} else {
+			$metadata = wp_generate_attachment_metadata( $attachment_id, $new_absolute );
+			if ( ! is_wp_error( $metadata ) ) {
+				wp_update_attachment_metadata( $attachment_id, $metadata );
+			}
+		}
+	}
 
 	return array(
-		'relative_path' => $relative,
-		'absolute_path' => $absolute_target,
-		'metadata'      => $metadata,
+		'relative_path' => ltrim( $relative, '/' ),
+		'absolute_path' => $new_absolute,
+		'metadata'      => wp_get_attachment_metadata( $attachment_id ),
 	);
 }
 

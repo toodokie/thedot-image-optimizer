@@ -148,3 +148,26 @@ function msh_clamp_length( string $text, int $limit = 60, bool $preserve_words =
 
 	return trim( $clamped );
 }
+
+if ( ! function_exists( 'msh_collapse_id_suffix' ) ) {
+	/**
+	 * Collapse repeated -{ID} occurrences in a filename basename.
+	 *
+	 * @param string $filename    Filename (basename or full path).
+	 * @param int    $attachment_id Attachment ID.
+	 * @return string Filename with at most one -ID suffix.
+	 */
+	function msh_collapse_id_suffix( string $filename, int $attachment_id ): string {
+		if ( $attachment_id <= 0 ) {
+			return $filename;
+		}
+
+		$pattern = '/(?:-' . preg_quote( (string) $attachment_id, '/' ) . ')+(\\.[^.]+)?$/';
+		$collapsed = preg_replace( $pattern, '-{ID}$1', $filename );
+		if ( null === $collapsed ) {
+			return $filename;
+		}
+
+		return str_replace( '-{ID}', '-' . $attachment_id, $collapsed );
+	}
+}
