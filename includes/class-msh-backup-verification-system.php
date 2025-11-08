@@ -364,6 +364,33 @@ class MSH_Backup_Verification_System {
 	}
 
 	/**
+	 * Record a verification row when checks are intentionally skipped.
+	 *
+	 * @param string $operation_id Operation identifier.
+	 * @param int    $attachment_id Attachment ID.
+	 * @param string $reason Human-readable reason for the skip.
+	 * @return void
+	 */
+	public function log_verification_skip( $operation_id, $attachment_id, $reason ) {
+		global $wpdb;
+
+		$reason = sanitize_text_field( $reason );
+
+		$wpdb->insert(
+			$this->verification_table,
+			array(
+				'operation_id'   => $operation_id,
+				'attachment_id'  => $attachment_id,
+				'check_type'     => 'verification',
+				'expected_value' => 'Verification skipped',
+				'actual_value'   => $reason,
+				'status'         => 'skipped',
+				'error_message'  => null,
+			)
+		);
+	}
+
+	/**
 	 * Verify only the targeted database rows that were updated (precise verification)
 	 */
 	private function verify_targeted_updates( $operation_id, $attachment_id, $targeted_updates, $replacement_map ) {

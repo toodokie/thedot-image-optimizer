@@ -12,17 +12,18 @@ if ( ! defined( 'ABSPATH' ) ) {
 if ( ! function_exists( 'msh_update_attached_file_collapsed' ) ) {
 	/**
 	 * Update _wp_attached_file ensuring duplicate -ID suffixes are collapsed.
+	 * Refuses to write if the destination file does not exist.
 	 *
 	 * @param int    $attachment_id Attachment ID.
 	 * @param string $relative_path Relative upload path.
-	 * @return string Absolute filesystem path for the updated file.
+	 * @return string|\WP_Error Absolute filesystem path or WP_Error on failure.
 	 */
-function msh_update_attached_file_collapsed( int $attachment_id, string $relative_path ): string {
-	$upload    = wp_get_upload_dir();
-	$relative  = ltrim( str_replace( '\\', '/', $relative_path ), '/' );
-	$directory = '';
-	$basename  = $relative;
+	function msh_update_attached_file_collapsed( int $attachment_id, string $relative_path ) {
+		$upload   = wp_get_upload_dir();
+		$relative = ltrim( str_replace( '\\', '/', $relative_path ), '/' );
 
+		$directory = '';
+		$basename  = $relative;
 		if ( false !== strpos( $relative, '/' ) ) {
 			$directory = substr( $relative, 0, strrpos( $relative, '/' ) );
 			$basename  = substr( $relative, strrpos( $relative, '/' ) + 1 );
@@ -32,27 +33,45 @@ function msh_update_attached_file_collapsed( int $attachment_id, string $relativ
 			$basename = msh_collapse_id_suffix( $basename, $attachment_id );
 		}
 
-	$normalized = ltrim(
-		( $directory !== '' ? trailingslashit( $directory ) : '' ) . $basename,
-		'/'
-	);
+		$normalized = ltrim(
+			( $directory !== '' ? trailingslashit( $directory ) : '' ) . $basename,
+			'/'
+		);
 
-	$original_rel = $relative;
-	update_post_meta( $attachment_id, '_wp_attached_file', $normalized );
+		$absolute_target = trailingslashit( $upload['basedir'] ) . $normalized;
+		$absolute_source = trailingslashit( $upload['basedir'] ) . $relative;
 
-	$original_abs  = trailingslashit( $upload['basedir'] ) . $original_rel;
-	$collapsed_abs = trailingslashit( $upload['basedir'] ) . $normalized;
-
-	if ( $original_rel !== $normalized && file_exists( $original_abs ) ) {
-		msh_fs_mkdir_p( dirname( $collapsed_abs ) );
-		if ( ! @rename( $original_abs, $collapsed_abs ) ) {
-			copy( $original_abs, $collapsed_abs );
-			wp_delete_file( $original_abs );
+		if ( $absolute_source !== $absolute_target && file_exists( $absolute_source ) ) {
+			msh_fs_mkdir_p( dirname( $absolute_target ) );
+			if ( ! @rename( $absolute_source, $absolute_target ) ) {
+				if ( ! @copy( $absolute_source, $absolute_target ) ) {
+					return new WP_Error(
+						'msh_rename_collapse_failed',
+						__( 'Unable to normalize attachment filename on disk.', 'msh-image-optimizer' ),
+						array(
+							'source' => $absolute_source,
+							'target' => $absolute_target,
+						)
+					);
+				}
+				wp_delete_file( $absolute_source );
+			}
 		}
-	}
 
-	return $collapsed_abs;
-}
+		if ( ! file_exists( $absolute_target ) ) {
+			return new WP_Error(
+				'msh_absent_target',
+				__( 'Refusing to update attachment metadata to a non-existent file.', 'msh-image-optimizer' ),
+				array(
+					'target' => $absolute_target,
+				)
+			);
+		}
+
+		update_post_meta( $attachment_id, '_wp_attached_file', $normalized );
+
+		return $absolute_target;
+	}
 }
 
 /**
@@ -218,10 +237,13 @@ function msh_optimize_atomic( int $attachment_id, string $new_relative, array $o
 
 	if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
 		$new_absolute = msh_update_attached_file_collapsed( $attachment_id, $relative );
-		$relative     = ltrim( str_replace( trailingslashit( $uploads['basedir'] ), '', $new_absolute ), '/' );
+		if ( is_wp_error( $new_absolute ) ) {
+			return $new_absolute;
+		}
+		$relative = ltrim( str_replace( trailingslashit( $uploads['basedir'] ), '', $new_absolute ), '/' );
 	} else {
-		update_post_meta( $attachment_id, '_wp_attached_file', $relative );
 		$new_absolute = $absolute_target;
+		update_post_meta( $attachment_id, '_wp_attached_file', $relative );
 	}
 
 	$old_base = basename( (string) $previous_relative );

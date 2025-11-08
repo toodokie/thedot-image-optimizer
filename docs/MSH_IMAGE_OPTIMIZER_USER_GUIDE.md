@@ -69,6 +69,13 @@
   > “Description: Custom service icon reinforces Main Street Health across digital channels. Ideal for projects in Hamilton, Ontario, including medical topics.”  
 - **AI parity:** Smart Mode follows the same rules because all metadata runs through the shared validator — stock/decorative never guess at location, owned contexts stay branded, and only the description receives a tail sentence.
 
+### 4.7 Resetting the Scratchpad (Analyze Prep)
+- Use **Reset** (action bar, right side of the Analyzer) whenever you need a clean slate — e.g., after toggling **Rename suggestions**, switching AI modes, or importing a new context profile.  
+- Confirm the dialog; the log will note `Reset … flags. Analysis cache cleared.` which means all staging keys (`_msh_ai_staged_meta`, `_msh_ai_keywords`, `_msh_context_trace`, `_msh_confidence*`, `_msh_suggested_filename`, `_msh_ai_filename_slug`, `msh_filename_last_suggested`) plus the Analyzer cache were wiped.  
+- What stays untouched: `_wp_attached_file`, `_wp_attachment_metadata`, existing titles/captions/ALT, GUID/URLs, and every on-disk image. Reset never moves files or edits live text.  
+- Next step: click **Run Analyzer**. With Rename suggestions **enabled**, the analyzer stages both fresh metadata and new filename proposals (AI or deterministic, depending on your mode) without touching the filesystem until you press **Optimize**. If the rename toggle is **off**, Analyze still refreshes text metadata but skips filenames.  
+- Tip: Keep Reset + Analyze paired — Reset clears the scratchpad, Analyze repopulates it, so you always preview exactly what the next Optimize run would apply.
+
 ---
 
 ## 5. Duplicate Cleanup
@@ -178,4 +185,4 @@
 - **Raise issues:** Log tickets with time of action, attachment IDs, and any error messages; include whether Quick Scan or Deep Scan was used.  
 - **Documentation hub:** Visit `docs/MSH_IMAGE_OPTIMIZER_DOCUMENTATION.md` for the full operator handbook and links to troubleshooting playbooks.
 
-**Last Updated:** 2025-10-30 (User guide first edition)
+**Last Updated:** 2025-11-07 (Reset + rename scratchpad update)

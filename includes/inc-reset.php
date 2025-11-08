@@ -17,12 +17,19 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 function msh_soft_reset( int $attachment_id ): void {
 	$clear_keys = array(
-		'_msh_optimized_date',
-		'_msh_suggested_filename',
+		// Context + staging payloads.
 		'_msh_context_trace',
 		'_msh_ai_staged_meta',
+		'_msh_ai_keywords',
 		'_msh_ai_filename_slug',
+		// Filename suggestion artifacts.
+		'_msh_suggested_filename',
+		'_msh_suggested_filename_context',
+		'msh_filename_last_suggested',
+		// Confidence + scoring.
 		'_msh_confidence',
+		'_msh_confidence_score',
+		'_msh_confidence_level',
 	);
 
 	foreach ( $clear_keys as $key ) {
@@ -46,4 +53,3 @@ function msh_soft_reset( int $attachment_id ): void {
 		);
 	}
 }
-

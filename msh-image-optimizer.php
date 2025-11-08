@@ -560,5 +560,7 @@ if ( defined( 'WP_CLI' ) && WP_CLI ) {
         WP_CLI::add_command( 'msh analyze-matrix', array( $msh_parity_cli, 'analyze_matrix' ) );
         WP_CLI::add_command( 'msh verify-attachments', array( $msh_parity_cli, 'verify_attachments' ) );
         WP_CLI::add_command( 'msh sweep', array( $msh_parity_cli, 'sweep' ) );
+        WP_CLI::add_command( 'msh repair-db', array( $msh_parity_cli, 'repair_db' ) );
+        WP_CLI::add_command( 'msh check-analyze', array( $msh_parity_cli, 'check_analyze' ) );
     }
 }

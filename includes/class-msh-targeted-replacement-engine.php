@@ -108,6 +108,7 @@ class MSH_Targeted_Replacement_Engine {
 						'reason'         => 'no_content_usage',
 						'message'        => 'File has no content usage, verification not applicable',
 					);
+					$this->backup_system->log_verification_skip( $operation_id, $attachment_id, 'no_content_usage' );
 				} else {
 					// Pass the targeted updates list to verification for precise checking
 					$verification            = $this->backup_system->verify_replacement( $operation_id, $attachment_id, $replacement_map, $targeted_updates );

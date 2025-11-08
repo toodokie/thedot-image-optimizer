@@ -82,7 +82,17 @@ class MSH_Safe_Rename_System {
 			// Temporarily remove filter to prevent recursion, then force update with normalized value
 			// Use priority 1 to match the manual rename lock wrapper
 			remove_filter( 'pre_update_post_metadata', array( $this, 'guard_attached_file_corruption' ), 1 );
-			update_post_meta( $object_id, '_wp_attached_file', $normalized );
+
+			if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+				$result = msh_update_attached_file_collapsed( (int) $object_id, $meta_value );
+				if ( is_wp_error( $result ) ) {
+					error_log( '[MSH GUARD BLOCK] Failed to normalize via msh_update_attached_file_collapsed: ' . $result->get_error_message() );
+					update_post_meta( $object_id, '_wp_attached_file', $normalized );
+				}
+			} else {
+				update_post_meta( $object_id, '_wp_attached_file', $normalized );
+			}
+
 			add_filter( 'pre_update_post_metadata', array( $this, 'guard_attached_file_corruption' ), 1, 4 );
 
 			return true; // Prevent the original corrupted write
@@ -743,7 +753,11 @@ class MSH_Safe_Rename_System {
 		if ( $final_rel !== $new_relative ) {
 			error_log( "[MSH HEAL] Final _wp_attached_file mismatch for #{$attachment_id}! Expected: {$new_relative}, Got: {$final_rel}" );
 			if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
-				msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+				$guard = msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+				if ( is_wp_error( $guard ) ) {
+					$this->update_log( $log_id, 'failed', 0, $guard->get_error_message() );
+					return $guard;
+				}
 				$new_relative = get_post_meta( $attachment_id, '_wp_attached_file', true );
 			} else {
 				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
@@ -802,11 +816,15 @@ class MSH_Safe_Rename_System {
 		}
 
 		if ( $old_relative ) {
-		if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
-			msh_update_attached_file_collapsed( $attachment_id, $old_relative );
-		} else {
-			update_post_meta( $attachment_id, '_wp_attached_file', $old_relative );
-		}
+			if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
+				$guard = msh_update_attached_file_collapsed( $attachment_id, $old_relative );
+				if ( is_wp_error( $guard ) ) {
+					error_log( '[MSH RESTORE] Failed to restore _wp_attached_file: ' . $guard->get_error_message() );
+					update_post_meta( $attachment_id, '_wp_attached_file', $old_relative );
+				}
+			} else {
+				update_post_meta( $attachment_id, '_wp_attached_file', $old_relative );
+			}
 		}
 
 		if ( $old_url ) {
@@ -1273,6 +1291,10 @@ class MSH_Safe_Rename_System {
 
 		if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
 			$new_path = msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+			if ( is_wp_error( $new_path ) ) {
+				error_log( '[MSH Rename DEBUG] Failed to update _wp_attached_file: ' . $new_path->get_error_message() );
+				return;
+			}
 			$new_relative = get_post_meta( $attachment_id, '_wp_attached_file', true );
 		} else {
 			error_log( '[MSH Rename DEBUG] Calling update_attached_file() with: ' . $new_relative );
@@ -1382,7 +1404,10 @@ class MSH_Safe_Rename_System {
 			// Apply fix
 			wp_update_attachment_metadata( $attachment_id, $fixed_metadata );
 			if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
-				msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+				$guard = msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+				if ( is_wp_error( $guard ) ) {
+					error_log( '[MSH Rename] Automatic repair failed to update _wp_attached_file: ' . $guard->get_error_message() );
+				}
 			} else {
 				update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
 			}
@@ -1847,7 +1872,10 @@ class MSH_Safe_Rename_System {
 
 		// Update the attached file metadata
 		if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
-			msh_update_attached_file_collapsed( $attachment_id, $relative_path );
+			$guard = msh_update_attached_file_collapsed( $attachment_id, $relative_path );
+			if ( is_wp_error( $guard ) ) {
+				error_log( '[MSH AUTO-REPAIR] Failed to update _wp_attached_file: ' . $guard->get_error_message() );
+			}
 		} else {
 			update_post_meta( $attachment_id, '_wp_attached_file', $relative_path );
 		}

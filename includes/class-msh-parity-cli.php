@@ -137,6 +137,81 @@ class MSH_Parity_CLI {
 	}
 
 	/**
+	 * Repair attachments whose DB paths no longer match disk files.
+	 *
+	 * ## OPTIONS
+	 *
+	 * --ids=<list>
+	 * : Comma-separated attachment IDs to inspect and repair.
+	 */
+	public function repair_db( $args, $assoc_args ) {
+		if ( empty( $assoc_args['ids'] ) ) {
+			WP_CLI::error( 'Please provide --ids=<id1,id2,...>.' );
+		}
+
+		$ids     = array_filter( array_map( 'intval', preg_split( '/[,\s]+/', $assoc_args['ids'] ) ) );
+		$repaired = 0;
+
+		foreach ( $ids as $id ) {
+			if ( $id <= 0 ) {
+				continue;
+			}
+
+			$file = get_attached_file( $id );
+			if ( $file && file_exists( $file ) ) {
+				WP_CLI::log( sprintf( '[%d] Path already valid (%s)', $id, $file ) );
+				continue;
+			}
+
+			if ( ! function_exists( 'msh_try_fix_db_from_disk' ) ) {
+				WP_CLI::warning( sprintf( '[%d] Repair helper unavailable in this build.', $id ) );
+				continue;
+			}
+
+			if ( msh_try_fix_db_from_disk( $id ) ) {
+				WP_CLI::log( sprintf( '[%d] Repaired _wp_attached_file via disk scan.', $id ) );
+				++$repaired;
+			} else {
+				WP_CLI::warning( sprintf( '[%d] Unable to locate a replacement file.', $id ) );
+			}
+		}
+
+		WP_CLI::success( sprintf( 'Repaired %d attachment(s).', $repaired ) );
+	}
+
+	/**
+	 * Ensure analyze does not mutate _wp_attached_file for a given attachment.
+	 *
+	 * ## OPTIONS
+	 *
+	 * --id=<attachment_id>
+	 * : Attachment ID to analyze.
+	 */
+	public function check_analyze( $args, $assoc_args ) {
+		$attachment_id = isset( $assoc_args['id'] ) ? (int) $assoc_args['id'] : 0;
+		if ( $attachment_id <= 0 ) {
+			WP_CLI::error( 'Please provide a valid --id=<attachment_id>.' );
+		}
+
+		$before = get_post_meta( $attachment_id, '_wp_attached_file', true );
+
+		$optimizer = MSH_Image_Optimizer::get_instance();
+		$result    = $optimizer->analyze_single_image( $attachment_id );
+
+		if ( isset( $result['error'] ) ) {
+			WP_CLI::error( sprintf( 'Analyze failed: %s', $result['error'] ) );
+		}
+
+		$after = get_post_meta( $attachment_id, '_wp_attached_file', true );
+
+		if ( $before !== $after ) {
+			WP_CLI::error( sprintf( 'Analyze mutated _wp_attached_file (before: %s, after: %s).', $before, $after ) );
+		}
+
+		WP_CLI::success( sprintf( 'Analyze preserved _wp_attached_file for attachment %d.', $attachment_id ) );
+	}
+
+	/**
 	 * Compose deterministic metadata for a fixture.
 	 *
 	 * @param array $fixture Fixture payload.

@@ -8,6 +8,13 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+add_filter(
+	'pre_update_post_metadata',
+	array( 'MSH_Image_Optimizer', 'block_attached_file_updates_during_analyze' ),
+	5,
+	5
+);
+
 class MSH_Contextual_Meta_Generator {
 	private $business_name        = '';
 	private $location             = '';
@@ -39,6 +46,7 @@ class MSH_Contextual_Meta_Generator {
 	private $batch_season         = null;
 	private $season_cache_hits    = 0;
 	private $season_cache_misses  = 0;
+	private static $analyze_guard_depth = 0;
 
 	// Phase 1F: Runtime cache for batch optimization (avoid repeated wp_options queries)
 	private $msh_batch_mode           = false;
@@ -5946,6 +5954,7 @@ class MSH_Contextual_Meta_Generator {
 
 class MSH_Image_Optimizer {
 	private static $instance = null;
+	private static $analyze_guard_depth = 0;
 
 	const ANALYSIS_CACHE_VERSION = '4';
 
@@ -6104,8 +6113,16 @@ class MSH_Image_Optimizer {
 	}
 
 	private function clear_analysis_cache() {
-		$cache_key = 'msh_analysis_cache_v' . self::ANALYSIS_CACHE_VERSION . '_' . md5( 'latest_analysis' );
-		delete_transient( $cache_key );
+		$hash = md5( 'latest_analysis' );
+		$keys = array(
+			'msh_analysis_cache_v' . self::ANALYSIS_CACHE_VERSION . '_' . $hash,
+			// Legacy cache key retained for back-compat clearing.
+			'msh_analysis_cache_' . $hash,
+		);
+
+		foreach ( $keys as $cache_key ) {
+			delete_transient( $cache_key );
+		}
 	}
 
 	private function flag_attachment_for_reoptimization( $attachment_id ) {
@@ -6259,7 +6276,10 @@ class MSH_Image_Optimizer {
 			if ( $final_rel !== $new_relative ) {
 				error_log( "[MSH HEAL AJAX] Final _wp_attached_file mismatch! Expected: {$new_relative}, Got: {$final_rel}" );
 				if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
-					msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+					$guard = msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+					if ( is_wp_error( $guard ) ) {
+						$this->log_debug( 'MSH HEAL AJAX: Failed to realign _wp_attached_file - ' . $guard->get_error_message() );
+					}
 				} else {
 					update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
 				}
@@ -7120,6 +7140,9 @@ class MSH_Image_Optimizer {
 			}
 			return array( 'error' => 'Attachment not found' );
 		}
+		self::$analyze_guard_depth++;
+
+		try {
 		update_meta_cache( 'post', array( $attachment_id ) );
 
 		// Read ACTUAL current metadata from WordPress database
@@ -7602,6 +7625,9 @@ class MSH_Image_Optimizer {
 			'context_mismatch'          => $context_mismatch,
 			'metadata_source'           => $metadata_source,
 		);
+		} finally {
+			self::$analyze_guard_depth--;
+		}
 	}
 
 	/**
@@ -9012,8 +9038,7 @@ class MSH_Image_Optimizer {
 		}
 
 		// Clear analysis cache after optimization
-		$cache_key = 'msh_analysis_cache_' . md5( 'latest_analysis' );
-		delete_transient( $cache_key );
+		$this->clear_analysis_cache();
 
 		if ( ! empty( $image_ids ) ) {
 			update_option( 'msh_last_optimization_run', current_time( 'mysql' ) );
@@ -9074,8 +9099,7 @@ class MSH_Image_Optimizer {
 		}
 
 		// Clear analysis cache after optimization
-		$cache_key = 'msh_analysis_cache_' . md5( 'latest_analysis' );
-		delete_transient( $cache_key );
+		$this->clear_analysis_cache();
 
 		if ( ! empty( $image_ids ) ) {
 			update_option( 'msh_last_optimization_run', current_time( 'mysql' ) );
@@ -9137,8 +9161,7 @@ class MSH_Image_Optimizer {
 		}
 
 		// Clear analysis cache after optimization
-		$cache_key = 'msh_analysis_cache_' . md5( 'latest_analysis' );
-		delete_transient( $cache_key );
+		$this->clear_analysis_cache();
 
 		if ( ! empty( $image_ids ) ) {
 			update_option( 'msh_last_optimization_run', current_time( 'mysql' ) );
@@ -9811,11 +9834,13 @@ class MSH_Image_Optimizer {
                 'msh_optimized_date',
                 '_msh_suggested_filename',
                 '_msh_suggested_filename_context',
+                'msh_filename_last_suggested',
                 'msh_metadata_context_hash',
                 'msh_descriptor',
                 'msh_last_analyzed',
                 '_msh_context_trace',
-                '_msh_descriptor_backup'
+                '_msh_descriptor_backup',
+                'msh_context_needs_refresh'
             )
         "
 		);
@@ -9829,12 +9854,14 @@ class MSH_Image_Optimizer {
             WHERE meta_key IN (
                 '_msh_ai_staged_meta',
                 '_msh_ai_filename_slug',
+                '_msh_ai_keywords',
                 '_msh_title_source',
                 '_msh_alt_source',
                 '_msh_caption_source',
                 '_msh_description_source',
                 '_msh_confidence_level',
                 '_msh_confidence_score',
+                '_msh_confidence',
                 'msh_metadata_last_updated',
                 'msh_metadata_source'
             )
@@ -9848,8 +9875,7 @@ class MSH_Image_Optimizer {
 		$total_reset = $reset_count + $ai_reset_count;
 
 		// Clear the analysis cache to force fresh analysis on next run
-		$cache_key = 'msh_analysis_cache_v' . self::ANALYSIS_CACHE_VERSION . '_' . md5( 'latest_analysis' );
-		delete_transient( $cache_key );
+		$this->clear_analysis_cache();
 
 		error_log( '[MSH DEBUG] Cache cleared. Sending JSON success response' );
 
@@ -10128,7 +10154,10 @@ class MSH_Image_Optimizer {
 							if ( $final_rel !== $new_relative ) {
 								error_log( "[MSH BATCH HEAL] ⚠️ Final _wp_attached_file mismatch for #{$attachment_id}! Expected: {$new_relative}, Got: {$final_rel}" );
 								if ( function_exists( 'msh_update_attached_file_collapsed' ) ) {
-									msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+									$guard = msh_update_attached_file_collapsed( $attachment_id, $new_relative );
+									if ( is_wp_error( $guard ) ) {
+										$this->log_debug( 'MSH BATCH HEAL: Failed to realign _wp_attached_file - ' . $guard->get_error_message() );
+									}
 								} else {
 									update_post_meta( $attachment_id, '_wp_attached_file', $new_relative );
 								}
@@ -11429,6 +11458,15 @@ class MSH_Image_Optimizer {
 		}
 
 		return preg_replace( '/\.(jpg|jpeg|png)$/i', '.webp', $file_path );
+	}
+
+	public static function block_attached_file_updates_during_analyze( $check, $object_id, $meta_key, $meta_value, $prev_value ) {
+		if ( self::$analyze_guard_depth > 0 && '_wp_attached_file' === $meta_key ) {
+			do_action( 'msh_analyze_blocked_attached_file', $object_id, $meta_value, $prev_value );
+			return ( null !== $check ) ? $check : true;
+		}
+
+		return $check;
 	}
 }
 
