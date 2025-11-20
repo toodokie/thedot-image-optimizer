@@ -414,8 +414,13 @@ class MSH_OpenAI_Connector {
 				)
 			);
 
+			// BATCH 1.a: Check if brand should be preserved (TEAM context with brand mode enabled)
+			$ct = $context['type'] ?? '';
+			$bm = ! empty( $context['brand_name_visible'] ) && ( $context['brand_name_visible'] === 'true' || $context['brand_name_visible'] === true || $context['brand_name_visible'] === '1' );
+			$preserve_brand = ( $ct === 'team' && $bm );
+
 			$disallowed_terms = $location_terms;
-			if ( $business_name ) {
+			if ( $business_name && ! $preserve_brand ) {
 				$disallowed_terms[] = $business_name;
 			}
 
@@ -435,6 +440,7 @@ class MSH_OpenAI_Connector {
 			if ( isset( $parsed_metadata['keywords'] ) ) {
 				$parsed_metadata['keywords'] = array();
 			}
+
 		}
 
 		return $parsed_metadata;
@@ -587,7 +593,7 @@ class MSH_OpenAI_Connector {
 
 		$schema_line = 'schema:{fn,t,a,c,d,k[],s[],attr[],conf,iss[]}|req:fn,t,a,c,d,k[],s[],attr[],conf,iss[]';
 		$rules_line  = sprintf(
-			'rules: cm1->ct final; describe visible scene; brand allowed only if ct in {logo,team,facility,equipment,service-icon,brand_logo} or (ct in {clinical,business,testimonial} & bm1) — otherwise ban brand (stock/decor always ban). TEAM RULE: if ct=team AND bm=1 → MUST include {bn} in both t AND d, even if image looks generic. seo1: weave one location (bl or pg.ti) + one service from sv into description only; keep title/alt/caption purely visual. seo0 ban brand/location/cta. fill k/s=3-4 nouns. len caps t60/a125/c150/d200. tone letters p,f,c,t,n,b. tone=%s.',
+			'rules: cm1->ct final; describe visible scene; brand allowed only if ct in {logo,team,facility,equipment,service-icon,brand_logo} or (ct in {clinical,business,testimonial} & bm1) — otherwise ban brand (stock/decor always ban). TEAM RULE: if ct=team AND bm=1 → MUST include {bn} in both t AND d, even if image looks generic. stock/decor: if seo=0 describe scene only (no brand/location/service/CTA); if seo=1 describe scene then add one short SEO tail in d only (location+service) while keeping t/a/fn scenic-only. seo1 (other contexts): weave one location (bl or pg.ti) + one service from sv into description only; keep title/alt/caption purely visual. seo0 ban brand/location/cta. fill k/s=3-4 nouns. len caps t60/a125/c150/d200. tone letters p,f,c,t,n,b. tone=%s.',
 			$brand_voice_compact
 		);
 
@@ -1160,6 +1166,16 @@ class MSH_OpenAI_Connector {
 				array( $business_name ),
 				$metadata
 			);
+		}
+
+		$team_manual_brand = (
+			$context_type === 'team'
+			&& ( ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] ) )
+			&& in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true )
+		);
+
+		if ( $team_manual_brand ) {
+			return $metadata;
 		}
 
 		$location_terms = $this->build_location_terms( $context );
@@ -1813,30 +1829,6 @@ class MSH_OpenAI_Connector {
 			}
 		}
 
-			// BATCH 1: TEAM validator enforcement - brand MUST appear in t+d when ct=team AND bm=1
-			$ct = $context['type'] ?? '';
-			$bm = ! empty( $context['brand_name_visible'] ) && ( $context['brand_name_visible'] === 'true' || $context['brand_name_visible'] === true || $context['brand_name_visible'] === '1' );
-			$bn = $context['business_name'] ?? '';
-
-			if ( $ct === 'team' && $bm && $bn ) {
-				$t = $metadata['title'] ?? '';
-				$d = $metadata['description'] ?? '';
-
-				// Enforce bn in title
-				if ( stripos( $t, $bn ) === false ) {
-					$metadata['issues'][] = 'missing_bn_title';
-					$metadata['title']    = $this->prependBnToTitle( $t, $bn );
-					error_log( "[MSH Batch1] TEAM: prepended brand to title. Original: '{$t}' -> Fixed: '{$metadata['title']}'" );
-				}
-
-				// Enforce bn in description
-				if ( stripos( $d, $bn ) === false ) {
-					$metadata['issues'][] = 'missing_bn_desc';
-					$metadata['description'] = rtrim( $d, '. ' ) . ". {$bn}.";
-					error_log( "[MSH Batch1] TEAM: appended brand to description." );
-				}
-			}
-
 			$seo_mode_context = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true;
 
 			// Sanitize metadata and enforce hard length limits
@@ -1914,28 +1906,66 @@ class MSH_OpenAI_Connector {
 				error_log( '[MSH OpenAI] Filled subjects fallback: ' . implode( ', ', $subjects ) );
 			}
 		}
-			$sanitized['subjects'] = $subjects;
+		$sanitized['subjects'] = $subjects;
 
-			$sanitized = $this->apply_contextual_term_filters( $sanitized, $context, $seo_mode_context );
+		$sanitized = $this->apply_contextual_term_filters( $sanitized, $context, $seo_mode_context );
 
-			// Validate the AI response for quality
-			$validation = $this->validate_ai_response( $sanitized, $context );
+		// Validate the AI response for quality
+		$validation = $this->validate_ai_response( $sanitized, $context );
+		$ct         = $context['type'] ?? '';
+		$cm         = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
+		$bn_v       = in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true );
+
 		if ( is_wp_error( $validation ) ) {
-			error_log( '[MSH OpenAI] Validation failed: ' . $validation->get_error_message() );
-			return $validation; // Return WP_Error to trigger escalation or fallback
+			if ( ! ( $ct === 'team' && $cm && $bn_v ) ) {
+				error_log( '[MSH OpenAI] Validation failed: ' . $validation->get_error_message() );
+				return $validation; // Return WP_Error to trigger escalation or fallback
+			}
 		}
 
-		// BATCH 1 DEBUG: Dump final metadata after all validation/sanitization
-		$ct = $context['type'] ?? 'UNKNOWN';
-		$bm = ! empty( $context['brand_name_visible'] ) && ( $context['brand_name_visible'] === 'true' || $context['brand_name_visible'] === true || $context['brand_name_visible'] === '1' ) ? 1 : 0;
-		error_log( sprintf(
-			'[MSH DEBUG Batch1] Final metadata for ct=%s bm=%d: title="%s", desc="%s", issues=%s',
-			$ct,
-			$bm,
-			$sanitized['title'] ?? 'NULL',
-			substr( $sanitized['description'] ?? 'NULL', 0, 100 ) . '...',
-			json_encode( $sanitized['issues'] ?? [] )
-		) );
+		$seo_mode_flag = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true;
+
+		if ( in_array( $ct, array( 'stock', 'decorative' ), true ) ) {
+			$business_name = trim( $context['business_name'] ?? '' );
+			if ( $business_name !== '' ) {
+				foreach ( array( 'title', 'alt_text', 'caption', 'description' ) as $field ) {
+					if ( ! empty( $sanitized[ $field ] ) ) {
+						$sanitized[ $field ] = $this->strip_disallowed_terms( $sanitized[ $field ], array( $business_name ) );
+					}
+				}
+			}
+
+			$location_terms = $this->build_location_terms( $context );
+			$service_terms  = $this->build_service_terms( $context );
+			$cta_terms      = array( 'book now', 'book', 'schedule', 'call', 'contact', 'learn more', 'visit', 'reserve', 'discover', 'request', 'start', 'apply', 'join', 'enroll' );
+			$all_terms      = array_merge( $location_terms, $service_terms, $cta_terms );
+
+			if ( ! empty( $sanitized['description'] ) && ! empty( $all_terms ) ) {
+				$sanitized['description'] = $this->strip_disallowed_terms( $sanitized['description'], $all_terms );
+			}
+
+			if ( $seo_mode_flag ) {
+				$tail = $this->build_stock_seo_tail( $context );
+				if ( $tail !== '' ) {
+					$desc = trim( (string) ( $sanitized['description'] ?? '' ) );
+					if ( $desc !== '' ) {
+						$desc = rtrim( $desc, " \t\n\r\0\x0B." ) . '.';
+					}
+					$sanitized['description'] = trim( $desc . ' ' . $tail );
+				}
+			}
+		}
+
+		$sanitized = $this->enforce_team_metadata_rules( $sanitized, $context );
+
+		$ct   = $context['type'] ?? 'UNKNOWN';
+		$seo  = (int) $seo_mode_flag;
+		$cm   = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
+		$bn_v = in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true );
+
+		if ( $ct === 'team' && $cm && $bn_v ) {
+			error_log( "[MSH DEBUG Batch1 FINAL] id={$attachment_id} ct={$ct} seo={$seo} t={$sanitized['title']} d={$sanitized['description']}" );
+		}
 
 		return $sanitized;
 	}
@@ -1952,6 +1982,13 @@ class MSH_OpenAI_Connector {
 	private function validate_context_rules( $context, &$metadata, &$issues ) {
 		// Note: Context array uses 'type' key, not 'context_type'
 		$type = isset( $context['type'] ) ? $context['type'] : 'stock';
+		$cm   = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
+		$team_brand_flag = in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true );
+
+		if ( $type === 'team' && $cm && $team_brand_flag ) {
+			return true;
+		}
+
 		$business_name = isset( $context['business_name'] ) ? strtolower( $context['business_name'] ) : '';
 
 		// Combine all text fields for checking
@@ -2048,6 +2085,152 @@ class MSH_OpenAI_Connector {
 	}
 
 	/**
+	 * Apply TEAM-specific rules after global SEO cleanup to ensure branding and tie-in sentences.
+	 *
+	 * @param array $metadata Sanitised metadata array.
+	 * @param array $context  Business context information.
+	 * @return array Updated metadata with TEAM rules enforced.
+	 */
+	private function enforce_team_metadata_rules( array $metadata, array $context ) {
+		$ct  = $context['type'] ?? '';
+		$cm  = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
+		$bm  = in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true );
+
+		if ( $ct !== 'team' || ! $cm || ! $bm ) {
+			return $metadata;
+		}
+
+		$business_name = trim( $context['business_name'] ?? '' );
+		if ( $business_name === '' ) {
+			return $metadata;
+		}
+
+		if ( empty( $metadata['issues'] ) || ! is_array( $metadata['issues'] ) ) {
+			$metadata['issues'] = array();
+		}
+
+		if ( stripos( $metadata['title'] ?? '', $business_name ) === false ) {
+			if ( ! in_array( 'missing_bn_title', $metadata['issues'], true ) ) {
+				$metadata['issues'][] = 'missing_bn_title';
+			}
+			$metadata['title'] = $this->buildTeamTitle( $business_name );
+		}
+
+		$description       = trim( $metadata['description'] ?? '' );
+		$description_has_bn = stripos( $description, $business_name ) !== false;
+		if ( $description === '' ) {
+			$description = $this->build_description_fallback_sentence( $context );
+		}
+
+		$seo_mode = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true;
+		if ( ! $seo_mode ) {
+			$location_terms = array_filter( array_unique( array(
+				$context['city'] ?? '',
+				$context['region'] ?? '',
+				$context['country'] ?? '',
+				$context['service_area'] ?? '',
+				$context['location'] ?? '',
+			) ) );
+			if ( ! empty( $location_terms ) ) {
+				$description = $this->strip_disallowed_terms( $description, $location_terms );
+			}
+
+			$service_terms = array();
+			if ( ! empty( $context['service_keywords'] ) ) {
+				$service_terms = is_array( $context['service_keywords'] )
+					? $context['service_keywords']
+					: explode( ',', (string) $context['service_keywords'] );
+				$service_terms = array_filter( array_map( 'trim', $service_terms ) );
+			}
+			if ( ! empty( $service_terms ) ) {
+				$description = $this->strip_disallowed_terms( $description, $service_terms );
+			}
+
+			$cta_terms = array( 'book now', 'book', 'schedule', 'call', 'contact', 'learn more', 'visit', 'reserve', 'discover', 'request', 'start', 'apply', 'join', 'enroll' );
+			$description = $this->strip_disallowed_terms( $description, $cta_terms );
+		}
+
+		$scenic_sentence = $this->extract_first_sentence( $description );
+		if ( $scenic_sentence === '' ) {
+			$scenic_sentence = $this->build_description_fallback_sentence( $context );
+		}
+		$scenic_sentence = rtrim( $scenic_sentence, '.!? ' ) . '.';
+
+		$tie_in = $this->buildTeamTieIn( $business_name, $context['brand_voice'] ?? 'professional' );
+		$description_final = trim( $scenic_sentence . ' ' . $tie_in );
+		$description_final = $this->limit_text( sanitize_textarea_field( $description_final ), 200, array(
+			'fallback_sentence' => $this->build_description_fallback_sentence( $context ),
+		) );
+
+		if ( ! $description_has_bn && ! in_array( 'missing_bn_desc', $metadata['issues'], true ) ) {
+			$metadata['issues'][] = 'missing_bn_desc';
+		}
+
+		$metadata['description'] = $description_final;
+
+		return $metadata;
+	}
+
+	/**
+	 * Build SEO tail sentence for stock/decorative contexts.
+	 *
+	 * @param array $context Context payload.
+	 * @return string
+	 */
+	private function build_stock_seo_tail( array $context ) {
+		$city   = trim( (string) ( $context['city'] ?? '' ) );
+		$region = trim( (string) ( $context['region'] ?? '' ) );
+		$place  = '';
+
+		if ( $city !== '' && $region !== '' ) {
+			$place = "{$city}, {$region}";
+		} elseif ( $city !== '' ) {
+			$place = $city;
+		}
+
+		$services = $context['service_keywords'] ?? array();
+		if ( ! is_array( $services ) ) {
+			$services = explode( ',', (string) $services );
+		}
+		$services = array_values( array_filter( array_map( 'trim', $services ) ) );
+		$service  = $services[0] ?? '';
+
+		if ( $place === '' && $service === '' ) {
+			return '';
+		}
+
+		if ( $place !== '' && $service !== '' ) {
+			return "Ideal for content related to {$service} in {$place}.";
+		}
+
+		if ( $place !== '' ) {
+			return "Ideal for content set in {$place}.";
+		}
+
+		return "Ideal for {$service} content.";
+	}
+
+	/**
+	 * Extract the first sentence from a piece of text.
+	 *
+	 * @param string $text Source text.
+	 * @return string First sentence or original text if no delimiter found.
+	 */
+	private function extract_first_sentence( $text ) {
+		$text = trim( (string) $text );
+		if ( $text === '' ) {
+			return '';
+		}
+
+		$sentences = preg_split( '/(?<=[.!?])\s+/', $text, 2, PREG_SPLIT_NO_EMPTY );
+		if ( ! empty( $sentences ) ) {
+			return trim( $sentences[0] );
+		}
+
+		return $text;
+	}
+
+	/**
 	 * Prepend business name to title with separator, enforcing 60 char max
 	 *
 	 * @param string $title Original title
@@ -2064,6 +2247,33 @@ class MSH_OpenAI_Connector {
 		return mb_strlen( $candidate ) <= 60
 			? $candidate
 			: mb_substr( $candidate, 0, 57 ) . '…';
+	}
+
+	/**
+	 * Build organic TEAM title (Batch 1.b)
+	 * Instead of "{Brand} – {Scenic}", use team-specific templates.
+	 */
+	private function buildTeamTitle( $business_name ) {
+		$templates = array(
+			'Healthcare Team – %s',
+			'Team at %s',
+			'Clinical Staff – %s',
+			'Professional Team – %s',
+		);
+		$template = $templates[ array_rand( $templates ) ];
+		$title = sprintf( $template, $business_name );
+		// Enforce max 60 chars
+		return mb_strlen( $title ) <= 60
+			? $title
+			: mb_substr( $title, 0, 57 ) . '…';
+	}
+
+	/**
+	 * Build organic TEAM description tie-in (Batch 1.b)
+	 * Add a sentence connecting the scene to the team/brand.
+	 */
+	private function buildTeamTieIn( $business_name, $brand_voice ) {
+		return sprintf( 'This image reflects the supportive team at %s.', $business_name );
 	}
 }
 

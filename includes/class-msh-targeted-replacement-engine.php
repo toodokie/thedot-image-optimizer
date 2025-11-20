@@ -140,6 +140,7 @@ class MSH_Targeted_Replacement_Engine {
 	private function get_targeted_updates_direct( $attachment_id, $replacement_map ) {
 		global $wpdb;
 		$updates = array();
+		$seen_rows = array(); // Track table+row_id+column to prevent duplicates
 
 		foreach ( $replacement_map as $old_url => $new_url ) {
 			if ( $old_url === $new_url ) {
@@ -162,23 +163,24 @@ class MSH_Targeted_Replacement_Engine {
 			);
 
 			foreach ( $posts as $post ) {
-				$updates[] = array(
-					'table'     => $wpdb->posts,
-					'id_column' => 'ID',
-					'row_id'    => $post->ID,
-					'column'    => 'post_content',
-					'old_value' => $old_url,
-					'new_value' => $new_url,
-					'context'   => 'content',
+				// Post content
+				$key = $wpdb->posts . '|' . $post->ID . '|post_content';
+				if ( ! isset( $seen_rows[ $key ] ) ) {
+					$seen_rows[ $key ] = array();
+				}
+				$seen_rows[ $key ][] = array(
+					'old' => $old_url,
+					'new' => $new_url,
 				);
-				$updates[] = array(
-					'table'     => $wpdb->posts,
-					'id_column' => 'ID',
-					'row_id'    => $post->ID,
-					'column'    => 'post_excerpt',
-					'old_value' => $old_url,
-					'new_value' => $new_url,
-					'context'   => 'excerpt',
+
+				// Post excerpt
+				$key = $wpdb->posts . '|' . $post->ID . '|post_excerpt';
+				if ( ! isset( $seen_rows[ $key ] ) ) {
+					$seen_rows[ $key ] = array();
+				}
+				$seen_rows[ $key ][] = array(
+					'old' => $old_url,
+					'new' => $new_url,
 				);
 			}
 
@@ -194,14 +196,13 @@ class MSH_Targeted_Replacement_Engine {
 			);
 
 			foreach ( $meta_rows as $meta ) {
-				$updates[] = array(
-					'table'     => $wpdb->postmeta,
-					'id_column' => 'meta_id',
-					'row_id'    => $meta->meta_id,
-					'column'    => 'meta_value',
-					'old_value' => $old_url,
-					'new_value' => $new_url,
-					'context'   => 'meta',
+				$key = $wpdb->postmeta . '|' . $meta->meta_id . '|meta_value';
+				if ( ! isset( $seen_rows[ $key ] ) ) {
+					$seen_rows[ $key ] = array();
+				}
+				$seen_rows[ $key ][] = array(
+					'old' => $old_url,
+					'new' => $new_url,
 				);
 			}
 
@@ -217,16 +218,41 @@ class MSH_Targeted_Replacement_Engine {
 			);
 
 			foreach ( $options as $option ) {
-				$updates[] = array(
-					'table'     => $wpdb->options,
-					'id_column' => 'option_id',
-					'row_id'    => $option->option_id,
-					'column'    => 'option_value',
-					'old_value' => $old_url,
-					'new_value' => $new_url,
-					'context'   => 'option',
+				$key = $wpdb->options . '|' . $option->option_id . '|option_value';
+				if ( ! isset( $seen_rows[ $key ] ) ) {
+					$seen_rows[ $key ] = array();
+				}
+				$seen_rows[ $key ][] = array(
+					'old' => $old_url,
+					'new' => $new_url,
 				);
 			}
+		}
+
+		// Now build the final updates array with all replacements for each row
+		foreach ( $seen_rows as $key => $replacements ) {
+			list( $table, $row_id, $column ) = explode( '|', $key );
+
+			// Determine id_column and context based on table
+			if ( $table === $wpdb->posts ) {
+				$id_column = 'ID';
+				$context   = ( $column === 'post_content' ) ? 'content' : 'excerpt';
+			} elseif ( $table === $wpdb->postmeta ) {
+				$id_column = 'meta_id';
+				$context   = 'meta';
+			} else {
+				$id_column = 'option_id';
+				$context   = 'option';
+			}
+
+			$updates[] = array(
+				'table'        => $table,
+				'id_column'    => $id_column,
+				'row_id'       => (int) $row_id,
+				'column'       => $column,
+				'replacements' => $replacements,
+				'context'      => $context,
+			);
 		}
 
 		return $updates;
@@ -238,19 +264,36 @@ class MSH_Targeted_Replacement_Engine {
 	private function perform_targeted_update( $update, $test_mode = false ) {
 		global $wpdb;
 
+		// Backwards compatibility: convert old format to new format
+		if ( ! isset( $update['replacements'] ) && isset( $update['old_value'] ) && isset( $update['new_value'] ) ) {
+			$update['replacements'] = array(
+				array(
+					'old' => $update['old_value'],
+					'new' => $update['new_value'],
+				),
+			);
+		}
+
+		// Ensure replacements array exists
+		if ( ! isset( $update['replacements'] ) || ! is_array( $update['replacements'] ) ) {
+			return array(
+				'success' => false,
+				'error'   => 'Invalid update format: missing replacements array',
+			);
+		}
+
 		$result = array(
-			'success'   => false,
-			'table'     => $update['table'],
-			'row_id'    => $update['row_id'],
-			'column'    => $update['column'],
-			'context'   => $update['context'],
-			'old_value' => $update['old_value'],
-			'new_value' => $update['new_value'],
-			'test_mode' => $test_mode,
+			'success'      => false,
+			'table'        => $update['table'],
+			'row_id'       => $update['row_id'],
+			'column'       => $update['column'],
+			'context'      => $update['context'],
+			'replacements' => $update['replacements'],
+			'test_mode'    => $test_mode,
 		);
 
 		try {
-			// Get current value
+			// Get current value (only once!)
 			$current_value = $wpdb->get_var(
 				$wpdb->prepare(
 					"SELECT {$update['column']} FROM {$update['table']} WHERE {$update['id_column']} = %d",
@@ -263,8 +306,15 @@ class MSH_Targeted_Replacement_Engine {
 				return $result;
 			}
 
-			// Handle serialized data specially
-			$new_content = $this->replace_in_content( $current_value, $update['old_value'], $update['new_value'], $update['context'] );
+			// Apply ALL replacements to the same content (prevents prefix multiplication)
+			$new_content    = $current_value;
+			$total_changes  = 0;
+
+			foreach ( $update['replacements'] as $replacement ) {
+				$before_replace = $new_content;
+				$new_content    = $this->replace_in_content( $new_content, $replacement['old'], $replacement['new'], $update['context'] );
+				$total_changes += substr_count( $before_replace, $replacement['old'] );
+			}
 
 			if ( $new_content === $current_value ) {
 				$result['success'] = true;
@@ -290,7 +340,7 @@ class MSH_Targeted_Replacement_Engine {
 
 			$result['success']      = true;
 			$result['message']      = $test_mode ? 'Would update' : 'Updated successfully';
-			$result['changes_made'] = substr_count( $current_value, $update['old_value'] );
+			$result['changes_made'] = $total_changes;
 
 		} catch ( Exception $e ) {
 			$result['error'] = $e->getMessage();

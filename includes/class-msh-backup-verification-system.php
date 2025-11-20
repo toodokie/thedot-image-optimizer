@@ -401,14 +401,13 @@ class MSH_Backup_Verification_System {
 		$error_count          = 0;
 
 		foreach ( $targeted_updates as $update ) {
-			$table     = $update['table'];
-			$id_column = $update['id_column'];
-			$row_id    = $update['row_id'];
-			$column    = $update['column'];
-			$old_value = $update['old_value'];
-			$new_value = $update['new_value'];
+			$table       = $update['table'];
+			$id_column   = $update['id_column'];
+			$row_id      = $update['row_id'];
+			$column      = $update['column'];
+			$replacements = $update['replacements']; // Array of ['old' => ..., 'new' => ...]
 
-			// Check if this specific row still contains the old URL
+			// Check if this specific row still contains any old URLs
 			$current_value = $wpdb->get_var(
 				$wpdb->prepare(
 					"
@@ -420,56 +419,52 @@ class MSH_Backup_Verification_System {
 				)
 			);
 
-			$still_contains_old = false;
+			// Check each replacement to see if the old value still exists
+			foreach ( $replacements as $replacement ) {
+				$old_value = $replacement['old'];
+				$new_value = $replacement['new'];
 
-			if ( $current_value !== null && $old_value !== '' ) {
-				$offset  = 0;
-				$old_len = strlen( $old_value );
-				$new_len = strlen( $new_value );
+				$still_contains_old = false;
 
-				while ( ( $pos = strpos( $current_value, $old_value, $offset ) ) !== false ) {
-					$segment = substr( $current_value, $pos, $new_len );
-
-					if ( $new_len > 0 && $segment === $new_value ) {
-						$offset = $pos + $old_len;
-						continue;
+				if ( $current_value !== null && $old_value !== '' ) {
+					// Simple check: does the current value still contain the old URL?
+					// We don't need complex offset logic since we're checking if replacement happened
+					if ( strpos( $current_value, $old_value ) !== false ) {
+						$still_contains_old = true;
 					}
-
-					$still_contains_old = true;
-					break;
 				}
+
+				if ( $still_contains_old ) {
+					++$error_count;
+					$status = 'failed';
+				} else {
+					++$success_count;
+					$status = 'success';
+				}
+
+				$wpdb->insert(
+					$this->verification_table,
+					array(
+						'operation_id'   => $operation_id,
+						'attachment_id'  => $attachment_id,
+						'check_type'     => 'targeted_' . basename( $table ),
+						'expected_value' => 'Row ' . $row_id . ' updated from ' . $old_value . ' to ' . $new_value,
+						'actual_value'   => $still_contains_old ? 'Still contains old URL' : 'Successfully updated',
+						'status'         => $status,
+						'error_message'  => $status === 'failed' ? 'Targeted update failed for row ' . $row_id : null,
+					)
+				);
+
+				$verification_results[] = array(
+					'type'      => 'targeted_update',
+					'table'     => basename( $table ),
+					'row_id'    => $row_id,
+					'column'    => $column,
+					'old_value' => $old_value,
+					'new_value' => $new_value,
+					'status'    => $status,
+				);
 			}
-
-			if ( $still_contains_old ) {
-				++$error_count;
-				$status = 'failed';
-			} else {
-				++$success_count;
-				$status = 'success';
-			}
-
-			$wpdb->insert(
-				$this->verification_table,
-				array(
-					'operation_id'   => $operation_id,
-					'attachment_id'  => $attachment_id,
-					'check_type'     => 'targeted_' . $table,
-					'expected_value' => 'Row ' . $row_id . ' updated from ' . $old_value . ' to ' . $new_value,
-					'actual_value'   => $still_contains_old ? 'Still contains old URL' : 'Successfully updated',
-					'status'         => $status,
-					'error_message'  => $status === 'failed' ? 'Targeted update failed for row ' . $row_id : null,
-				)
-			);
-
-			$verification_results[] = array(
-				'type'      => 'targeted_update',
-				'table'     => $table,
-				'row_id'    => $row_id,
-				'column'    => $column,
-				'old_value' => $old_value,
-				'new_value' => $new_value,
-				'status'    => $status,
-			);
 		}
 
 		$overall_status = $error_count === 0 ? 'success' : 'failed';

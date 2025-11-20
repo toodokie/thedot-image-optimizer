@@ -129,6 +129,9 @@ final class MSH_Image_Optimizer_Plugin {
         if (!class_exists('MSH_Concurrent_Queue')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-concurrent-queue.php';
         }
+        if (!class_exists('MSH_Key_Compactor')) {
+            require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-key-compactor.php';
+        }
         if (!class_exists('MSH_OpenAI_Connector')) {
             require_once MSH_IO_PLUGIN_DIR . 'includes/class-msh-openai-connector.php';
         }

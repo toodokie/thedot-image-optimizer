@@ -166,7 +166,7 @@ function msh_fs_rename( string $from, string $to ): bool {
  *
  * @param int    $attachment_id Attachment ID.
  * @param string $new_relative  Target relative path under uploads/.
- * @param array  $opts          Optional flags: source, delete_source, rewrite_callback.
+ * @param array  $opts          Optional flags: source, delete_source, rewrite_callback, skip_metadata_regen.
  * @return array|\WP_Error {
  *     @type string $relative_path Final relative path.
  *     @type string $absolute_path Absolute filesystem path.
@@ -255,14 +255,21 @@ function msh_optimize_atomic( int $attachment_id, string $new_relative, array $o
 	}
 
 	$base_changed = ( $old_base !== $new_base ) || empty( $previous_relative );
+	$skip_metadata_regen = ! empty( $opts['skip_metadata_regen'] );
 
-	if ( $base_changed || empty( $previous_metadata ) ) {
+	if ( $skip_metadata_regen ) {
+		error_log( '[MSH Atomic] Skipping metadata regeneration (rename flow) for attachment #' . $attachment_id );
+		// During rename, metadata paths are updated by Safe Rename System
+		// Regenerating here causes corruption (reads wrong file, gets thumbnail dimensions)
+	} elseif ( $base_changed || empty( $previous_metadata ) ) {
+		error_log( '[MSH Atomic] Regenerating metadata (basename changed) for attachment #' . $attachment_id );
 		$metadata = wp_generate_attachment_metadata( $attachment_id, $new_absolute );
 		if ( is_wp_error( $metadata ) ) {
 			return $metadata;
 		}
 		wp_update_attachment_metadata( $attachment_id, $metadata );
 	} else {
+		error_log( '[MSH Atomic] Updating subsizes (basename unchanged) for attachment #' . $attachment_id );
 		if ( function_exists( 'wp_update_image_subsizes' ) ) {
 			wp_update_image_subsizes( $attachment_id );
 		} else {
@@ -349,6 +356,15 @@ function msh_optimize_and_heal( int $attachment_id, callable $compute_path, arra
 	$relative = (string) $compute_path( $attachment_id );
 	$result   = msh_optimize_atomic( $attachment_id, $relative, $opts );
 	if ( is_wp_error( $result ) ) {
+		return $result;
+	}
+
+	$skip_metadata_regen = ! empty( $opts['skip_metadata_regen'] );
+
+	// During rename, skip integrity verification and metadata regeneration
+	// Safe Rename System handles metadata updates separately to avoid corruption
+	if ( $skip_metadata_regen ) {
+		error_log( '[MSH Heal] Skipping integrity check and metadata regen (rename flow) for attachment #' . $attachment_id );
 		return $result;
 	}
 

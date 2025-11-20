@@ -174,6 +174,18 @@ class MSH_Safe_Rename_System {
 			return $rel;
 		}
 
+		// Don't normalize absolute filesystem paths - only relative upload paths
+		// Absolute paths start with / and are longer than typical relative paths
+		if ( strpos( $rel, '/' ) === 0 && strlen( $rel ) > 10 ) {
+			// This is an absolute path like "/Users/..." or "/var/www/..."
+			// Only normalize the basename, keep the directory structure intact
+			$dirname = dirname( $rel );
+			$basename = basename( $rel );
+			$normalized_basename = $this->normalize_basename( $basename );
+			return $dirname . '/' . $normalized_basename;
+		}
+
+		// Handle relative paths (2008/06/filename.jpg)
 		$rel   = ltrim( $rel, '/' );
 		$parts = explode( '/', $rel );
 		$file  = array_pop( $parts );
@@ -700,8 +712,9 @@ class MSH_Safe_Rename_System {
 					return $new_relative;
 				},
 				array(
-					'source'        => $current_path,
-					'delete_source' => true,
+					'source'              => $current_path,
+					'delete_source'       => true,
+					'skip_metadata_regen' => true, // Prevent metadata regeneration during rename
 				)
 			);
 

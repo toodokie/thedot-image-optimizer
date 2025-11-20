@@ -38,11 +38,12 @@
 ---
 
 ## 2. Product Pillars
-1. **Analyzer & Prioritization** – Classifies every published attachment with impact scoring (High ≥15, Medium 10–14, Standard <10) so teams hit the most visible assets first.  
-2. **Smart Metadata & Filenames** – Deterministic templates tuned for healthcare/local SEO, optional AI overlay, and controlled filename suggestions.  
-3. **Format & Delivery** – WebP conversion with original backups and delivery helpers to prevent theme regressions.  
-4. **Usage Awareness** – Usage index, duplicate group intelligence, and real-time safety checks before destructive actions.  
-5. **Governance** – Version history, staleness detection, job queue automation, and detailed audit trails.  
+1. **Analyzer & Prioritization** – Classifies every published attachment with impact scoring (High ≥15, Medium 10–14, Standard <10) so teams hit the most visible assets first.
+2. **Smart Metadata & Filenames** – Deterministic templates tuned for healthcare/local SEO, optional AI overlay, and controlled filename suggestions.
+   📘 **See:** [METADATA_RULEBOOK.md](METADATA_RULEBOOK.md) – Canonical source of truth for AI and Non-AI metadata generation rules
+3. **Format & Delivery** – WebP conversion with original backups and delivery helpers to prevent theme regressions.
+4. **Usage Awareness** – Usage index, duplicate group intelligence, and real-time safety checks before destructive actions.
+5. **Governance** – Version history, staleness detection, job queue automation, and detailed audit trails.
 6. **Commercial Readiness (roadmap)** – Token-based AI pricing, multilingual UX, template intelligence, analytics, licensing, and telemetry.
 
 ---
