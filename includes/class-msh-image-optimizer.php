@@ -1583,6 +1583,7 @@ class MSH_Contextual_Meta_Generator {
 			'/\[fusion_builder_/',
 			'/\[bricks/',
 			'/data-elementor-type=/',
+			'/\[fl_builder_insert_layout/',
 		);
 
 		foreach ( $builder_patterns as $pattern ) {
@@ -1598,6 +1599,8 @@ class MSH_Contextual_Meta_Generator {
 			'_et_pb_use_builder',
 			'_fusion',
 			'_bricks_page_content_2',
+			'_fl_builder_enabled',
+			'_fl_builder_data',
 		);
 
 		foreach ( $builder_meta_keys as $meta_key ) {
@@ -1637,7 +1640,6 @@ class MSH_Contextual_Meta_Generator {
 		if ( $parent_post && ! empty( $parent_post->post_content ) ) {
 			// Detect builder content - skip parsing if builder detected
 			if ( $this->is_builder_content( $parent_post ) ) {
-				error_log( '[MSH] Skipping builder content for post ' . $parent_post->ID );
 				return $context;
 			}
 
@@ -2474,7 +2476,8 @@ class MSH_Contextual_Meta_Generator {
 				$slug = $this->assemble_slug( $components );
 				return $this->truncate_slug( $slug, 4 );
 			case 'facility':
-				return MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name . '-facility-' . $this->location_slug );
+				$slug = MSH_Image_Optimizer_Context_Helper::slugify( $this->business_name . '-facility-' . $this->location_slug );
+				return $this->truncate_slug( $slug, 4 );
 			case 'equipment':
 				// Smart filename extraction from original name
 				$original_filename  = $context['original_filename'] ?? '';
@@ -2483,7 +2486,8 @@ class MSH_Contextual_Meta_Generator {
 				$this->log_debug( "MSH Debug Equipment Case: Original='$original_filename', Extracted='$extracted_keywords'" );
 
 				if ( ! empty( $extracted_keywords ) ) {
-					return MSH_Image_Optimizer_Context_Helper::slugify( $extracted_keywords . '-equipment-' . $this->location_slug );
+					$slug = MSH_Image_Optimizer_Context_Helper::slugify( $extracted_keywords . '-equipment-' . $this->location_slug );
+					return $this->truncate_slug( $slug, 4 );
 				}
 
 				if ( ! empty( $context['asset'] ) && $context['asset'] === 'product' ) {
@@ -8030,6 +8034,8 @@ class MSH_Image_Optimizer {
 			// Try with short attachment ID suffix first
 			$short_id = $attachment_id;
 			if ( ! preg_match( '/-' . preg_quote( (string) $short_id, '/' ) . '$/', $base_name ) ) {
+				// Truncate to 3 words before adding ID to maintain 4-word maximum
+				$base_name = $this->limit_slug_words( $base_name, 3 );
 				$base_name .= '-' . $short_id;
 			}
 			$filename = $base_name . '.' . $extension;
@@ -8038,6 +8044,8 @@ class MSH_Image_Optimizer {
 			$existing_check = $this->get_attachment_by_filename( $filename );
 			if ( $existing_check && $existing_check !== $attachment_id ) {
 				$timestamp = substr( time(), -4 ); // Last 4 digits of timestamp
+				// Truncate to 3 words before adding timestamp to maintain 4-word maximum
+				$base_name = $this->limit_slug_words( $base_name, 3 );
 				$filename  = $base_name . '-' . $timestamp . '.' . $extension;
 			}
 		} else {
@@ -8046,6 +8054,8 @@ class MSH_Image_Optimizer {
 			if ( ! empty( $suggestion_conflicts ) && ! in_array( $attachment_id, $suggestion_conflicts ) ) {
 				$short_id = $attachment_id;
 				if ( ! preg_match( '/-' . preg_quote( (string) $short_id, '/' ) . '$/', $base_name ) ) {
+					// Truncate to 3 words before adding ID to maintain 4-word maximum
+					$base_name = $this->limit_slug_words( $base_name, 3 );
 					$base_name .= '-' . $short_id;
 				}
 				$filename = $base_name . '.' . $extension;
