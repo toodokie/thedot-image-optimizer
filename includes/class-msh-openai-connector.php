@@ -124,7 +124,7 @@ class MSH_OpenAI_Connector {
 			$body = array(
 				'model'       => 'gpt-4o',
 				'messages'    => $messages,
-				'max_tokens'  => 500,
+				'max_tokens'  => 200,
 				'temperature' => 0,
 			);
 
@@ -187,8 +187,18 @@ class MSH_OpenAI_Connector {
 	 * @return array|null Sanitised metadata array or null on failure.
 	 */
 	public function generate_metadata_via_openai( $metadata, $payload, $generator ) {
+		$attachment_id = $payload['attachment_id'] ?? 'UNKNOWN';
+		error_log( sprintf(
+			'[MSH OpenAI DEBUG] generate_metadata_via_openai() CALLED for attachment #%s',
+			$attachment_id
+		) );
+
 		// If another filter already provided metadata, don't override
 		if ( is_array( $metadata ) && ! empty( $metadata ) ) {
+			error_log( sprintf(
+				'[MSH OpenAI DEBUG] Attachment #%s: Metadata already provided, skipping',
+				$attachment_id
+			) );
 			return $metadata;
 		}
 
@@ -212,6 +222,12 @@ class MSH_OpenAI_Connector {
 		// Get image URL
 		$attachment_id = $payload['attachment_id'];
 		$image_url     = wp_get_attachment_url( $attachment_id );
+
+		error_log( sprintf(
+			'[MSH OpenAI DEBUG] Attachment #%d: wp_get_attachment_url() returned: %s',
+			$attachment_id,
+			$image_url ? $image_url : 'FALSE/NULL'
+		) );
 
 		if ( ! $image_url ) {
 			error_log( '[MSH OpenAI] Could not get image URL for attachment ' . $attachment_id );
@@ -238,6 +254,13 @@ class MSH_OpenAI_Connector {
 		// Build AI prompt with enabled features
 		$features          = ! empty( $payload['features'] ) ? $payload['features'] : array();
 		$ai_options        = ! empty( $payload['ai_options'] ) ? $payload['ai_options'] : array();
+
+		error_log( sprintf(
+			'[MSH OpenAI DEBUG] Attachment #%d: features=%s, ai_options=%s',
+			$attachment_id,
+			json_encode( $features ),
+			json_encode( $ai_options )
+		) );
 		$language_choice   = isset( $ai_options['language'] ) ? strtolower( (string) $ai_options['language'] ) : 'auto';
 		$resolved_language = $this->normalize_language_choice( $language_choice, $ai_options, $context );
 
@@ -522,29 +545,80 @@ class MSH_OpenAI_Connector {
 		// All context and rules moved to user message for token efficiency
 		$system_message = "AI metadata assistant. Context:{$ctx_id}. JSON only. No commentary.";
 
-		// Phase 0B: Build compact user message with all context flags
-		$brand_voice_val = ! empty( $brand_voice ) ? $brand_voice : 'neutral';
-		$bn = $this->promptSafe( $business_name_clean );
-		$bl = $this->promptSafe( $location_clean );
-		$sv = isset( $context['service_keywords'] ) ? $this->csvSafe( $context['service_keywords'] ) : '';
+		// Phase 0D: Build compact user message with conditional business context
+		$brand_voice_val     = ! empty( $brand_voice ) ? $brand_voice : 'neutral';
+		$brand_voice_compact = $this->compress_brand_voice( $brand_voice_val );
+		$bn                  = $this->promptSafe( $business_name_clean );
+		$bl                  = $this->promptSafe( $location_clean );
+		$sv                  = isset( $context['service_keywords'] ) ? $this->compact_service_keywords( $context['service_keywords'] ) : '';
 
-		// Build compact pipe-delimited user message (~75-85 tokens)
-		$user_message = sprintf(
-			"ctx:%s|ct:%s|cm:%d|seo:%d|bm:%d|bn:%s|bl:%s|sv:%s|bv:%s\npg:ti=%s|kw=%s|pr=%s\nschema:{fn,t,a,c,d,k[],s[],attr[],conf,iss[]}\nrules: ct final if cm=1; describe visible only; brand only if bm=1 and (ct in [logo,team,facility,equipment] or (ct in [clinical,business,testimonial] and bm=1)); when ct=facility and bm=1 and seo=1 include bn in both t and d; if bm=0 or seo=0 the business name must not appear anywhere; when seo=1 include exactly one location (from bl or pg.ti) and one service keyword (from sv) if context allows; never invent location or service beyond those provided; if seo=0 omit brand, location, and CTA language; use kw only if visibly relevant; tone=%s.",
-			$ctx_id,
+		$include_brand_block = $seo_mode || $brand_flag;
+
+		$flag_parts = array(
+			sprintf( 'ctx:%s', $ctx_id ),
+			sprintf( 'ct:%s', $context_type ),
+			sprintf( 'cm:%d', $context_set_manually ? 1 : 0 ),
+			sprintf( 'seo:%d', $seo_mode ? 1 : 0 ),
+			sprintf( 'bm:%d', $brand_flag ? 1 : 0 ),
+			sprintf( 'bv:%s', $brand_voice_compact ),
+		);
+
+		if ( $include_brand_block ) {
+			if ( '' !== $bn ) {
+				$flag_parts[] = 'bn:' . $bn;
+			}
+			if ( '' !== $bl ) {
+				$flag_parts[] = 'bl:' . $bl;
+			}
+			if ( '' !== $sv ) {
+				$flag_parts[] = 'sv:' . $sv;
+			}
+		}
+
+		$flag_line = implode( '|', $flag_parts );
+
+		$page_title_compact = $this->promptSafe( $page_title, 6 );
+		$focus_keyword_compact = $this->promptSafe( $focus_keyword );
+		$has_page_context = ( '' !== $page_title_compact ) || ( '' !== $focus_keyword_compact ) || ( '' !== $page_role );
+
+		$page_line = $has_page_context
+			? sprintf( 'pg:ti=%s|kw=%s|pr=%s', $page_title_compact, $focus_keyword_compact, $page_role )
+			: '';
+
+		$schema_line = 'schema:{fn,t,a,c,d,k[],s[],attr[],conf,iss[]}|req:fn,t,a,c,d,k[],s[],attr[],conf,iss[]';
+		$rules_line  = sprintf(
+			'rules: cm1->ct final; describe visible scene; brand allowed only if ct in {logo,team,facility,equipment,service-icon,brand_logo} or (ct in {clinical,business,testimonial} & bm1) — otherwise ban brand (stock/decor always ban). TEAM RULE: if ct=team AND bm=1 → MUST include {bn} in both t AND d, even if image looks generic. seo1: weave one location (bl or pg.ti) + one service from sv into description only; keep title/alt/caption purely visual. seo0 ban brand/location/cta. fill k/s=3-4 nouns. len caps t60/a125/c150/d200. tone letters p,f,c,t,n,b. tone=%s.',
+			$brand_voice_compact
+		);
+
+		$message_lines = array( $flag_line );
+		if ( $has_page_context ) {
+			$message_lines[] = $page_line;
+		}
+		$message_lines[] = $schema_line;
+		$message_lines[] = $rules_line;
+
+		$user_message = implode( "\n", $message_lines );
+
+		$bn_set = ( $include_brand_block && '' !== $bn ) ? 1 : 0;
+		$bl_set = ( $include_brand_block && '' !== $bl ) ? 1 : 0;
+		$sv_count = 0;
+		if ( $include_brand_block && '' !== $sv ) {
+			$sv_count = substr_count( $sv, ',' ) + 1;
+		}
+
+		error_log( sprintf(
+			'[AI_CALL] #%d in_bytes=%d flags ct=%s seo=%d bm=%d bn_set=%d bl_set=%d sv_count=%d pg=%d',
+			$attachment_id,
+			strlen( $user_message ),
 			$context_type,
-			$context_set_manually ? 1 : 0,
 			$seo_mode ? 1 : 0,
 			$brand_flag ? 1 : 0,
-			$bn,
-			$bl,
-			$sv,
-			$brand_voice_val,
-			$this->promptSafe( $page_title ),
-			$this->promptSafe( $focus_keyword ),
-			$page_role,
-			$brand_voice_val
-		);
+			$bn_set,
+			$bl_set,
+			$sv_count,
+			$has_page_context ? 1 : 0
+		) );
 
 		// Phase 0B: Log audit trail with ctx_id and first 80 chars of prompt
 		error_log(
@@ -622,6 +696,679 @@ class MSH_OpenAI_Connector {
 		);
 		return implode( ',', $arr );
 	}
+
+	/**
+	 * Phase 0C: Compress service keywords into shorthand tokens (max 3 items).
+	 *
+	 * @param array|string $services Service keywords from context.
+	 * @param int          $maxItems Maximum items to emit.
+	 * @return string Comma-delimited shorthand list.
+	 */
+	private function compact_service_keywords( $services, $maxItems = 3 ) {
+		if ( empty( $services ) ) {
+			return '';
+		}
+
+		if ( ! is_array( $services ) ) {
+			$services = explode( ',', (string) $services );
+		}
+
+		$map = array(
+			'physiotherapy'        => 'pt',
+			'physical therapy'     => 'pt',
+			'physical-therapy'     => 'pt',
+			'physicaltherapy'      => 'pt',
+			'rehabilitation'       => 'rehab',
+			'rehab'                => 'rehab',
+			'chiropractic'         => 'chiro',
+			'chiropractor'         => 'chiro',
+			'massage therapy'      => 'massage',
+			'massage-therapy'      => 'massage',
+			'occupational therapy' => 'ot',
+			'occupational-therapy' => 'ot',
+			'occupationaltherapy'  => 'ot',
+			'acupuncture'          => 'acu',
+			'nutrition'            => 'nutri',
+			'wellness coaching'    => 'well',
+			'mental health'        => 'mh',
+			'telehealth'           => 'tele',
+			'counseling'           => 'couns',
+		);
+
+		$shorthand = array();
+
+		foreach ( $services as $service ) {
+			$normalized = strtolower( trim( wp_strip_all_tags( (string) $service ) ) );
+
+			if ( '' === $normalized ) {
+				continue;
+			}
+
+			$key = preg_replace( '/\s+/', ' ', $normalized );
+
+			if ( isset( $map[ $key ] ) ) {
+				$short = $map[ $key ];
+			} else {
+				$short = $this->abbreviate_service_token( $normalized );
+			}
+
+			if ( '' === $short ) {
+				continue;
+			}
+
+			$shorthand[] = $short;
+
+			if ( count( $shorthand ) >= $maxItems ) {
+				break;
+			}
+		}
+
+		if ( empty( $shorthand ) ) {
+			return '';
+		}
+
+		return implode( ',', array_unique( $shorthand ) );
+	}
+
+	/**
+	 * Generate a fallback shorthand token for services without explicit mapping.
+	 *
+	 * @param string $service Normalized service string.
+	 * @return string
+	 */
+	private function abbreviate_service_token( $service ) {
+		$service = strtolower( trim( preg_replace( '/[^a-z0-9 ]/', '', $service ) ) );
+
+		if ( '' === $service ) {
+			return '';
+		}
+
+		$words = preg_split( '/\s+/', $service );
+
+		if ( count( $words ) > 1 && count( $words ) <= 3 ) {
+			$initials = '';
+
+			foreach ( $words as $word ) {
+				$initials .= substr( $word, 0, 1 );
+			}
+
+			if ( strlen( $initials ) >= 2 ) {
+				return $initials;
+			}
+		}
+
+		$replacements = array(
+			'therapy'   => 'ther',
+			'services'  => 'svc',
+			'service'   => 'svc',
+			'treatment' => 'treat',
+			'management'=> 'mgmt',
+			'training'  => 'train',
+			'program'   => 'prog',
+			'clinic'    => 'clinic',
+		);
+
+		foreach ( $replacements as $needle => $replacement ) {
+			if ( false !== strpos( $service, $needle ) ) {
+				$service = str_replace( $needle, $replacement, $service );
+			}
+		}
+
+		$service = str_replace( ' ', '', $service );
+
+		return substr( $service, 0, 5 );
+	}
+
+	/**
+	 * Phase 0C: Compress brand voice to one-character tone key.
+	 *
+	 * @param string $voice Brand voice string.
+	 * @return string One-character key.
+	 */
+		private function compress_brand_voice( $voice ) {
+			$voice = strtolower( trim( $voice ) );
+
+			if ( '' === $voice ) {
+				return 'n'; // neutral default
+			}
+
+			$map = array(
+				'professional' => 'p',
+				'friendly'     => 'f',
+				'casual'       => 'c',
+				'technical'    => 't',
+				'neutral'      => 'n',
+				'bold'         => 'b',
+				'confident'    => 'c',
+				'calm'         => 'c',
+			);
+
+			if ( isset( $map[ $voice ] ) ) {
+				return $map[ $voice ];
+			}
+
+			return substr( $voice, 0, 1 );
+		}
+
+		/**
+		 * Phase 0C.1: Enforce character limits with graceful word-boundary trimming.
+		 *
+		 * @param string $text Text to limit.
+		 * @param int    $max_chars Maximum characters allowed.
+		 * @return string
+		 */
+	private function limit_text( $text, $max_chars, $options = array() ) {
+		$text = trim( (string) $text );
+
+		if ( $text === '' ) {
+			return '';
+		}
+
+			$strlen = function_exists( 'mb_strlen' ) ? 'mb_strlen' : 'strlen';
+			$substr = function_exists( 'mb_substr' ) ? 'mb_substr' : 'substr';
+
+		if ( $strlen( $text ) <= $max_chars ) {
+			return $text;
+		}
+
+		$truncated = $substr( $text, 0, $max_chars );
+			$last_space = strrpos( $truncated, ' ' );
+
+			if ( false !== $last_space && $last_space > ( $max_chars - 25 ) ) {
+				$truncated = $substr( $truncated, 0, $last_space );
+			}
+
+		$truncated = rtrim( $truncated, " ,.;:-" );
+
+		$sentence_breaks = array(
+			strrpos( $truncated, '.' ),
+			strrpos( $truncated, '!' ),
+			strrpos( $truncated, '?' ),
+		);
+
+		$best_break = false;
+		foreach ( $sentence_breaks as $break ) {
+			if ( false !== $break && ( false === $best_break || $break > $best_break ) ) {
+				$best_break = $break;
+			}
+		}
+
+		if ( false !== $best_break && $best_break > ( $strlen( $truncated ) * 0.6 ) ) {
+			return rtrim( $substr( $truncated, 0, $best_break + 1 ) );
+		}
+
+		if ( ! empty( $options['fallback_sentence'] ) ) {
+			$fallback = trim( (string) $options['fallback_sentence'] );
+			if ( '' !== $fallback ) {
+				if ( ! preg_match( '/[.!?]$/', $fallback ) ) {
+					$fallback .= '.';
+				}
+
+				$fallback_len = $strlen( $fallback );
+				$space_needed = $fallback_len + 1; // Include space separator.
+
+				if ( $space_needed < $max_chars ) {
+					$available = $max_chars - $space_needed;
+					if ( $available > 0 ) {
+						$truncated = $substr( $truncated, 0, $available );
+						$truncated = rtrim( $truncated, " ,.;:-" );
+
+						if ( '' !== $truncated ) {
+							return $truncated . ' ' . $fallback;
+						}
+					}
+				}
+			}
+		}
+
+		return $truncated . '...';
+	}
+
+	/**
+	 * Build a short fallback sentence for descriptions when trimming occurs.
+	 *
+	 * @param array $context Metadata context.
+	 * @return string
+	 */
+	private function build_description_fallback_sentence( $context ) {
+		$seo_mode = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true;
+		if ( ! $seo_mode ) {
+			return '';
+		}
+
+		$business_name = trim( wp_strip_all_tags( $context['business_name'] ?? '' ) );
+		$location      = trim( wp_strip_all_tags( $context['location'] ?? '' ) );
+		$brand_allowed = ! empty( $context['brand_name_visible'] );
+
+		if ( '' === $business_name ) {
+			$brand_allowed = false;
+		}
+
+		$service = '';
+		if ( ! empty( $context['service_keywords'] ) ) {
+			$services = is_array( $context['service_keywords'] ) ? $context['service_keywords'] : explode( ',', (string) $context['service_keywords'] );
+			foreach ( $services as $svc ) {
+				$svc = trim( wp_strip_all_tags( (string) $svc ) );
+				if ( '' !== $svc ) {
+					$service = $svc;
+					break;
+				}
+			}
+		}
+
+		$subject = '';
+		if ( $brand_allowed ) {
+			$subject = $business_name;
+			if ( '' !== $location ) {
+				$subject .= ' in ' . $location;
+			}
+		} elseif ( '' !== $location ) {
+			$subject = 'This ' . strtolower( $context['context_type'] ?? 'practice' ) . ' in ' . $location;
+		} else {
+			$subject = 'This practice';
+		}
+
+		if ( '' !== $service ) {
+			$sentence = sprintf( '%s offers %s support', $subject, $service );
+		} else {
+			$sentence = sprintf( '%s offers supportive care', $subject );
+		}
+
+		return rtrim( $sentence ) . '.';
+	}
+
+		/**
+		 * Sanitize an array of keyword/subject terms.
+		 *
+		 * @param mixed $terms Candidate terms.
+		 * @param int   $max   Maximum number of terms to keep.
+		 * @return array
+		 */
+		private function sanitize_terms_array( $terms, $max = 6 ) {
+			if ( empty( $terms ) ) {
+				return array();
+			}
+
+			if ( ! is_array( $terms ) ) {
+				$terms = array( $terms );
+			}
+
+			$clean = array();
+
+			foreach ( $terms as $term ) {
+				$term = trim( wp_strip_all_tags( (string) $term ) );
+
+				if ( $term === '' ) {
+					continue;
+				}
+
+				$term = preg_replace( '/\s+/', ' ', $term );
+
+				if ( strlen( $term ) > 40 ) {
+					$term = substr( $term, 0, 40 );
+				}
+
+				$clean[] = $term;
+
+				if ( count( $clean ) >= $max ) {
+					break;
+				}
+			}
+
+			return array_values( array_unique( $clean ) );
+		}
+
+		/**
+		 * Generate fallback keyword/subject terms from visible text/context.
+		 *
+		 * @param string $text Text seed.
+		 * @param int    $max Maximum terms to output.
+		 * @param array  $context_terms Additional seeds (services, page role, etc).
+		 * @return array
+		 */
+		private function generate_terms_from_text( $text, $max = 4, $context_terms = array() ) {
+			$pool = array();
+
+			$normalized = strtolower( wp_strip_all_tags( (string) $text ) );
+			$normalized = preg_replace( '/[^a-z0-9\s]/', ' ', $normalized );
+			$words = preg_split( '/\s+/', $normalized );
+
+			$stopwords = $this->get_keyword_stopwords();
+
+			foreach ( $words as $word ) {
+				$word = trim( $word );
+
+				if ( $word === '' || strlen( $word ) < 3 ) {
+					continue;
+				}
+
+				if ( in_array( $word, $stopwords, true ) ) {
+					continue;
+				}
+
+				$pool[] = $word;
+			}
+
+			foreach ( (array) $context_terms as $extra ) {
+				$extra = strtolower( wp_strip_all_tags( (string) $extra ) );
+				$extra = preg_replace( '/[^a-z0-9\s]/', ' ', $extra );
+				$parts = preg_split( '/\s+/', $extra );
+
+				foreach ( $parts as $part ) {
+					$part = trim( $part );
+
+					if ( $part === '' || strlen( $part ) < 3 ) {
+						continue;
+					}
+
+					if ( in_array( $part, $stopwords, true ) ) {
+						continue;
+					}
+
+					$pool[] = $part;
+				}
+			}
+
+			$pool = array_values( array_unique( $pool ) );
+
+			if ( empty( $pool ) ) {
+				return array();
+			}
+
+			$terms = array();
+
+			foreach ( $pool as $candidate ) {
+				$terms[] = ucwords( $candidate );
+
+				if ( count( $terms ) >= $max ) {
+					break;
+				}
+			}
+
+			return $terms;
+		}
+
+		/**
+		 * Stopword list for keyword/subject fallback generation.
+		 *
+		 * @return array
+		 */
+		private function get_keyword_stopwords() {
+			return array(
+				'a',
+				'an',
+				'and',
+				'as',
+				'at',
+				'be',
+				'for',
+				'from',
+				'in',
+				'is',
+				'it',
+				'of',
+				'on',
+				'or',
+				'our',
+				'the',
+				'this',
+				'that',
+				'to',
+				'with',
+				'your',
+			);
+		}
+
+		/**
+		 * Ensure required text fields exist before validation.
+		 *
+		 * @param array $metadata Metadata array.
+		 * @param array $context Request context.
+		 * @return array
+		 */
+	private function ensure_required_text_fields( $metadata, $context ) {
+		if ( empty( $metadata['title'] ) ) {
+			$fallback_title = $this->generate_fallback_title( $metadata, $context );
+
+			if ( ! empty( $fallback_title ) ) {
+					$metadata['title'] = $fallback_title;
+					error_log( '[MSH OpenAI] Filled title fallback: ' . $fallback_title );
+				}
+			}
+
+		return $metadata;
+	}
+
+	/**
+	 * Apply brand/location/service rules to match non-AI behavior.
+	 *
+	 * @param array $metadata Sanitised metadata.
+	 * @param array $context  Context payload.
+	 * @param bool  $seo_mode Whether SEO mode is enabled.
+	 * @return array
+	 */
+	private function apply_contextual_term_filters( array $metadata, array $context, $seo_mode ) {
+		$context_type        = isset( $context['type'] ) ? $context['type'] : ( $context['context_type'] ?? 'stock' );
+		$brand_name_visible  = ! empty( $context['brand_name_visible'] );
+		$context_set_manually = ! empty( $context['context_set_manually'] );
+		$brand_allowed       = $this->is_brand_allowed_for_context( $context_type, $brand_name_visible, $context_set_manually );
+
+		$business_name = trim( wp_strip_all_tags( $context['business_name'] ?? '' ) );
+		if ( '' !== $business_name && ! $brand_allowed ) {
+			$metadata = $this->strip_terms_from_fields(
+				array( 'title', 'alt_text', 'caption', 'description' ),
+				array( $business_name ),
+				$metadata
+			);
+		}
+
+		$location_terms = $this->build_location_terms( $context );
+		$service_terms  = $this->build_service_terms( $context );
+
+		if ( empty( $location_terms ) && empty( $service_terms ) ) {
+			return $metadata;
+		}
+
+		// Stock/decorative: keep location/service references out of title/alt/caption even when SEO is on.
+		if ( in_array( $context_type, array( 'stock', 'decorative' ), true ) ) {
+			$metadata = $this->strip_terms_from_fields( array( 'title', 'alt_text', 'caption' ), $location_terms, $metadata );
+			$metadata = $this->strip_terms_from_fields( array( 'title', 'alt_text', 'caption' ), $service_terms, $metadata );
+		}
+
+		// When SEO mode is off, strip these terms globally.
+		if ( ! $seo_mode ) {
+			$metadata = $this->strip_terms_from_fields( array( 'title', 'alt_text', 'caption', 'description' ), $location_terms, $metadata );
+			$metadata = $this->strip_terms_from_fields( array( 'title', 'alt_text', 'caption', 'description' ), $service_terms, $metadata );
+		}
+
+		return $metadata;
+	}
+
+	/**
+	 * Determine if brand names are allowed for the given context type.
+	 *
+	 * @param string $context_type Context type.
+	 * @param bool   $brand_visible Brand name visible flag.
+	 * @param bool   $context_manual Context set manually flag.
+	 * @return bool
+	 */
+	private function is_brand_allowed_for_context( $context_type, $brand_visible, $context_manual ) {
+		$context_type = sanitize_key( (string) $context_type );
+
+		$always_allowed = array( 'logo', 'team', 'facility', 'equipment', 'service-icon', 'brand_logo' );
+		if ( in_array( $context_type, $always_allowed, true ) ) {
+			return true;
+		}
+
+		if ( in_array( $context_type, array( 'stock', 'decorative' ), true ) ) {
+			return false;
+		}
+
+		if ( in_array( $context_type, array( 'clinical', 'business' ), true ) ) {
+			return (bool) $brand_visible;
+		}
+
+		if ( 'testimonial' === $context_type ) {
+			return (bool) ( $brand_visible || $context_manual );
+		}
+
+		return false;
+	}
+
+	/**
+	 * Collect location-related terms for stripping.
+	 *
+	 * @param array $context Context payload.
+	 * @return array
+	 */
+	private function build_location_terms( array $context ) {
+		$terms = array();
+
+		$location_keys = array( 'location', 'city', 'state', 'province', 'region', 'country' );
+		foreach ( $location_keys as $key ) {
+			if ( empty( $context[ $key ] ) ) {
+				continue;
+			}
+			$chunks = preg_split( '/[,|]/', (string) $context[ $key ] );
+			foreach ( $chunks as $chunk ) {
+				$clean = trim( wp_strip_all_tags( $chunk ) );
+				if ( '' !== $clean ) {
+					$terms[] = $clean;
+				}
+			}
+		}
+
+		return array_values( array_unique( $terms ) );
+	}
+
+	/**
+	 * Collect service terms for stripping.
+	 *
+	 * @param array $context Context payload.
+	 * @return array
+	 */
+	private function build_service_terms( array $context ) {
+		if ( empty( $context['service_keywords'] ) ) {
+			return array();
+		}
+
+		$services = is_array( $context['service_keywords'] ) ? $context['service_keywords'] : explode( ',', (string) $context['service_keywords'] );
+		$terms    = array();
+
+		foreach ( $services as $service ) {
+			$clean = trim( wp_strip_all_tags( (string) $service ) );
+			if ( '' !== $clean ) {
+				$terms[] = $clean;
+			}
+		}
+
+		return array_values( array_unique( $terms ) );
+	}
+
+	/**
+	 * Strip terms from specified metadata fields.
+	 *
+	 * @param array $fields Fields to process.
+	 * @param array $terms  Terms to strip.
+	 * @param array $metadata Metadata array.
+	 * @return array
+	 */
+	private function strip_terms_from_fields( array $fields, array $terms, array $metadata ) {
+		if ( empty( $terms ) ) {
+			return $metadata;
+		}
+
+		foreach ( $fields as $field ) {
+			if ( empty( $metadata[ $field ] ) ) {
+				continue;
+			}
+
+			$metadata[ $field ] = $this->strip_terms_from_text( $metadata[ $field ], $terms );
+		}
+
+		return $metadata;
+	}
+
+	/**
+	 * Strip terms from a text string (case-insensitive, word-boundary aware where possible).
+	 *
+	 * @param string $text Text to clean.
+	 * @param array  $terms Terms to remove.
+	 * @return string
+	 */
+	private function strip_terms_from_text( $text, array $terms ) {
+		foreach ( $terms as $term ) {
+			$term = trim( $term );
+			if ( '' === $term ) {
+				continue;
+			}
+
+			$pattern = '/\b' . preg_quote( $term, '/' ) . '\b/iu';
+			$text    = preg_replace( $pattern, '', $text );
+		}
+
+		$text = preg_replace( '/\s{2,}/', ' ', $text );
+
+		return trim( $text );
+	}
+
+	/**
+	 * Build a fallback title from filename/context data.
+	 *
+	 * @param array $metadata Metadata array.
+		 * @param array $context Request context.
+		 * @return string
+		 */
+		private function generate_fallback_title( $metadata, $context ) {
+			$candidates = array(
+				$metadata['file_name_suggestion'] ?? '',
+				$context['page_title'] ?? '',
+				$context['focus_keyword'] ?? '',
+			);
+
+			if ( ! empty( $context['service_keywords'] ) ) {
+				$services = is_array( $context['service_keywords'] )
+					? $context['service_keywords']
+					: explode( ',', (string) $context['service_keywords'] );
+
+				if ( ! empty( $services ) ) {
+					$candidates[] = $services[0];
+				}
+			}
+
+			$candidates[] = $context['type'] ?? ( $context['context_type'] ?? '' );
+			$candidates[] = 'Image';
+
+			foreach ( $candidates as $candidate ) {
+				$formatted = $this->format_title_candidate( $candidate );
+
+				if ( ! empty( $formatted ) ) {
+					return $formatted;
+				}
+			}
+
+			return '';
+		}
+
+		/**
+		 * Format a fallback title candidate into Title Case words.
+		 *
+		 * @param string $candidate Raw candidate string.
+		 * @return string
+		 */
+		private function format_title_candidate( $candidate ) {
+			$candidate = (string) $candidate;
+			$candidate = preg_replace( '/\.[a-z0-9]{2,4}$/i', '', $candidate );
+			$candidate = preg_replace( '/[_\-]+/', ' ', $candidate );
+			$candidate = preg_replace( '/\s+/', ' ', $candidate );
+			$candidate = trim( $candidate );
+
+			if ( '' === $candidate ) {
+				return '';
+			}
+
+			return ucwords( $candidate );
+		}
 
 	/**
 	 * Normalize the language choice coming from the UI/AI options.
@@ -746,7 +1493,7 @@ class MSH_OpenAI_Connector {
 	 */
 	private function call_openai_vision( $image_url, $messages, $api_key ) {
 		// RATE LIMIT GATE: Check token bucket before making request
-		$this->check_rate_limit( 500 ); // Conservative estimate until we measure actual usage
+		$this->check_rate_limit( 350 ); // Phase 0C estimate (prompt+completion target <350 tokens)
 
 		// For local development, convert image to base64 if URL is not publicly accessible
 		$image_data = $this->get_image_data( $image_url );
@@ -775,7 +1522,7 @@ class MSH_OpenAI_Connector {
 					),
 				),
 			),
-			'max_tokens'  => 500,
+			'max_tokens'  => 200,
 			'temperature' => 0, // Deterministic outputs, no variance in retries
 		);
 
@@ -969,12 +1716,12 @@ class MSH_OpenAI_Connector {
 	/**
 	 * Parse OpenAI response into metadata array
 	 */
-	private function parse_openai_response( $response_json, $context ) {
-		$data = json_decode( $response_json, true );
+		private function parse_openai_response( $response_json, $context ) {
+			$data = json_decode( $response_json, true );
 
-		if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
-			return null;
-		}
+			if ( ! isset( $data['choices'][0]['message']['content'] ) ) {
+				return null;
+			}
 
 		// INSTRUMENTATION: Extract token usage from OpenAI response
 		$usage = $data['usage'] ?? array();
@@ -1028,6 +1775,9 @@ class MSH_OpenAI_Connector {
 		// Expand short keys to verbose keys (backward compatible - accepts both)
 		$metadata = MSH_Key_Compactor::expand_keys( $metadata );
 
+		// Ensure required text fields exist before validation (fallbacks prevent AI regressions)
+		$metadata = $this->ensure_required_text_fields( $metadata, $context );
+
 		// Log expanded size for comparison
 		$verbose_equivalent = json_encode( $metadata, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
 		$verbose_size = strlen( $verbose_equivalent );
@@ -1063,12 +1813,47 @@ class MSH_OpenAI_Connector {
 			}
 		}
 
-		// Sanitize the metadata
+			// BATCH 1: TEAM validator enforcement - brand MUST appear in t+d when ct=team AND bm=1
+			$ct = $context['type'] ?? '';
+			$bm = ! empty( $context['brand_name_visible'] ) && ( $context['brand_name_visible'] === 'true' || $context['brand_name_visible'] === true || $context['brand_name_visible'] === '1' );
+			$bn = $context['business_name'] ?? '';
+
+			if ( $ct === 'team' && $bm && $bn ) {
+				$t = $metadata['title'] ?? '';
+				$d = $metadata['description'] ?? '';
+
+				// Enforce bn in title
+				if ( stripos( $t, $bn ) === false ) {
+					$metadata['issues'][] = 'missing_bn_title';
+					$metadata['title']    = $this->prependBnToTitle( $t, $bn );
+					error_log( "[MSH Batch1] TEAM: prepended brand to title. Original: '{$t}' -> Fixed: '{$metadata['title']}'" );
+				}
+
+				// Enforce bn in description
+				if ( stripos( $d, $bn ) === false ) {
+					$metadata['issues'][] = 'missing_bn_desc';
+					$metadata['description'] = rtrim( $d, '. ' ) . ". {$bn}.";
+					error_log( "[MSH Batch1] TEAM: appended brand to description." );
+				}
+			}
+
+			$seo_mode_context = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true;
+
+			// Sanitize metadata and enforce hard length limits
+			$description_fallback = $this->build_description_fallback_sentence( $context );
+
+			$title       = $this->limit_text( sanitize_text_field( $metadata['title'] ), 60 );
+			$alt_text    = $this->limit_text( sanitize_text_field( $metadata['alt_text'] ), 125 );
+			$caption     = $this->limit_text( sanitize_text_field( $metadata['caption'] ), 150 );
+			$description = $this->limit_text( sanitize_textarea_field( $metadata['description'] ), 200, array(
+				'fallback_sentence' => $description_fallback,
+			) );
+
 		$sanitized = array(
-			'title'          => sanitize_text_field( $metadata['title'] ),
-			'alt_text'       => sanitize_text_field( $metadata['alt_text'] ),
-			'caption'        => sanitize_text_field( $metadata['caption'] ),
-			'description'    => sanitize_textarea_field( $metadata['description'] ),
+			'title'          => $title,
+			'alt_text'       => $alt_text,
+			'caption'        => $caption,
+			'description'    => $description,
 			'confidence'     => $confidence,
 			'issues'         => $issues,
 			'prompt_version' => self::PROMPT_VERSION,
@@ -1080,18 +1865,77 @@ class MSH_OpenAI_Connector {
 			error_log( '[MSH OpenAI] AI suggested filename: ' . $sanitized['filename_slug'] );
 		}
 
-		// Add keywords if provided
-		if ( ! empty( $metadata['keywords'] ) && is_array( $metadata['keywords'] ) ) {
-			$sanitized['keywords'] = array_map( 'sanitize_text_field', $metadata['keywords'] );
-			error_log( '[MSH OpenAI] AI suggested keywords: ' . implode( ', ', $sanitized['keywords'] ) );
+		$context_terms = array();
+		if ( ! empty( $context['service_keywords'] ) ) {
+			$context_terms = is_array( $context['service_keywords'] )
+				? $context['service_keywords']
+				: explode( ',', (string) $context['service_keywords'] );
+		}
+		if ( ! empty( $context['focus_keyword'] ) ) {
+			$context_terms[] = $context['focus_keyword'];
+		}
+		if ( ! empty( $context['page_title'] ) ) {
+			$context_terms[] = $context['page_title'];
 		}
 
-		// Validate the AI response for quality
-		$validation = $this->validate_ai_response( $sanitized, $context );
+		$keywords = $this->sanitize_terms_array( isset( $metadata['keywords'] ) ? $metadata['keywords'] : array(), 6 );
+		if ( empty( $keywords ) ) {
+			$keywords = $this->generate_terms_from_text(
+				$alt_text . ' ' . $description,
+				4,
+				$context_terms
+			);
+			if ( ! empty( $keywords ) ) {
+				error_log( '[MSH OpenAI] Filled keywords fallback: ' . implode( ', ', $keywords ) );
+			}
+		} else {
+				error_log( '[MSH OpenAI] AI suggested keywords: ' . implode( ', ', $keywords ) );
+			}
+			$sanitized['keywords'] = $keywords;
+
+		$subject_context_terms = array(
+			$context['page_role'] ?? '',
+			$context['type'] ?? ( $context['context_type'] ?? '' ),
+			$context['final_context_type'] ?? '',
+			$context['industry'] ?? '',
+		);
+
+		$subjects = $this->sanitize_terms_array( isset( $metadata['subjects'] ) ? $metadata['subjects'] : array(), 4 );
+		if ( empty( $subjects ) ) {
+			$subjects = $this->generate_terms_from_text(
+				$title . ' ' . $caption,
+				3,
+				array_merge( $subject_context_terms, $keywords )
+			);
+			if ( empty( $subjects ) && ! empty( $keywords ) ) {
+				$subjects = array_slice( $keywords, 0, 3 );
+			}
+			if ( ! empty( $subjects ) ) {
+				error_log( '[MSH OpenAI] Filled subjects fallback: ' . implode( ', ', $subjects ) );
+			}
+		}
+			$sanitized['subjects'] = $subjects;
+
+			$sanitized = $this->apply_contextual_term_filters( $sanitized, $context, $seo_mode_context );
+
+			// Validate the AI response for quality
+			$validation = $this->validate_ai_response( $sanitized, $context );
 		if ( is_wp_error( $validation ) ) {
 			error_log( '[MSH OpenAI] Validation failed: ' . $validation->get_error_message() );
 			return $validation; // Return WP_Error to trigger escalation or fallback
 		}
+
+		// BATCH 1 DEBUG: Dump final metadata after all validation/sanitization
+		$ct = $context['type'] ?? 'UNKNOWN';
+		$bm = ! empty( $context['brand_name_visible'] ) && ( $context['brand_name_visible'] === 'true' || $context['brand_name_visible'] === true || $context['brand_name_visible'] === '1' ) ? 1 : 0;
+		error_log( sprintf(
+			'[MSH DEBUG Batch1] Final metadata for ct=%s bm=%d: title="%s", desc="%s", issues=%s',
+			$ct,
+			$bm,
+			$sanitized['title'] ?? 'NULL',
+			substr( $sanitized['description'] ?? 'NULL', 0, 100 ) . '...',
+			json_encode( $sanitized['issues'] ?? [] )
+		) );
 
 		return $sanitized;
 	}
@@ -1201,6 +2045,25 @@ class MSH_OpenAI_Connector {
 		);
 
 		return $validator->validate( $context, $metadata, $seo_mode, $loc_mode );
+	}
+
+	/**
+	 * Prepend business name to title with separator, enforcing 60 char max
+	 *
+	 * @param string $title Original title
+	 * @param string $business_name Business name to prepend
+	 * @return string Title with business name prepended
+	 */
+	private function prependBnToTitle( $title, $business_name ) {
+		$title = trim( $title );
+		if ( $title === '' ) {
+			return $business_name;
+		}
+		$candidate = "{$business_name} – {$title}";
+		// Enforce max 60 chars
+		return mb_strlen( $candidate ) <= 60
+			? $candidate
+			: mb_substr( $candidate, 0, 57 ) . '…';
 	}
 }
 
