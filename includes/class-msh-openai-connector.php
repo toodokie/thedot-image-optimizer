@@ -937,6 +937,11 @@ class MSH_OpenAI_Connector {
 	 * @return string
 	 */
 	private function build_description_fallback_sentence( $context ) {
+		$type = isset( $context['type'] ) ? $context['type'] : ( $context['context_type'] ?? '' );
+		if ( in_array( $type, array( 'stock', 'decorative' ), true ) ) {
+			return '';
+		}
+
 		$seo_mode = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true;
 		if ( ! $seo_mode ) {
 			return '';
@@ -1142,6 +1147,7 @@ class MSH_OpenAI_Connector {
 				}
 			}
 
+		error_log( "[MSH DEBUG enforce_team] final_desc=" . $metadata['description'] );
 		return $metadata;
 	}
 
@@ -1154,10 +1160,25 @@ class MSH_OpenAI_Connector {
 	 * @return array
 	 */
 	private function apply_contextual_term_filters( array $metadata, array $context, $seo_mode ) {
+		// Phase 2E: Temporarily disable all SEO-specific injection logic.
+		$seo_mode = false;
 		$context_type        = isset( $context['type'] ) ? $context['type'] : ( $context['context_type'] ?? 'stock' );
 		$brand_name_visible  = ! empty( $context['brand_name_visible'] );
 		$context_set_manually = ! empty( $context['context_set_manually'] );
 		$brand_allowed       = $this->is_brand_allowed_for_context( $context_type, $brand_name_visible, $context_set_manually );
+		$type                = $context['type'] ?? 'stock';
+		$cm                  = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
+		$team                = ( $type === 'team' && $cm && in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true ) );
+		$skip_legacy_seo     = false;
+
+		// TEAM always bypasses legacy SEO injection entirely
+		if ( $team ) {
+			return $metadata;
+		}
+
+		if ( in_array( $type, array( 'stock', 'decorative' ), true ) ) {
+			$skip_legacy_seo = true;
+		}
 
 		$business_name = trim( wp_strip_all_tags( $context['business_name'] ?? '' ) );
 		if ( '' !== $business_name && ! $brand_allowed ) {
@@ -1182,6 +1203,10 @@ class MSH_OpenAI_Connector {
 		$service_terms  = $this->build_service_terms( $context );
 
 		if ( empty( $location_terms ) && empty( $service_terms ) ) {
+			return $metadata;
+		}
+
+		if ( $skip_legacy_seo ) {
 			return $metadata;
 		}
 
@@ -1923,36 +1948,53 @@ class MSH_OpenAI_Connector {
 			}
 		}
 
+		// Phase 3A: use real SEO mode for stock tail only (legacy SEO remains disabled elsewhere).
 		$seo_mode_flag = array_key_exists( 'seo_mode', $context ) ? (bool) $context['seo_mode'] : true;
 
-		if ( in_array( $ct, array( 'stock', 'decorative' ), true ) ) {
-			$business_name = trim( $context['business_name'] ?? '' );
+		$stock_context = in_array( $ct, array( 'stock', 'decorative' ), true );
+
+		if ( $stock_context ) {
+			$original_description = $sanitized['description'] ?? '';
+			$description_value    = $original_description;
+			$business_name        = trim( $context['business_name'] ?? '' );
+
 			if ( $business_name !== '' ) {
-				foreach ( array( 'title', 'alt_text', 'caption', 'description' ) as $field ) {
-					if ( ! empty( $sanitized[ $field ] ) ) {
+				foreach ( array( 'title', 'alt_text', 'caption' ) as $field ) {
+					if ( isset( $sanitized[ $field ] ) && $sanitized[ $field ] !== '' ) {
 						$sanitized[ $field ] = $this->strip_disallowed_terms( $sanitized[ $field ], array( $business_name ) );
 					}
+				}
+				if ( $description_value !== '' ) {
+					$description_value = $this->strip_disallowed_terms( $description_value, array( $business_name ) );
 				}
 			}
 
 			$location_terms = $this->build_location_terms( $context );
-			$service_terms  = $this->build_service_terms( $context );
-			$cta_terms      = array( 'book now', 'book', 'schedule', 'call', 'contact', 'learn more', 'visit', 'reserve', 'discover', 'request', 'start', 'apply', 'join', 'enroll' );
-			$all_terms      = array_merge( $location_terms, $service_terms, $cta_terms );
-
-			if ( ! empty( $sanitized['description'] ) && ! empty( $all_terms ) ) {
-				$sanitized['description'] = $this->strip_disallowed_terms( $sanitized['description'], $all_terms );
+			if ( ! empty( $location_terms ) && $description_value !== '' ) {
+				$description_value = $this->strip_disallowed_terms( $description_value, $location_terms );
 			}
 
-			if ( $seo_mode_flag ) {
-				$tail = $this->build_stock_seo_tail( $context );
-				if ( $tail !== '' ) {
-					$desc = trim( (string) ( $sanitized['description'] ?? '' ) );
-					if ( $desc !== '' ) {
-						$desc = rtrim( $desc, " \t\n\r\0\x0B." ) . '.';
-					}
-					$sanitized['description'] = trim( $desc . ' ' . $tail );
+			$service_terms = $this->build_service_terms( $context );
+			if ( ! empty( $service_terms ) && $description_value !== '' ) {
+				$description_value = $this->strip_disallowed_terms( $description_value, $service_terms );
+			}
+
+			$cta_terms = array( 'book now', 'book', 'schedule', 'call', 'contact', 'learn more', 'visit', 'reserve', 'discover', 'request', 'start', 'apply', 'join', 'enroll' );
+			if ( $description_value !== '' ) {
+				$description_value = $this->strip_disallowed_terms( $description_value, $cta_terms );
+			}
+
+			$sanitized['description'] = $description_value;
+		}
+
+		if ( $stock_context && $seo_mode_flag ) {
+			$tail = $this->build_stock_seo_tail( $context );
+			if ( $tail !== '' ) {
+				$current_desc = trim( preg_replace( '/\s+/', ' ', (string) ( $sanitized['description'] ?? '' ) ) );
+				if ( $current_desc !== '' ) {
+					$current_desc = rtrim( $current_desc, '.!? ' ) . '.';
 				}
+				$sanitized['description'] = trim( $current_desc . ' ' . $tail );
 			}
 		}
 
@@ -1963,8 +2005,10 @@ class MSH_OpenAI_Connector {
 		$cm   = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
 		$bn_v = in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true );
 
-		if ( $ct === 'team' && $cm && $bn_v ) {
-			error_log( "[MSH DEBUG Batch1 FINAL] id={$attachment_id} ct={$ct} seo={$seo} t={$sanitized['title']} d={$sanitized['description']}" );
+		if ( $ct === 'team' && $cm ) {
+			error_log(
+				"[MSH DEBUG Batch1 FINAL] id={$attachment_id} ct={$ct} seo={$seo} t={$sanitized['title']} d={$sanitized['description']}"
+			);
 		}
 
 		return $sanitized;
@@ -2100,6 +2144,15 @@ class MSH_OpenAI_Connector {
 			return $metadata;
 		}
 
+		$pollution_terms = array_merge(
+			$this->build_location_terms( $context ),
+			$this->build_service_terms( $context ),
+			array( 'practice', 'offers', 'support' )
+		);
+		if ( ! empty( $metadata['description'] ) && ! empty( $pollution_terms ) ) {
+			$metadata['description'] = $this->strip_disallowed_terms( $metadata['description'], $pollution_terms );
+		}
+
 		$business_name = trim( $context['business_name'] ?? '' );
 		if ( $business_name === '' ) {
 			return $metadata;
@@ -2167,7 +2220,7 @@ class MSH_OpenAI_Connector {
 		}
 
 		$metadata['description'] = $description_final;
-
+		error_log( "[MSH DEBUG enforce_team] final_desc=" . $metadata['description'] );
 		return $metadata;
 	}
 
