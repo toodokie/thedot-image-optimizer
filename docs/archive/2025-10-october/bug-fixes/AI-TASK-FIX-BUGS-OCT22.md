@@ -19,7 +19,7 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
 **Issue:** Preview modals couldn't scroll, close button unreachable at bottom
 
 **Fix Applied:**
-- **File:** [assets/css/hub.css](../msh-image-optimizer/assets/css/hub.css)
+- **File:** [assets/css/hub.css](../../../../assets/css/hub.css)
 - **Lines:** 1054-1057
 - **Change:** Added `max-height: calc(90vh - 180px)` and `min-height: 200px` to `.msh-modal__body`
 
@@ -31,7 +31,7 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
 **Issue:** Save Changes button did nothing, changes not saved
 
 **Fix Applied:**
-- **File:** [assets/js/hub.js](../msh-image-optimizer/assets/js/hub.js)
+- **File:** [assets/js/hub.js](../../../../assets/js/hub.js)
 - **Line 592:** `$form.append($footer)` - moved footer inside form element
 - **Line 599:** `this.openModal(title, $form, null)` - pass null for footer
 
@@ -45,7 +45,7 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
 **Issue:** Queue stats didn't refresh when regenerating from Metadata tab
 
 **Fix Applied:**
-- **File:** [assets/js/hub.js](../msh-image-optimizer/assets/js/hub.js)
+- **File:** [assets/js/hub.js](../../../../assets/js/hub.js)
 - **Line 1067:** Removed conditional check before `refreshQueueStats()`
 - **Lines 1292-1313:** Removed early return in `refreshQueueStats()` function
 
@@ -61,17 +61,17 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
 **Fixes Applied:**
 
 **PHP Changes:**
-- **File:** [admin/class-msh-hub-page.php](../msh-image-optimizer/admin/class-msh-hub-page.php)
+- **File:** [admin/class-msh-hub-page.php](../../../../admin/class-msh-hub-page.php)
 - **Lines 526-529:** Removed emoji variables, replaced with CSS class variable
 - **Lines 550-552:** Simplified lock button HTML to remove emoji spans
 - **Line 204:** Changed Sync tab from "Sync 🔒" to "Sync (Pro)"
 
 **CSS Changes:**
-- **File:** [assets/css/hub.css](../msh-image-optimizer/assets/css/hub.css)
+- **File:** [assets/css/hub.css](../../../../assets/css/hub.css)
 - **Lines 354-368:** Added styles for `.is-locked` and `.is-unlocked` states
 
 **JavaScript Changes:**
-- **File:** [assets/js/hub.js](../msh-image-optimizer/assets/js/hub.js)
+- **File:** [assets/js/hub.js](../../../../assets/js/hub.js)
 - **Lines 687-694:** Updated to toggle both `.is-locked` and `.is-unlocked` classes
 
 **Result:** Zero emojis, clear visual state through typography and color
@@ -86,13 +86,13 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
 **Fixes Applied:**
 
 **JavaScript Changes:**
-- **File:** [assets/js/hub.js](../msh-image-optimizer/assets/js/hub.js)
+- **File:** [assets/js/hub.js](../../../../assets/js/hub.js)
 - **Line 394:** Changed Preview modal close button from `button button-primary` to `button msh-button-primary`
 - **Line 588:** Changed Edit modal save button from `button button-primary` to `button msh-button-primary`
 - **Line 765:** Added `text: 'Close'` to header close button (was only aria-label, now has visible text)
 
 **CSS Changes:**
-- **File:** [assets/css/hub.css](../msh-image-optimizer/assets/css/hub.css)
+- **File:** [assets/css/hub.css](../../../../assets/css/hub.css)
 - **Lines 1031-1047:** Added `.button.msh-button-primary` styles:
   - Background: `var(--msh-charcoal)`
   - Font: `var(--msh-font-heading)` (Futura PT)
@@ -108,7 +108,7 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
 **Issue:** Close button in modal header wasn't using brand font
 
 **Fix Applied:**
-- **File:** [assets/css/hub.css](../msh-image-optimizer/assets/css/hub.css)
+- **File:** [assets/css/hub.css](../../../../assets/css/hub.css)
 - **Lines 1015-1027:** Added font styles to `.msh-modal__close`:
   - Font family: `var(--msh-font-heading)` (Futura PT)
   - Text transform: uppercase
@@ -121,7 +121,7 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
 ## Files Modified
 
 ### JavaScript
-- [assets/js/hub.js](../msh-image-optimizer/assets/js/hub.js)
+- [assets/js/hub.js](../../../../assets/js/hub.js)
   - Line 394: Preview modal close button class
   - Line 588: Edit modal save button class
   - Line 592: Edit form footer moved inside form
@@ -132,14 +132,14 @@ Fixed all 4 critical bugs reported from Track A testing, plus addressed brand co
   - Lines 1292-1313: refreshQueueStats() early return removed
 
 ### CSS
-- [assets/css/hub.css](../msh-image-optimizer/assets/css/hub.css)
+- [assets/css/hub.css](../../../../assets/css/hub.css)
   - Lines 354-368: Lock button state styles
   - Lines 1015-1027: Modal header close button styles (font added)
   - Lines 1031-1047: Brand primary button styles (new)
   - Lines 1054-1057: Modal body scroll constraints
 
 ### PHP
-- [admin/class-msh-hub-page.php](../msh-image-optimizer/admin/class-msh-hub-page.php)
+- [admin/class-msh-hub-page.php](../../../../admin/class-msh-hub-page.php)
   - Line 204: Sync tab label (removed emoji)
   - Lines 526-529: Lock button variables (removed emojis)
   - Lines 550-552: Lock button HTML (simplified, no emoji spans)

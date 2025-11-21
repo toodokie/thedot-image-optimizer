@@ -25,7 +25,7 @@ Build the **"Optimizer Hub"** - a beautiful, functional admin interface that let
 
 ### **Interface Contract (Your Bible)**
 
-**Location:** [`docs/interface-contract.md`](interface-contract.md)
+**Location:** [`docs/interface-contract.md`](../../../interface-contract.md)
 
 **What it contains:**
 1. **Database tables** - AI #1 creates these, you read from them
@@ -44,7 +44,7 @@ Build the **"Optimizer Hub"** - a beautiful, functional admin interface that let
 
 ### Step 1: Read the Interface Contract
 
-Open [`docs/interface-contract.md`](interface-contract.md) and read:
+Open [`docs/interface-contract.md`](../../../interface-contract.md) and read:
 - Section 2: Helper Functions (you'll use these A LOT)
 - Section 4: REST API Endpoints (for AJAX calls)
 - Section 6: Asset Enqueuing (how to load your CSS/JS)
@@ -471,13 +471,13 @@ esc_html__( 'Text', 'msh-image-optimizer' )
 ## 📚 Reference Documents
 
 ### Must Read:
-1. **[interface-contract.md](interface-contract.md)** - Your #1 reference
-2. **[phase5+9-combined-plan.md](phase5+9-combined-plan.md)** - Overall plan
-3. **[phase4-menu-structure.md](phase4-menu-structure.md)** - UI design spec
+1. **[interface-contract.md](../../../interface-contract.md)** - Your #1 reference
+2. **[phase5+9-combined-plan.md](../../../phase5+9-combined-plan.md)** - Overall plan
+3. **[phase4-menu-structure.md](../../../../msh-image-optimizer.backup.20251019214341/docs/phase4-menu-structure.md)** - UI design spec
 
 ### Nice to Have:
-4. **[phase4-manual.md](phase4-manual.md)** - User manual (what features should do)
-5. **[phase4-technical.md](phase4-technical.md)** - Phase 4R+ backend (AI #1 built this)
+4. **[phase4-manual.md](../../../../msh-image-optimizer.backup.20251019214341/docs/phase4-manual.md)** - User manual (what features should do)
+5. **[phase4-technical.md](../../../../msh-image-optimizer.backup.20251019214341/docs/phase4-technical.md)** - Phase 4R+ backend (AI #1 built this)
 
 ---
 

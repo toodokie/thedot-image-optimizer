@@ -455,7 +455,7 @@ You can temporarily edit `includes/class-msh-helper-stubs.php` to add more mock 
 ---
 
 **Questions? Check the interface contract first:**
-[`docs/interface-contract.md`](interface-contract.md) - Section 2 (Helper Functions)
+[`docs/interface-contract.md`](../../../interface-contract.md) - Section 2 (Helper Functions)
 
 ---
 

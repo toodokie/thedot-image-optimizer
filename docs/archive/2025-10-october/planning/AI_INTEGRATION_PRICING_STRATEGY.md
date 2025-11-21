@@ -5,7 +5,7 @@
 > **Last Updated**: October 13, 2025
 > **Status**: ⚠️ DEPRECATED - See TOKEN_BASED_PRICING_STRATEGY.md for current pricing
 >
-> **⚠️ IMPORTANT**: This document contains outdated pricing calculations. Refer to [TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md) for corrected token economics and accurate financial projections.
+> **⚠️ IMPORTANT**: This document contains outdated pricing calculations. Refer to [TOKEN_BASED_PRICING_STRATEGY.md](../../../TOKEN_BASED_PRICING_STRATEGY.md) for corrected token economics and accurate financial projections.
 
 ---
 
@@ -13,7 +13,7 @@
 
 This document has been superseded by a more accurate pricing model:
 
-📄 **[TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md)** - **Current pricing strategy (v3.1)**
+📄 **[TOKEN_BASED_PRICING_STRATEGY.md](../../../TOKEN_BASED_PRICING_STRATEGY.md)** - **Current pricing strategy (v3.1)**
 
 **Key Changes**:
 - ✅ Corrected OpenAI token pricing ($5/M vs incorrect $0.001/token)
@@ -31,7 +31,7 @@ This document has been superseded by a more accurate pricing model:
 
 This document analyzes the integration of two AI-powered features into MSH Image Optimizer and their impact on pricing strategy, competitive positioning, and revenue projections. Both features leverage existing AI infrastructure to provide significant value differentiation while maintaining healthy unit economics.
 
-**⚠️ Note**: The token pricing calculations in this document are incorrect. See [TOKEN_BASED_PRICING_STRATEGY.md](TOKEN_BASED_PRICING_STRATEGY.md) for accurate pricing.
+**⚠️ Note**: The token pricing calculations in this document are incorrect. See [TOKEN_BASED_PRICING_STRATEGY.md](../../../TOKEN_BASED_PRICING_STRATEGY.md) for accurate pricing.
 
 ### Key Findings
 

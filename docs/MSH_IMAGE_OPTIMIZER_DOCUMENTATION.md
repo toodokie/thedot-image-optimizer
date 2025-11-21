@@ -6,7 +6,7 @@ This handbook covers the production build of the Image Optimizer that ships with
 
 ## 🗂 Documentation Map
 
-The standalone repository now keeps every working doc under a single `docs/` folder with an index for quick navigation. Start at the [Standalone Documentation Index](../../docs/README.md) to jump into the right guide.
+The standalone repository now keeps every working doc under a single `docs/` folder with an index for quick navigation. Start at the [Standalone Documentation Index](../README.md) to jump into the right guide.
 
 - `docs/setup/` — environment and sync instructions (symlink workflow, troubleshooting, Live Links, daily checklist).
 - `docs/development/` — engineering change logs, architectural notes, investigations, and bug write-ups.

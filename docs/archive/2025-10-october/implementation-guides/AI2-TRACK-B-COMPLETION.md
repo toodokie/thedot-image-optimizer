@@ -351,9 +351,9 @@ wp db query "SELECT * FROM wp_optimizer_metadata_versions ORDER BY created_at DE
 ## Resources
 
 ### Documentation
-- [Interface Contract](docs/interface-contract.md) - Backend APIs you can use
-- [AI2 Onboarding](docs/ai2-onboarding-instructions.md) - Your original instructions
-- [Track B Overview](TRACKS-OVERVIEW.md) - What Track B includes
+- [Interface Contract](../../../interface-contract.md) - Backend APIs you can use
+- [AI2 Onboarding](../../../../msh-image-optimizer.backup.20251019214341/docs/ai2-onboarding-instructions.md) - Your original instructions
+- [Track B Overview](../../../planning/TRACKS-OVERVIEW.md) - What Track B includes
 
 ### Backend Help
 - Helper functions: Check `includes/class-msh-helper-functions.php`

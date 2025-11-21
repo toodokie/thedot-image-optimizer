@@ -1855,7 +1855,7 @@ Questions or ready to begin Track A development?
 
 To enable Pro/Agency plan sales and activate license-gated features in the plugin, a **separate license API server** must be built outside the WordPress plugin.
 
-**📄 See Full Documentation:** [LICENSING-ARCHITECTURE.md](./LICENSING-ARCHITECTURE.md)
+**📄 See Full Documentation:** [LICENSING-ARCHITECTURE.md](architecture/LICENSING-ARCHITECTURE.md)
 
 ### Key Components
 
@@ -1928,7 +1928,7 @@ the-dot-optimizer/
 ---
 
 **For complete details, database schema, security considerations, and code examples:**  
-👉 **[Read LICENSING-ARCHITECTURE.md](./LICENSING-ARCHITECTURE.md)**
+👉 **[Read LICENSING-ARCHITECTURE.md](architecture/LICENSING-ARCHITECTURE.md)**
 
 ---
 

@@ -2005,12 +2005,12 @@ When users upload images to ChatGPT Vision or use Google Lens, the AI reads:
    - Context-aware descriptions using UVP, pain points, target audience
    - Industry-specific vocabulary (17 industries)
    - Natural language patterns
-   - See: [generate_hvac_meta()](class-msh-image-optimizer.php#L1863-L1905)
+   - See: [generate_hvac_meta()](../includes/class-msh-image-optimizer.php#L1863-L1905)
 
 2. **Question-Optimized Descriptions**
    - Cascading fallback: UVP → Pain Points → Target Audience → Generic
    - Includes service variants, credentials, service area
-   - See: [build_industry_description()](class-msh-image-optimizer.php#L247-L277)
+   - See: [build_industry_description()](../includes/class-msh-image-optimizer.php#L247-L277)
 
 3. **SEO-Optimized Filenames (Also GEO-Friendly)**
    - Descriptive slugs: `furnace-repair-arctic-comfort-toronto.jpg`

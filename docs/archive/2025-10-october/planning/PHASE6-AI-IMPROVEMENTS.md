@@ -466,4 +466,4 @@ If issues arise:
 
 ---
 
-**Next Steps:** See [TELEMETRY-INTEGRATION.md](./TELEMETRY-INTEGRATION.md) for Supabase integration guide.
+**Next Steps:** See [TELEMETRY-INTEGRATION.md](../../../architecture/TELEMETRY-INTEGRATION.md) for Supabase integration guide.

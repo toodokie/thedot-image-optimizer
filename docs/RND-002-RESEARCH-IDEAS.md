@@ -1192,10 +1192,10 @@ msh_telemetry('migration_complete', [
 - [WordPress database versioning best practices](https://developer.wordpress.org/plugins/plugin-basics/activation-deactivation-hooks/#database-updates)
 
 ### Internal Documentation
-- [PROJECT-STATUS-ALL-PHASES.md](../PROJECT-STATUS-ALL-PHASES.md) - Overall project status
+- [PROJECT-STATUS-ALL-PHASES.md](planning/PROJECT-STATUS-ALL-PHASES.md) - Overall project status
 - [TODO.md](../TODO.md) - Phase roadmap (updated with Idea #1)
-- [AUTOMATION-INFRASTRUCTURE-COMPLETE.md](../AUTOMATION-INFRASTRUCTURE-COMPLETE.md) - Phase 5+9 Track A
-- [AI-TASK-FIX-BUGS-OCT22.md](../AI-TASK-FIX-BUGS-OCT22.md) - Past migration pain example
+- [AUTOMATION-INFRASTRUCTURE-COMPLETE.md](archive/AUTOMATION-INFRASTRUCTURE-COMPLETE.md) - Phase 5+9 Track A
+- [AI-TASK-FIX-BUGS-OCT22.md](archive/2025-10-october/bug-fixes/AI-TASK-FIX-BUGS-OCT22.md) - Past migration pain example
 
 ---
 
@@ -1947,7 +1947,7 @@ if ( msh_flag_enabled_with_percentage( 'avif_conversion', 25 ) ) {
 **Internal:**
 - [Idea #1: Expand-Backfill-Switch-Contract](#idea-1-expand-backfill-switch-contract-pattern) - Uses feature flags
 - [TODO.md](../TODO.md) - Phase roadmap
-- [Track C: Enterprise Features](../PROJECT-STATUS-ALL-PHASES.md) - License gating
+- [Track C: Enterprise Features](planning/PROJECT-STATUS-ALL-PHASES.md) - License gating
 
 ---
 
@@ -2292,7 +2292,7 @@ wp msh flag set avif_conversion on
 
 **Internal:**
 - [Idea #2: Feature Flags](#idea-2-feature-flags-for-safe-rollouts) - Required for safe rollout
-- [Track A: Job Queue](../PROJECT-STATUS-ALL-PHASES.md) - AVIF conversion uses queue
+- [Track A: Job Queue](planning/PROJECT-STATUS-ALL-PHASES.md) - AVIF conversion uses queue
 - [TODO.md](../TODO.md) - Future phase planning
 
 ---
@@ -2848,7 +2848,7 @@ msh_telemetry('batch_complete', [
 - [Idea #2: Feature Flags](#idea-2-feature-flags-for-safe-rollouts) - Rollout strategy
 - [Idea #3: AVIF Conversion](#idea-3-avif-image-conversion) - Cloud enables AVIF
 - [TODO.md](../TODO.md) - Phase roadmap (updated)
-- [PROJECT-STATUS-ALL-PHASES.md](../PROJECT-STATUS-ALL-PHASES.md) - Overall status (updated)
+- [PROJECT-STATUS-ALL-PHASES.md](planning/PROJECT-STATUS-ALL-PHASES.md) - Overall status (updated)
 
 ---
 
@@ -4338,7 +4338,7 @@ public function recommend_format( $attachment_id, $priority_score ) {
 
 **Internal:**
 - [TODO.md](../TODO.md) - Phase 10 roadmap
-- [PROJECT-STATUS-ALL-PHASES.md](../PROJECT-STATUS-ALL-PHASES.md) - Phase 10 status
+- [PROJECT-STATUS-ALL-PHASES.md](planning/PROJECT-STATUS-ALL-PHASES.md) - Phase 10 status
 - [Idea #2: Feature Flags](#idea-2-feature-flags-for-safe-rollouts) - Rollout strategy
 - [Idea #3: AVIF Conversion](#idea-3-avif-image-conversion) - Format strategy
 - [Idea #4: Staged Cloud Architecture](#idea-4-staged-cloud-architecture-30-60-90-day-roadmap) - Infrastructure
@@ -5492,7 +5492,7 @@ $fr_post_id = wpml_object_id_filter( $en_post_id, 'post', false, 'fr' );
 
 **Internal:**
 - [TODO.md](../TODO.md) - Phase 7 roadmap
-- [PROJECT-STATUS-ALL-PHASES.md](../PROJECT-STATUS-ALL-PHASES.md) - Phase 7 status
+- [PROJECT-STATUS-ALL-PHASES.md](planning/PROJECT-STATUS-ALL-PHASES.md) - Phase 7 status
 - [Phase 2: Context Fusion](../docs/PHASE_2_CONTEXT_FUSION_PLAN.md) - on_topic filtering
 - [Phase 4: Metadata Versioning](../docs/METADATA_VERSIONING_API.md) - Localized metadata
 
