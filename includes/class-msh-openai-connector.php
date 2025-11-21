@@ -2000,14 +2000,20 @@ class MSH_OpenAI_Connector {
 
 		$ct = $context['type'] ?? '';
 
-		if ( $ct === 'clinical' ) {
+		if ( in_array( $ct, array( 'clinical', 'business', 'service-icon' ), true ) ) {
 			$description = $sanitized['description'] ?? '';
 
 			if ( $description !== '' ) {
 				$pollution_terms = array_merge(
 					$this->build_location_terms( $context ),
 					$this->build_service_terms( $context ),
-					array( 'practice', 'offers', 'support' )
+					array(
+						'practice',
+						'offers',
+						'support',
+						'services',
+						'medical'
+					)
 				);
 
 				if ( ! empty( $pollution_terms ) ) {
@@ -2016,6 +2022,7 @@ class MSH_OpenAI_Connector {
 
 				$description = preg_replace( '/,+/', ',', $description );
 				$description = preg_replace( '/\\s*,\\s*/', ', ', $description );
+				$description = preg_replace( '/(^|\\.\\s+),\\s*/', '$1', $description );
 				$description = preg_replace( '/\\s{2,}/', ' ', $description );
 
 				$sanitized['description'] = trim( $description );
