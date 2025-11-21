@@ -1998,6 +1998,30 @@ class MSH_OpenAI_Connector {
 			}
 		}
 
+		$ct = $context['type'] ?? '';
+
+		if ( $ct === 'clinical' ) {
+			$description = $sanitized['description'] ?? '';
+
+			if ( $description !== '' ) {
+				$pollution_terms = array_merge(
+					$this->build_location_terms( $context ),
+					$this->build_service_terms( $context ),
+					array( 'practice', 'offers', 'support' )
+				);
+
+				if ( ! empty( $pollution_terms ) ) {
+					$description = $this->strip_disallowed_terms( $description, $pollution_terms );
+				}
+
+				$description = preg_replace( '/,+/', ',', $description );
+				$description = preg_replace( '/\\s*,\\s*/', ', ', $description );
+				$description = preg_replace( '/\\s{2,}/', ' ', $description );
+
+				$sanitized['description'] = trim( $description );
+			}
+		}
+
 		$sanitized = $this->enforce_team_metadata_rules( $sanitized, $context );
 
 		$ct   = $context['type'] ?? 'UNKNOWN';
