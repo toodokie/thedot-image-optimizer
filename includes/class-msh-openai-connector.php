@@ -415,7 +415,7 @@ class MSH_OpenAI_Connector {
 			);
 
 			// BATCH 1.a: Check if brand should be preserved (TEAM context with brand mode enabled)
-			$ct = $context['type'] ?? '';
+			$ct = strtolower( trim( (string) ( $context['type'] ?? '' ) ) );
 			$bm = ! empty( $context['brand_name_visible'] ) && ( $context['brand_name_visible'] === 'true' || $context['brand_name_visible'] === true || $context['brand_name_visible'] === '1' );
 			$preserve_brand = ( $ct === 'team' && $bm );
 
@@ -1937,7 +1937,8 @@ class MSH_OpenAI_Connector {
 
 		// Validate the AI response for quality
 		$validation = $this->validate_ai_response( $sanitized, $context );
-		$ct         = $context['type'] ?? '';
+		// Normalize context type for all downstream checks
+		$ct         = strtolower( trim( (string) ( $context['type'] ?? '' ) ) );
 		$cm         = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
 		$bn_v       = in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true );
 
@@ -1998,8 +1999,6 @@ class MSH_OpenAI_Connector {
 			}
 		}
 
-		$ct = $context['type'] ?? '';
-
 		if ( in_array( $ct, array( 'clinical', 'business', 'service-icon' ), true ) ) {
 			$description = $sanitized['description'] ?? '';
 
@@ -2056,7 +2055,7 @@ class MSH_OpenAI_Connector {
 	 */
 	private function validate_context_rules( $context, &$metadata, &$issues ) {
 		// Note: Context array uses 'type' key, not 'context_type'
-		$type = isset( $context['type'] ) ? $context['type'] : 'stock';
+		$type = strtolower( trim( (string) ( $context['type'] ?? 'stock' ) ) );
 		$cm   = ! empty( $context['manual'] ) || ! empty( $context['context_set_manually'] );
 		$team_brand_flag = in_array( $context['brand_name_visible'] ?? false, array( true, 'true', '1', 1 ), true );
 
